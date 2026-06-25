@@ -7,6 +7,7 @@ export {MainContent, type MainContentProps} from './main-content';
 export {MarketingLayout, type MarketingLayoutProps} from './marketing-layout';
 export {PageContainer, type PageContainerProps} from './page-container';
 export {PageHeader, type PageHeaderProps} from './page-header';
+export {PageTemplate, type PageTemplateProps} from './page-template';
 export {PageTitle, type PageTitleProps} from './page-title';
 export {ScrollableArea, type ScrollableAreaProps} from './scrollable-area';
 export {Section, type SectionProps} from './section';

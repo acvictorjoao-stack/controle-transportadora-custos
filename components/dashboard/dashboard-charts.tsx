@@ -7,7 +7,7 @@ const chartVariants = ['bar', 'bar', 'area'] as const;
 function DashboardCharts() {
   return (
     <Section title="Análise Financeira" description="Indicadores visuais da performance">
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2 2xl:gap-5">
         {dashboardMock.charts.slice(0, 2).map((chart, index) => (
           <ChartPlaceholder
             key={chart.id}

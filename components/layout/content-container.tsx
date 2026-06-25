@@ -12,7 +12,10 @@ function ContentContainer({
   return (
     <div
       data-slot="content-container"
-      className={cn('flex flex-col gap-6 p-6', className)}
+      className={cn(
+        'mx-auto flex w-full max-w-[1920px] flex-col gap-4 p-4 sm:gap-5 sm:p-5 lg:p-6',
+        className,
+      )}
       {...props}
     >
       {children}

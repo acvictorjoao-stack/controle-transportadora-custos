@@ -7,7 +7,7 @@ function DashboardRankings() {
 
   return (
     <Section title="Rankings" description="Top performers do período">
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 2xl:gap-5">
         <RankingCard
           title="Top Clientes"
           description="Por receita gerada"

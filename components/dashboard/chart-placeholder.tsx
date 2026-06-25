@@ -33,7 +33,7 @@ function ChartPlaceholder({
       </CardHeader>
       <CardContent>
         <div
-          className="relative flex h-48 items-end justify-between gap-1.5 rounded-lg border border-dashed border-border bg-muted/30 p-4"
+          className="relative flex h-52 items-end justify-between gap-1.5 rounded-lg border border-dashed border-border bg-muted/30 p-4 xl:h-60 2xl:h-72"
           aria-label={`Gráfico: ${title} — integração futura`}
         >
           {variant === 'bar' &&

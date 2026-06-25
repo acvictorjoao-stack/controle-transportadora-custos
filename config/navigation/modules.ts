@@ -157,8 +157,8 @@ export const navigationGroups: NavGroup[] = [
     items: [
       {
         id: 'manutencao',
-        title: 'Manutenção',
-        description: 'Gestão de manutenção',
+        title: 'Manutenções',
+        description: 'Gestão de manutenções',
         href: ROUTES.manutencao,
         icon: Wrench,
         permission: 'manutencao:read',
@@ -198,16 +198,16 @@ export const navigationGroups: NavGroup[] = [
       },
       {
         id: 'bi',
-        title: 'BI',
-        description: 'Business Intelligence',
+        title: 'Business Intelligence',
+        description: 'Painéis analíticos e indicadores estratégicos',
         href: ROUTES.bi,
         icon: BarChart3,
         permission: 'bi:read',
       },
       {
         id: 'ia',
-        title: 'IA',
-        description: 'Assistente inteligente',
+        title: 'Inteligência Artificial',
+        description: 'Assistente inteligente e insights automatizados',
         href: ROUTES.ia,
         icon: Brain,
         permission: 'ia:read',

@@ -43,30 +43,42 @@ function SidebarNavItem({item, depth = 0}: SidebarNavItemProps) {
   if (hasChildren) {
     return (
       <div>
-        <button
-          type="button"
-          onClick={() => setSubmenuOpen((prev) => !prev)}
-          title={collapsed ? item.title : undefined}
+        <div
           className={cn(
-            'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+            'flex w-full items-center rounded-lg transition-colors',
             (isActive || isChildActive)
               ? 'bg-sidebar-accent text-sidebar-accent-foreground'
               : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-            collapsed && 'justify-center px-2',
           )}
         >
-          <Icon className="size-4 shrink-0" />
-          {!collapsed && (
-            <>
+          <Link
+            href={item.href}
+            title={collapsed ? item.title : undefined}
+            className={cn(
+              'flex min-w-0 flex-1 items-center gap-3 px-3 py-2 text-sm font-medium',
+              collapsed && 'justify-center px-2',
+            )}
+          >
+            <Icon className="size-4 shrink-0" />
+            {!collapsed && (
               <span className="flex-1 truncate text-left">{item.title}</span>
+            )}
+          </Link>
+          {!collapsed && (
+            <button
+              type="button"
+              onClick={() => setSubmenuOpen((prev) => !prev)}
+              aria-label={submenuOpen ? 'Recolher submenu' : 'Expandir submenu'}
+              className="mr-1 rounded-md p-1.5 hover:bg-sidebar-accent/80"
+            >
               {submenuOpen ? (
                 <ChevronDown className="size-4 shrink-0 opacity-50" />
               ) : (
                 <ChevronRight className="size-4 shrink-0 opacity-50" />
               )}
-            </>
+            </button>
           )}
-        </button>
+        </div>
         {submenuOpen && !collapsed && (
           <div className="ml-4 mt-0.5 space-y-0.5 border-l border-sidebar-border pl-3">
             {item.children!.map((child) => (
