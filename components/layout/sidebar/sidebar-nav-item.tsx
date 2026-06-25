@@ -5,10 +5,10 @@ import Link from 'next/link';
 import {usePathname} from 'next/navigation';
 import * as React from 'react';
 
-import type {NavItem} from '@/types/global/navigation';
 import {useSidebar} from '@/contexts/shell/use-sidebar';
 import {hasPermission, useNavPermissions} from '@/hooks/use-nav-permissions';
 import {isNavItemActive} from '@/lib/navigation/breadcrumb';
+import type {NavItem} from '@/types/global/navigation';
 import {cn} from '@/lib/utils';
 
 export interface SidebarNavItemProps {
@@ -28,9 +28,13 @@ function SidebarNavItem({item, depth = 0}: SidebarNavItemProps) {
     isNavItemActive(pathname, child.href),
   );
 
-  React.useEffect(() => {
-    if (isChildActive) setSubmenuOpen(true);
-  }, [isChildActive]);
+  const [prevIsChildActive, setPrevIsChildActive] = React.useState(isChildActive);
+  if (isChildActive !== prevIsChildActive) {
+    setPrevIsChildActive(isChildActive);
+    if (isChildActive) {
+      setSubmenuOpen(true);
+    }
+  }
 
   if (!hasPermission(item.permission, permissions)) return null;
 

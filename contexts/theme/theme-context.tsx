@@ -14,8 +14,14 @@ function getSystemTheme(): ResolvedTheme {
     : 'light';
 }
 
-function resolveTheme(theme: Theme): ResolvedTheme {
-  return theme === 'system' ? getSystemTheme() : theme;
+function readStoredTheme(): Theme {
+  if (typeof window === 'undefined') return 'system';
+  const stored = localStorage.getItem(THEME_STORAGE_KEY) as Theme | null;
+  return stored ?? 'system';
+}
+
+function resolveTheme(theme: Theme, systemTheme: ResolvedTheme): ResolvedTheme {
+  return theme === 'system' ? systemTheme : theme;
 }
 
 function applyTheme(resolved: ResolvedTheme) {
@@ -26,42 +32,29 @@ function applyTheme(resolved: ResolvedTheme) {
 }
 
 export function ThemeProvider({children}: {children: React.ReactNode}) {
-  const [theme, setThemeState] = React.useState<Theme>('system');
-  const [resolvedTheme, setResolvedTheme] = React.useState<ResolvedTheme>('light');
-  const [mounted, setMounted] = React.useState(false);
+  const [theme, setThemeState] = React.useState<Theme>(readStoredTheme);
+  const [systemTheme, setSystemTheme] =
+    React.useState<ResolvedTheme>(getSystemTheme);
+
+  const resolvedTheme = React.useMemo(
+    () => resolveTheme(theme, systemTheme),
+    [theme, systemTheme],
+  );
 
   React.useEffect(() => {
-    const stored = localStorage.getItem(THEME_STORAGE_KEY) as Theme | null;
-    const initial = stored ?? 'system';
-    const resolved = resolveTheme(initial);
-    setThemeState(initial);
-    setResolvedTheme(resolved);
-    applyTheme(resolved);
-    setMounted(true);
-  }, []);
+    applyTheme(resolvedTheme);
+  }, [resolvedTheme]);
 
   React.useEffect(() => {
-    if (!mounted) return;
-
-    const resolved = resolveTheme(theme);
-    setResolvedTheme(resolved);
-    applyTheme(resolved);
     localStorage.setItem(THEME_STORAGE_KEY, theme);
-  }, [theme, mounted]);
+  }, [theme]);
 
   React.useEffect(() => {
-    if (!mounted || theme !== 'system') return;
-
     const media = window.matchMedia('(prefers-color-scheme: dark)');
-    const onChange = () => {
-      const resolved = getSystemTheme();
-      setResolvedTheme(resolved);
-      applyTheme(resolved);
-    };
-
+    const onChange = () => setSystemTheme(getSystemTheme());
     media.addEventListener('change', onChange);
     return () => media.removeEventListener('change', onChange);
-  }, [theme, mounted]);
+  }, []);
 
   const setTheme = React.useCallback((next: Theme) => {
     setThemeState(next);
@@ -69,7 +62,7 @@ export function ThemeProvider({children}: {children: React.ReactNode}) {
 
   const toggleTheme = React.useCallback(() => {
     setThemeState((current) => {
-      const resolved = resolveTheme(current);
+      const resolved = resolveTheme(current, getSystemTheme());
       return resolved === 'dark' ? 'light' : 'dark';
     });
   }, []);

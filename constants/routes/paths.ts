@@ -6,8 +6,8 @@
 export const ROUTES = {
   home: '/',
 
-  // Dashboard
-  dashboard: '/dashboard',
+  // Dashboard (home oficial)
+  dashboard: '/',
 
   // Cadastros
   empresas: '/empresas',

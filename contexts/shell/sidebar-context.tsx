@@ -17,23 +17,20 @@ const SidebarContext = React.createContext<SidebarContextValue | undefined>(
   undefined,
 );
 
+function readSidebarCollapsed(): boolean {
+  if (typeof window === 'undefined') return false;
+  const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY);
+  if (stored !== null) return stored === 'true';
+  return false;
+}
+
 export function SidebarProvider({children}: {children: React.ReactNode}) {
-  const [collapsed, setCollapsedState] = React.useState(false);
+  const [collapsed, setCollapsedState] = React.useState(readSidebarCollapsed);
   const [mobileOpen, setMobileOpen] = React.useState(false);
-  const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => {
-    const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY);
-    if (stored !== null) {
-      setCollapsedState(stored === 'true');
-    }
-    setMounted(true);
-  }, []);
-
-  React.useEffect(() => {
-    if (!mounted) return;
     localStorage.setItem(SIDEBAR_STORAGE_KEY, String(collapsed));
-  }, [collapsed, mounted]);
+  }, [collapsed]);
 
   const setCollapsed = React.useCallback((value: boolean) => {
     setCollapsedState(value);
