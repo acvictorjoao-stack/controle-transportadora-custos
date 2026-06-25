@@ -1,5 +1,9 @@
 import type {NextConfig} from 'next';
 
+import {validateSupabaseEnv} from './supabase/utils/env';
+
+validateSupabaseEnv();
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   eslint: {
