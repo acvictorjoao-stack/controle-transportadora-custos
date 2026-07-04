@@ -4,7 +4,12 @@
  */
 export async function register() {
   if (process.env.NEXT_RUNTIME === 'nodejs') {
+    const {hydrateSupabaseEnvFromFiles} = await import(
+      '@/supabase/utils/env-hydrate'
+    );
     const {validateSupabaseEnv} = await import('@/supabase/utils/env');
+
+    hydrateSupabaseEnvFromFiles();
     validateSupabaseEnv();
   }
 }

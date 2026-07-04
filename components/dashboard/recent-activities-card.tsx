@@ -1,4 +1,4 @@
-import {dashboardMock} from '@/components/dashboard/mock-data';
+import type {DashboardActivityData} from '@/features/organization/dashboard/types';
 import {
   Card,
   CardContent,
@@ -7,7 +7,11 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 
-function RecentActivitiesCard() {
+export interface RecentActivitiesCardProps {
+  activities: DashboardActivityData[];
+}
+
+function RecentActivitiesCard({activities}: RecentActivitiesCardProps) {
   return (
     <Card className="gap-4">
       <CardHeader>
@@ -15,7 +19,10 @@ function RecentActivitiesCard() {
         <CardDescription>Últimas movimentações do sistema</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {dashboardMock.activities.map((activity) => (
+        {activities.length === 0 && (
+          <p className="text-sm text-muted-foreground">Nenhuma atividade recente.</p>
+        )}
+        {activities.map((activity) => (
           <div
             key={activity.id}
             className="flex items-start justify-between gap-3 border-b border-border pb-4 last:border-0 last:pb-0"

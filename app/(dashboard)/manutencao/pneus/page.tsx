@@ -1,5 +1,7 @@
-﻿import {ModulePage} from '@/components/pages';
+﻿import {redirect} from 'next/navigation';
 
-export default function PneusPage() {
-  return <ModulePage moduleId="pneus" />;
+import {ROUTES} from '@/constants/routes/paths';
+
+export default function ManutencaoPneusRedirectPage() {
+  redirect(ROUTES.pneus);
 }

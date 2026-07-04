@@ -1,7 +1,7 @@
 import {AlertTriangle, Info, TriangleAlert} from 'lucide-react';
 
-import {dashboardMock} from '@/components/dashboard/mock-data';
 import {Alert, AlertDescription, AlertTitle} from '@/components/ui/alert';
+import type {DashboardAlertData} from '@/features/organization/dashboard/types';
 import {
   Card,
   CardContent,
@@ -17,18 +17,27 @@ const alertIcons = {
   info: Info,
 } as const;
 
-function AlertsCard() {
+export interface AlertsCardProps {
+  alerts: DashboardAlertData[];
+}
+
+function AlertsCard({alerts}: AlertsCardProps) {
   return (
     <Card className="gap-4">
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>Alertas</CardTitle>
-          <Badge variant="destructive">{dashboardMock.alerts.length}</Badge>
+          {alerts.length > 0 && (
+            <Badge variant="destructive">{alerts.length}</Badge>
+          )}
         </div>
         <CardDescription>Itens que requerem atenção imediata</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        {dashboardMock.alerts.map((alert) => {
+        {alerts.length === 0 && (
+          <p className="text-sm text-muted-foreground">Nenhum alerta no momento.</p>
+        )}
+        {alerts.map((alert) => {
           const Icon = alertIcons[alert.variant];
           return (
             <Alert key={alert.id} variant={alert.variant}>

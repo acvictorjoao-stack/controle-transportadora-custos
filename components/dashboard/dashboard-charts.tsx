@@ -1,14 +1,18 @@
 import {ChartPlaceholder} from '@/components/dashboard/chart-placeholder';
-import {dashboardMock} from '@/components/dashboard/mock-data';
 import {Section} from '@/components/layout/section';
+import type {DashboardChartData} from '@/features/organization/dashboard/types';
 
 const chartVariants = ['bar', 'bar', 'area'] as const;
 
-function DashboardCharts() {
+export interface DashboardChartsProps {
+  charts: DashboardChartData[];
+}
+
+function DashboardCharts({charts}: DashboardChartsProps) {
   return (
     <Section title="Análise Financeira" description="Indicadores visuais da performance">
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2 2xl:gap-5">
-        {dashboardMock.charts.slice(0, 2).map((chart, index) => (
+        {charts.slice(0, 2).map((chart, index) => (
           <ChartPlaceholder
             key={chart.id}
             title={chart.title}
@@ -17,11 +21,13 @@ function DashboardCharts() {
           />
         ))}
       </div>
-      <ChartPlaceholder
-        title={dashboardMock.charts[2].title}
-        description={dashboardMock.charts[2].description}
-        variant="area"
-      />
+      {charts[2] && (
+        <ChartPlaceholder
+          title={charts[2].title}
+          description={charts[2].description}
+          variant="area"
+        />
+      )}
     </Section>
   );
 }

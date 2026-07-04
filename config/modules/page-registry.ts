@@ -109,7 +109,7 @@ export const modulePageRegistry: Record<ModulePageId, ModulePageMeta> = {
     id: 'manutencao',
     title: 'Manutenções',
     description: 'Gestão de manutenções preventivas e corretivas.',
-    href: ROUTES.manutencao,
+    href: ROUTES.manutencoes,
   },
   pneus: {
     id: 'pneus',

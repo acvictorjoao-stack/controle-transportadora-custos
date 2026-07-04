@@ -5,6 +5,7 @@ import Link from 'next/link';
 import {usePathname} from 'next/navigation';
 import * as React from 'react';
 
+import {Badge} from '@/components/ui/badge';
 import {useSidebar} from '@/contexts/shell/use-sidebar';
 import {hasPermission, useNavPermissions} from '@/hooks/use-nav-permissions';
 import {isNavItemActive} from '@/lib/navigation/breadcrumb';
@@ -61,7 +62,14 @@ function SidebarNavItem({item, depth = 0}: SidebarNavItemProps) {
           >
             <Icon className="size-4 shrink-0" />
             {!collapsed && (
-              <span className="flex-1 truncate text-left">{item.title}</span>
+              <span className="flex flex-1 items-center gap-2 truncate text-left">
+                <span className="truncate">{item.title}</span>
+                {item.badge && (
+                  <Badge variant="secondary" className="shrink-0 px-1.5 py-0 text-[10px]">
+                    {item.badge}
+                  </Badge>
+                )}
+              </span>
             )}
           </Link>
           {!collapsed && (
@@ -104,7 +112,16 @@ function SidebarNavItem({item, depth = 0}: SidebarNavItemProps) {
       )}
     >
       <Icon className="size-4 shrink-0" />
-      {!collapsed && <span className="truncate">{item.title}</span>}
+      {!collapsed && (
+        <span className="flex flex-1 items-center gap-2 truncate">
+          <span className="truncate">{item.title}</span>
+          {item.badge && (
+            <Badge variant="secondary" className="shrink-0 px-1.5 py-0 text-[10px]">
+              {item.badge}
+            </Badge>
+          )}
+        </span>
+      )}
     </Link>
   );
 }

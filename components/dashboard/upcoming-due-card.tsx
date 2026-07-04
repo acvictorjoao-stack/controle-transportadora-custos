@@ -1,4 +1,4 @@
-import {dashboardMock} from '@/components/dashboard/mock-data';
+import type {DashboardDueItemData} from '@/features/organization/dashboard/types';
 import {
   Card,
   CardContent,
@@ -7,7 +7,11 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 
-function UpcomingDueCard() {
+export interface UpcomingDueCardProps {
+  upcomingDue: DashboardDueItemData[];
+}
+
+function UpcomingDueCard({upcomingDue}: UpcomingDueCardProps) {
   return (
     <Card className="gap-4">
       <CardHeader>
@@ -15,7 +19,10 @@ function UpcomingDueCard() {
         <CardDescription>Obrigações financeiras nos próximos dias</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {dashboardMock.upcomingDue.map((item) => (
+        {upcomingDue.length === 0 && (
+          <p className="text-sm text-muted-foreground">Nenhum vencimento próximo.</p>
+        )}
+        {upcomingDue.map((item) => (
           <div
             key={item.id}
             className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 p-3"

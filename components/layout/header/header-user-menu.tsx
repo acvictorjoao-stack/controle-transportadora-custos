@@ -1,16 +1,19 @@
 'use client';
 
 import {LogOut, Settings, User} from 'lucide-react';
+import Link from 'next/link';
 import * as React from 'react';
 
 import {Button} from '@/components/ui/button';
-import {SHELL_PLACEHOLDER} from '@/constants/app/shell';
+import {ROUTES} from '@/constants/routes/paths';
+import {useAuth} from '@/contexts/auth/use-auth';
 import {cn} from '@/lib/utils';
 
 function HeaderUserMenu() {
+  const {user, isLoading, signOut} = useAuth();
   const [open, setOpen] = React.useState(false);
+  const [isSigningOut, setIsSigningOut] = React.useState(false);
   const ref = React.useRef<HTMLDivElement>(null);
-  const {user} = SHELL_PLACEHOLDER;
 
   React.useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -22,6 +25,15 @@ function HeaderUserMenu() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  if (isLoading || !user) {
+    return (
+      <div
+        className="size-9 animate-pulse rounded-full bg-muted"
+        aria-hidden="true"
+      />
+    );
+  }
+
   const initials = user.name
     .split(' ')
     .map((n) => n[0])
@@ -29,16 +41,35 @@ function HeaderUserMenu() {
     .slice(0, 2)
     .toUpperCase();
 
+  async function handleSignOut() {
+    setIsSigningOut(true);
+    try {
+      await signOut();
+    } finally {
+      setIsSigningOut(false);
+      setOpen(false);
+    }
+  }
+
   return (
     <div ref={ref} className="relative">
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="flex size-9 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90"
+        className="flex size-9 items-center justify-center overflow-hidden rounded-full bg-primary text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90"
         aria-label="Menu do usuário"
         aria-expanded={open}
       >
-        {initials}
+        {user.avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={user.avatarUrl}
+            alt={user.name}
+            className="size-full object-cover"
+          />
+        ) : (
+          initials
+        )}
       </button>
 
       {open && (
@@ -58,24 +89,26 @@ function HeaderUserMenu() {
               disabled
             >
               <User className="size-4" />
-              Meu perfil
+              Meu Perfil
             </button>
-            <button
-              type="button"
+            <Link
+              href={ROUTES.configuracoes}
               className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-              disabled
+              onClick={() => setOpen(false)}
             >
               <Settings className="size-4" />
               Configurações
-            </button>
-            <button
+            </Link>
+            <Button
               type="button"
-              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-destructive hover:bg-destructive/10"
-              disabled
+              variant="ghost"
+              className="h-auto w-full justify-start gap-2 rounded-md px-3 py-2 text-sm font-normal text-destructive hover:bg-destructive/10 hover:text-destructive"
+              onClick={handleSignOut}
+              loading={isSigningOut}
             >
               <LogOut className="size-4" />
               Sair
-            </button>
+            </Button>
           </div>
         </div>
       )}

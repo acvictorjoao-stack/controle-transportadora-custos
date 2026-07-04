@@ -1,18 +1,62 @@
-import type {NavGroup, Permission} from '@/types/global/navigation';
+import {hasPermission} from '@/hooks/use-nav-permissions';
+import type {NavGroup, NavItem, Permission} from '@/types/global/navigation';
+
+function filterNavItemChildren(
+  children: NavItem['children'],
+  permissions: Permission[],
+): NavItem['children'] {
+  if (!children) return undefined;
+
+  const visibleChildren = children.filter((child) =>
+    hasPermission(child.permission, permissions),
+  );
+
+  return visibleChildren.length > 0 ? visibleChildren : undefined;
+}
+
+function filterNavItems(
+  items: NavItem[],
+  permissions: Permission[],
+): NavItem[] {
+  const filtered: NavItem[] = [];
+
+  for (const item of items) {
+    if (!hasPermission(item.permission, permissions)) {
+      continue;
+    }
+
+    const children = filterNavItemChildren(item.children, permissions);
+    if (item.children && !children) {
+      continue;
+    }
+
+    filtered.push({...item, children});
+  }
+
+  return filtered;
+}
 
 /**
  * Filtra navegação por permissões do usuário.
- * Placeholder: retorna tudo até RBAC ser implementado.
  */
 export function filterNavByPermissions(
   groups: NavGroup[],
-  _permissions: Permission[] = [],
+  permissions: Permission[] = [],
 ): NavGroup[] {
-  return groups.map((group) => ({
-    ...group,
-    items: group.items.map((item) => ({
-      ...item,
-      children: item.children?.filter(() => true),
-    })),
-  }));
+  const filtered: NavGroup[] = [];
+
+  for (const group of groups) {
+    if (group.permission && !hasPermission(group.permission, permissions)) {
+      continue;
+    }
+
+    const items = filterNavItems(group.items, permissions);
+    if (items.length === 0) {
+      continue;
+    }
+
+    filtered.push({...group, items});
+  }
+
+  return filtered;
 }

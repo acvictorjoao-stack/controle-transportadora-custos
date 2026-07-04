@@ -32,8 +32,9 @@ create unique index idx_companies_tax_id_active
   on public.companies (tax_id)
   where deleted_at is null;
 
-create unique index idx_companies_slug
-  on public.companies (slug);
+create unique index idx_companies_slug_active
+  on public.companies (slug)
+  where deleted_at is null;
 
 create index idx_companies_status_active
   on public.companies (status)

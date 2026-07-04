@@ -154,7 +154,7 @@ end;
 $$;
 
 comment on function public.seed_default_roles_for_company(uuid, uuid) is
-  'Creates system roles (Super Admin, Admin, Manager, Operator) and maps permissions';
+  'Bootstrap role seeding (org permissions). Canonical full definition in 060_schema_consistency.sql.';
 
 -- ---------------------------------------------------------------------------
 -- Company onboarding: HQ branch + default roles

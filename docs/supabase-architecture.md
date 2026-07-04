@@ -87,10 +87,10 @@ app/api/health/supabase/route.ts  # Health check de conectividade
 
 ### Validação
 
-A aplicação **não inicia** sem essas variáveis. A validação ocorre em dois pontos:
+A aplicação **não inicia** sem essas variáveis. A validação ocorre em:
 
-1. **`next.config.ts`** — falha no build/dev se ausentes
-2. **`instrumentation.ts`** — falha na inicialização do servidor Node.js
+1. **`instrumentation.ts`** — falha na inicialização do servidor Node.js
+2. **Primeiro uso de `getSupabaseEnv()`** — via getters de `supabaseConfig` (middleware, clientes, health check)
 
 Arquivo de referência: `supabase/utils/env.ts`
 

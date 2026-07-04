@@ -1,11 +1,39 @@
+import {useNavPermissionsContext} from '@/contexts/auth/nav-permissions-context';
 import type {Permission} from '@/types/global/navigation';
 
 /**
- * Hook placeholder para permissões de navegação.
- * Retorna todas as permissões até RBAC ser implementado.
+ * Permissões de navegação agrupadas por alias para módulos ainda sem código dedicado.
  */
+const PERMISSION_ALIASES: Record<string, string[]> = {
+  'dashboard:read': [
+    'companies:read',
+    'branches:read',
+    'vehicles:read',
+    'drivers:read',
+    'trips:read',
+    'fuel:read',
+    'maintenance:read',
+    'tires:read',
+  ],
+  'cadastros:read': [
+    'companies:read',
+    'branches:read',
+    'members:read',
+    'roles:read',
+    'profiles:read',
+    'customers:read',
+  ],
+  'operacoes:read': [
+    'vehicles:read',
+    'drivers:read',
+    'trips:read',
+    'fuel:read',
+  ],
+};
+
 export function useNavPermissions(): Permission[] {
-  return ['*'];
+  const {permissions} = useNavPermissionsContext();
+  return permissions;
 }
 
 export function hasPermission(
@@ -14,5 +42,12 @@ export function hasPermission(
 ): boolean {
   if (!required) return true;
   if (userPermissions.includes('*')) return true;
-  return userPermissions.includes(required);
+  if (userPermissions.includes(required)) return true;
+
+  const aliases = PERMISSION_ALIASES[required];
+  if (aliases) {
+    return aliases.some((alias) => userPermissions.includes(alias));
+  }
+
+  return false;
 }

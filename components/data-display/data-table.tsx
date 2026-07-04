@@ -19,6 +19,10 @@ export interface DataTableProps<T> {
   loading?: boolean;
   emptyTitle?: string;
   emptyDescription?: string;
+  emptyAction?: {
+    label: string;
+    onClick?: () => void;
+  };
   className?: string;
 }
 
@@ -29,6 +33,7 @@ function DataTable<T>({
   loading = false,
   emptyTitle = 'Nenhum registro encontrado',
   emptyDescription = 'Não há dados para exibir no momento.',
+  emptyAction,
   className,
 }: DataTableProps<T>) {
   if (loading) {
@@ -46,6 +51,7 @@ function DataTable<T>({
       <EmptyState
         title={emptyTitle}
         description={emptyDescription}
+        action={emptyAction}
         className="m-6 border-none bg-transparent"
       />
     );

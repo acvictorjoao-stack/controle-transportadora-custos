@@ -5,6 +5,7 @@ export {ContentContainer, type ContentContainerProps} from './content-container'
 export {DashboardLayout, type DashboardLayoutProps} from './dashboard-layout';
 export {MainContent, type MainContentProps} from './main-content';
 export {MarketingLayout, type MarketingLayoutProps} from './marketing-layout';
+export {MasterLayout, type MasterLayoutProps} from './master-layout';
 export {PageContainer, type PageContainerProps} from './page-container';
 export {PageHeader, type PageHeaderProps} from './page-header';
 export {PageTemplate, type PageTemplateProps} from './page-template';

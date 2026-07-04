@@ -1,9 +1,5 @@
 import type {NextConfig} from 'next';
 
-import {validateSupabaseEnv} from './supabase/utils/env';
-
-validateSupabaseEnv();
-
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   eslint: {
@@ -19,7 +15,13 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'picsum.photos',
         port: '',
-        pathname: '/**', // This allows any path under the hostname
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.supabase.co',
+        port: '',
+        pathname: '/storage/v1/object/public/**',
       },
     ],
   },

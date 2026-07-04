@@ -13,23 +13,32 @@ export const ROUTES = {
   empresas: '/empresas',
   filiais: '/filiais',
   clientes: '/clientes',
+  clienteDetail: (id: string) => `/clientes/${id}`,
   contratos: '/contratos',
 
   // Operações
   veiculos: '/veiculos',
+  veiculoDetail: (id: string) => `/veiculos/${id}`,
   motoristas: '/motoristas',
+  motoristaDetail: (id: string) => `/motoristas/${id}`,
   viagens: '/viagens',
+  viagemDetail: (id: string) => `/viagens/${id}`,
+  abastecimentos: '/abastecimentos',
+  abastecimentoDetail: (id: string) => `/abastecimentos/${id}`,
 
   // Financeiro
   financeiro: '/financeiro',
+  financeiroDetail: (id: string) => `/financeiro/${id}`,
   fluxoDeCaixa: '/financeiro/fluxo-de-caixa',
   contasAPagar: '/financeiro/contas-a-pagar',
   contasAReceber: '/financeiro/contas-a-receber',
 
   // Manutenção
+  manutencoes: '/manutencoes',
+  manutencaoDetail: (id: string) => `/manutencoes/${id}`,
   manutencao: '/manutencao',
-  pneus: '/manutencao/pneus',
-  abastecimentos: '/manutencao/abastecimentos',
+  pneus: '/pneus',
+  pneuDetail: (id: string) => `/pneus/${id}`,
 
   // Análise
   relatorios: '/relatorios',
@@ -51,6 +60,15 @@ export const ROUTES = {
   // Tenant
   tenantRoot: (slug: string) => `/${slug}`,
   tenantDashboard: (slug: string) => `/${slug}/dashboard`,
+
+  // Portal Master (SaaS admin)
+  master: '/master',
+  masterEmpresas: '/master/empresas',
+  masterEmpresaDetail: (id: string) => `/master/empresas/${id}`,
+  masterPlanos: '/master/planos',
+  masterUsuarios: '/master/usuarios',
+  masterLogs: '/master/logs',
+  masterConfiguracoes: '/master/configuracoes',
 } as const;
 
 export type RouteKey = keyof typeof ROUTES;

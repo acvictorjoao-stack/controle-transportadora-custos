@@ -1,0 +1,16 @@
+export {
+  createCustomerAction,
+  createCustomerAddressAction,
+  createCustomerContactAction,
+  createCustomerContractAction,
+  deleteCustomerAction,
+  deleteCustomerAddressAction,
+  deleteCustomerContactAction,
+  deleteCustomerContractAction,
+  deleteCustomerDocumentAction,
+  registerCustomerFileAction,
+  resolveContractFreightAction,
+  updateCustomerAction,
+  updateCustomerContractAction,
+  updateCustomerStatusAction,
+} from './customer-actions';

@@ -1,5 +1,7 @@
-﻿import {ModulePage} from '@/components/pages';
+﻿import {redirect} from 'next/navigation';
+
+import {ROUTES} from '@/constants/routes/paths';
 
 export default function ConfiguracoesPage() {
-  return <ModulePage moduleId="configuracoes" />;
+  redirect(`${ROUTES.empresas}?tab=configuracoes`);
 }

@@ -1,1 +1,1 @@
-export {createClient} from './browser';
+export {createClient, resetBrowserClient} from './browser';

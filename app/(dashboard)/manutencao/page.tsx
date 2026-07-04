@@ -1,5 +1,7 @@
-﻿import {ModulePage} from '@/components/pages';
+﻿import {redirect} from 'next/navigation';
 
-export default function ManutencaoPage() {
-  return <ModulePage moduleId="manutencao" />;
+import {ROUTES} from '@/constants/routes/paths';
+
+export default function ManutencaoLegacyPage() {
+  redirect(ROUTES.manutencoes);
 }

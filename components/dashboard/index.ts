@@ -1,11 +1,11 @@
 export {AlertsCard} from './alerts-card';
 export {ChartPlaceholder, type ChartPlaceholderProps} from './chart-placeholder';
 export {DashboardCharts} from './dashboard-charts';
-export {DashboardHeader} from './dashboard-header';
 export {DashboardKpis} from './dashboard-kpis';
 export {DashboardRankings} from './dashboard-rankings';
 export {DashboardSideCards} from './dashboard-side-cards';
+export {kpiIcons} from './kpi-icons';
 export {RankingCard, type RankingCardProps} from './ranking-card';
 export {RecentActivitiesCard} from './recent-activities-card';
 export {UpcomingDueCard} from './upcoming-due-card';
-export {dashboardMock} from './mock-data';
+export type {DashboardRankingItem} from './ranking-types';

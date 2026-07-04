@@ -1,5 +1,7 @@
-﻿import {ModulePage} from '@/components/pages';
+﻿import {redirect} from 'next/navigation';
 
-export default function AbastecimentosPage() {
-  return <ModulePage moduleId="abastecimentos" />;
+import {ROUTES} from '@/constants/routes/paths';
+
+export default function LegacyAbastecimentosPage() {
+  redirect(ROUTES.abastecimentos);
 }
