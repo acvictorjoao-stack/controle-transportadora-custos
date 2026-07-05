@@ -1,6 +1,8 @@
 export {
+  cleanupOrphanedTenantAuthUsers,
   deleteAuthUser,
   createAdminAuthUser,
+  reclaimOrphanedAdminEmail,
   waitForProfile,
 } from './auth.repository';
 export {

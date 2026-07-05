@@ -1,5 +1,8 @@
 import type {SupabaseClient} from '@supabase/supabase-js';
 
+import {cleanupOrphanedTenantAuthUsers} from '@/features/master/provisioning/repositories/auth.repository';
+import {createAdminClient} from '@/supabase/server/admin';
+
 import {
   COMPANY_DETAIL_COLUMNS,
   COMPANY_LIST_COLUMNS,
@@ -370,15 +373,41 @@ export async function softDeleteCompany(
   supabase: SupabaseClient,
   id: string,
 ): Promise<void> {
+  const deletedAt = new Date().toISOString();
+  const admin = createAdminClient();
+
+  const {data: members, error: membersError} = await admin
+    .from('company_members')
+    .select('profile_id')
+    .eq('company_id', id)
+    .is('deleted_at', null);
+
+  if (membersError) {
+    throw new Error(mapDatabaseError(membersError));
+  }
+
   const {error} = await supabase
     .from('companies')
-    .update({deleted_at: new Date().toISOString()})
+    .update({deleted_at: deletedAt})
     .eq('id', id)
     .is('deleted_at', null);
 
   if (error) {
     throw new Error(mapDatabaseError(error));
   }
+
+  const {error: membersDeleteError} = await admin
+    .from('company_members')
+    .update({deleted_at: deletedAt})
+    .eq('company_id', id)
+    .is('deleted_at', null);
+
+  if (membersDeleteError) {
+    throw new Error(mapDatabaseError(membersDeleteError));
+  }
+
+  const profileIds = [...new Set((members ?? []).map((member) => member.profile_id))];
+  await cleanupOrphanedTenantAuthUsers(profileIds);
 }
 
 export async function getCompanySettings(

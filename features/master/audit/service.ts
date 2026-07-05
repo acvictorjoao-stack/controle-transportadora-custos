@@ -4,8 +4,8 @@ import type {Json} from '@/supabase/types/database';
 import type {LogPortalAuditInput} from './types';
 
 /**
- * Registra evento de auditoria via service_role (bypass RLS).
- * Usado em Server Actions e fluxos de auth.
+ * Registra evento de auditoria via service_role.
+ * INSERT é permitido por GRANT em service_role; leitura permanece RLS (OWNER).
  */
 export async function logPortalAudit(input: LogPortalAuditInput): Promise<void> {
   try {
@@ -24,9 +24,9 @@ export async function logPortalAudit(input: LogPortalAuditInput): Promise<void> 
     });
 
     if (error) {
-      console.error('[audit] Failed to log event:', error.message);
+      throw new Error(error.message);
     }
-  } catch (error) {
-    console.error('[audit] Failed to log event:', error);
+  } catch {
+    // Auditoria não deve interromper a ação principal do portal.
   }
 }
