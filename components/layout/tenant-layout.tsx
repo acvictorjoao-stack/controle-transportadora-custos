@@ -14,7 +14,7 @@ export interface TenantLayoutProps {
  */
 function TenantLayout({
   children,
-  tenantName = 'Tenant',
+  tenantName = 'Empresa',
 }: TenantLayoutProps) {
   return (
     <DashboardLayout>

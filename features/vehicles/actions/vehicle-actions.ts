@@ -85,6 +85,10 @@ async function checkVehiclePlanLimit(
     getPlanCatalog(supabase),
   ]);
 
+  if (companyResult.error) {
+    return 'Não foi possível verificar o plano da empresa.';
+  }
+
   const settings =
     companyResult.data?.settings && typeof companyResult.data.settings === 'object'
       ? (companyResult.data.settings as Record<string, unknown>)

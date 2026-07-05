@@ -1,16 +1,34 @@
-const ACCESS_URL_BASE =
-  process.env.NEXT_PUBLIC_APP_URL?.trim() || 'https://fleetcontrol.com';
+function getAppUrlBase(): string {
+  return process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, '') ?? '';
+}
+
+function getAppHostname(): string {
+  const base = getAppUrlBase();
+  if (!base) return '';
+
+  try {
+    return new URL(base).hostname;
+  } catch {
+    return '';
+  }
+}
 
 export function buildCompanyAccessUrl(slug: string): string {
   const normalized = slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
-  return `${ACCESS_URL_BASE}/${normalized || 'empresa'}`;
+  const base = getAppUrlBase();
+  const segment = normalized || 'empresa';
+
+  return base ? `${base}/${segment}` : `/${segment}`;
 }
 
 export function buildAccessLinks(slug: string) {
   const normalized = slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
   const segment = normalized || 'empresa';
+  const base = getAppUrlBase();
+  const hostname = getAppHostname();
+
   return {
-    path: `${ACCESS_URL_BASE}/${segment}`,
-    subdomain: `https://${segment}.fleetcontrol.com`,
+    path: base ? `${base}/${segment}` : `/${segment}`,
+    subdomain: hostname ? `https://${segment}.${hostname}` : '',
   };
 }

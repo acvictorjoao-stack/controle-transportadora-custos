@@ -590,6 +590,18 @@ export async function softDeleteTireDocument(
   documentId: string,
   profileId: string,
 ): Promise<void> {
+  const {data: document, error: fetchError} = await supabase
+    .from('tire_documents')
+    .select('storage_path')
+    .eq('id', documentId)
+    .eq('company_id', companyId)
+    .is('deleted_at', null)
+    .maybeSingle();
+
+  if (fetchError) {
+    throw new Error(mapDatabaseError(fetchError));
+  }
+
   const {error} = await supabase
     .from('tire_documents')
     .update({deleted_at: new Date().toISOString(), updated_by: profileId})
@@ -599,6 +611,11 @@ export async function softDeleteTireDocument(
 
   if (error) {
     throw new Error(mapDatabaseError(error));
+  }
+
+  const storagePath = document?.storage_path;
+  if (storagePath) {
+    await supabase.storage.from(TIRE_STORAGE_BUCKET).remove([storagePath]);
   }
 }
 

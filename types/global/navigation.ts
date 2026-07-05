@@ -38,4 +38,5 @@ export interface ShellTenant {
   name: string;
   slug: string;
   plan: string;
+  logoUrl: string | null;
 }

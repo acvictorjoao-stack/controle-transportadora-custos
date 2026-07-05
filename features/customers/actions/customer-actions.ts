@@ -236,7 +236,7 @@ export async function deleteCustomerAddressAction(
   customerId: string,
   addressId: string,
 ): Promise<ActionResult<void>> {
-  const resolved = await resolveCustomerAccess('customers:update');
+  const resolved = await resolveCustomerAccess('customers:delete');
   if (!resolved.success) return resolved;
 
   try {
@@ -292,7 +292,7 @@ export async function deleteCustomerContactAction(
   customerId: string,
   contactId: string,
 ): Promise<ActionResult<void>> {
-  const resolved = await resolveCustomerAccess('customers:update');
+  const resolved = await resolveCustomerAccess('customers:delete');
   if (!resolved.success) return resolved;
 
   try {

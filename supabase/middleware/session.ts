@@ -14,6 +14,27 @@ type PortalRole = 'OWNER' | 'SUPPORT' | 'FINANCE';
 
 type MiddlewareSupabase = ReturnType<typeof createServerClient<Database>>;
 
+function createMissingSupabaseEnvResponse(): NextResponse {
+  const missing: string[] = [];
+
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()) {
+    missing.push('NEXT_PUBLIC_SUPABASE_URL');
+  }
+
+  if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim()) {
+    missing.push('NEXT_PUBLIC_SUPABASE_ANON_KEY');
+  }
+
+  const message =
+    `Configuração inválida: variáveis de ambiente ausentes (${missing.join(', ')}). ` +
+    'Configure-as em .env.local antes de iniciar a aplicação.';
+
+  return new NextResponse(message, {
+    status: 500,
+    headers: {'Content-Type': 'text/plain; charset=utf-8'},
+  });
+}
+
 function getMiddlewareSupabaseEnv(): {
   url: string;
   anonKey: string;
@@ -51,13 +72,13 @@ async function fetchPortalUserRole(
  * - Bloqueio de /master/* para não-OWNER
  */
 export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({request});
-
   const supabaseEnv = getMiddlewareSupabaseEnv();
 
   if (!supabaseEnv) {
-    return supabaseResponse;
+    return createMissingSupabaseEnvResponse();
   }
+
+  let supabaseResponse = NextResponse.next({request});
 
   const supabase = createServerClient<Database>(
     supabaseEnv.url,

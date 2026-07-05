@@ -2,7 +2,7 @@ import type {SupabaseClient} from '@supabase/supabase-js';
 
 import {mapDatabaseError} from '@/features/master/companies/utils/database-error';
 
-import {COMPANY_PROFILE_COLUMNS} from '../constants';
+import {COMPANY_PROFILE_COLUMNS, COMPANY_LOGOS_STORAGE_BUCKET} from '../constants';
 import {mapCompanyProfileRow} from '../services/mappers';
 import {
   mergeCompanySettings,
@@ -98,11 +98,33 @@ export async function updateCompanySettings(
   return mapCompanyProfileRow(data as CompanyProfileRow);
 }
 
+async function removeCompanyLogoFiles(
+  supabase: SupabaseClient,
+  companyId: string,
+): Promise<void> {
+  const {data: files} = await supabase.storage
+    .from(COMPANY_LOGOS_STORAGE_BUCKET)
+    .list(companyId, {limit: 100});
+
+  const paths =
+    files
+      ?.filter((file) => file.name.startsWith('logo.'))
+      .map((file) => `${companyId}/${file.name}`) ?? [];
+
+  if (paths.length > 0) {
+    await supabase.storage.from(COMPANY_LOGOS_STORAGE_BUCKET).remove(paths);
+  }
+}
+
 export async function updateCompanyLogoUrl(
   supabase: SupabaseClient,
   companyId: string,
   logoUrl: string | null,
 ): Promise<CompanyProfile> {
+  if (logoUrl === null) {
+    await removeCompanyLogoFiles(supabase, companyId);
+  }
+
   const {data, error} = await supabase
     .from('companies')
     .update({logo_url: logoUrl})

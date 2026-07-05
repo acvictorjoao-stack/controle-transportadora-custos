@@ -50,6 +50,17 @@ function LogoUpload({companyId, logoUrl, onUploaded}: LogoUploadProps) {
       const ext = file.name.split('.').pop() ?? 'png';
       const path = `${companyId}/logo.${ext}`;
 
+      const {data: existing} = await supabase.storage
+        .from(COMPANY_LOGOS_STORAGE_BUCKET)
+        .list(companyId, {limit: 100});
+      const stalePaths =
+        existing
+          ?.filter((item) => item.name.startsWith('logo.') && item.name !== `logo.${ext}`)
+          .map((item) => `${companyId}/${item.name}`) ?? [];
+      if (stalePaths.length > 0) {
+        await supabase.storage.from(COMPANY_LOGOS_STORAGE_BUCKET).remove(stalePaths);
+      }
+
       const {error: uploadError} = await supabase.storage
         .from(COMPANY_LOGOS_STORAGE_BUCKET)
         .upload(path, file, {upsert: true, contentType: file.type});

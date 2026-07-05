@@ -590,6 +590,18 @@ export async function softDeleteFinancialDocument(
   documentId: string,
   profileId: string,
 ): Promise<void> {
+  const {data: document, error: fetchError} = await supabase
+    .from('financial_documents')
+    .select('storage_path')
+    .eq('id', documentId)
+    .eq('company_id', companyId)
+    .is('deleted_at', null)
+    .maybeSingle();
+
+  if (fetchError) {
+    throw new Error(mapDatabaseError(fetchError));
+  }
+
   const {error} = await supabase
     .from('financial_documents')
     .update({
@@ -601,6 +613,11 @@ export async function softDeleteFinancialDocument(
 
   if (error) {
     throw new Error(mapDatabaseError(error));
+  }
+
+  const storagePath = document?.storage_path;
+  if (storagePath) {
+    await supabase.storage.from(FINANCIAL_STORAGE_BUCKET).remove([storagePath]);
   }
 }
 

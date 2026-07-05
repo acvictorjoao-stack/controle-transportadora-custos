@@ -276,6 +276,10 @@ export async function fetchCompanyDetailById(
   const denied = await assertOwner();
   if (denied) return null;
 
-  const supabase = await createClient();
-  return getCompanyDetailById(supabase, id);
+  try {
+    const supabase = await createClient();
+    return await getCompanyDetailById(supabase, id);
+  } catch {
+    return null;
+  }
 }

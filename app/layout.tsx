@@ -1,19 +1,13 @@
 import type {Metadata} from 'next';
 
 import {fontVariables, inter} from '@/config/site/fonts';
-import {siteConfig} from '@/config/site/index';
+import {createRootMetadata} from '@/config/site/metadata';
 import {AppProviders} from '@/providers';
 import {ThemeScript} from '@/providers/theme-script';
 
 import './globals.css';
 
-export const metadata: Metadata = {
-  title: {
-    default: siteConfig.name,
-    template: `%s | ${siteConfig.name}`,
-  },
-  description: siteConfig.description,
-};
+export const metadata: Metadata = createRootMetadata();
 
 export default function RootLayout({children}: {children: React.ReactNode}) {
   return (

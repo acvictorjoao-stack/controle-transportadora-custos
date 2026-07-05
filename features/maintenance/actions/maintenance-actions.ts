@@ -309,6 +309,9 @@ export async function updateMaintenancePartAction(
     };
   }
 
+  const context = await getRecordContext(resolved.data.companyId, maintenanceRecordId);
+  if (!context) return {success: false, error: 'Manutenção não encontrada.'};
+
   try {
     const supabase = await getServerSupabaseClient();
     const data = await updateMaintenancePart(
@@ -334,6 +337,9 @@ export async function deleteMaintenancePartAction(
 ): Promise<ActionResult<void>> {
   const resolved = await resolveMaintenanceAccess('maintenance:delete');
   if (!resolved.success) return resolved;
+
+  const context = await getRecordContext(resolved.data.companyId, maintenanceRecordId);
+  if (!context) return {success: false, error: 'Manutenção não encontrada.'};
 
   try {
     const supabase = await getServerSupabaseClient();
@@ -407,6 +413,9 @@ export async function updateMaintenanceServiceAction(
     };
   }
 
+  const context = await getRecordContext(resolved.data.companyId, maintenanceRecordId);
+  if (!context) return {success: false, error: 'Manutenção não encontrada.'};
+
   try {
     const supabase = await getServerSupabaseClient();
     const data = await updateMaintenanceService(
@@ -432,6 +441,9 @@ export async function deleteMaintenanceServiceAction(
 ): Promise<ActionResult<void>> {
   const resolved = await resolveMaintenanceAccess('maintenance:delete');
   if (!resolved.success) return resolved;
+
+  const context = await getRecordContext(resolved.data.companyId, maintenanceRecordId);
+  if (!context) return {success: false, error: 'Manutenção não encontrada.'};
 
   try {
     const supabase = await getServerSupabaseClient();

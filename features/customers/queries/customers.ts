@@ -6,6 +6,7 @@ import {
   CUSTOMER_DETAIL_COLUMNS,
   CUSTOMER_LIST_COLUMNS,
   CUSTOMERS_PAGE_SIZE,
+  CUSTOMER_STORAGE_BUCKET,
 } from '../constants';
 import {
   mapCustomerAddressRow,
@@ -623,6 +624,16 @@ export async function softDeleteCustomerDocument(
   documentId: string,
   profileId: string,
 ): Promise<void> {
+  const {data: document, error: fetchError} = await supabase
+    .from('customer_documents')
+    .select('storage_path')
+    .eq('company_id', companyId)
+    .eq('id', documentId)
+    .is('deleted_at', null)
+    .maybeSingle();
+
+  if (fetchError) throw new Error(mapDatabaseError(fetchError));
+
   const {error} = await supabase
     .from('customer_documents')
     .update({deleted_at: new Date().toISOString(), updated_by: profileId})
@@ -631,6 +642,11 @@ export async function softDeleteCustomerDocument(
     .is('deleted_at', null);
 
   if (error) throw new Error(mapDatabaseError(error));
+
+  const storagePath = document?.storage_path;
+  if (storagePath) {
+    await supabase.storage.from(CUSTOMER_STORAGE_BUCKET).remove([storagePath]);
+  }
 }
 
 export async function listCustomerHistory(

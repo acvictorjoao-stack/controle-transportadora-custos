@@ -34,12 +34,16 @@ function HeaderUserMenu() {
     );
   }
 
-  const initials = user.name
+  const displayName = user.name?.trim() || 'Usuário';
+  const displayEmail = user.email?.trim() || '—';
+
+  const initials = displayName
     .split(' ')
-    .map((n) => n[0])
+    .filter(Boolean)
+    .map((part) => part[0])
     .join('')
     .slice(0, 2)
-    .toUpperCase();
+    .toUpperCase() || displayEmail.charAt(0).toUpperCase() || 'U';
 
   async function handleSignOut() {
     setIsSigningOut(true);
@@ -64,7 +68,7 @@ function HeaderUserMenu() {
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={user.avatarUrl}
-            alt={user.name}
+            alt={displayName}
             className="size-full object-cover"
           />
         ) : (
@@ -79,8 +83,8 @@ function HeaderUserMenu() {
           )}
         >
           <div className="border-b border-border px-3 py-2.5">
-            <p className="text-sm font-medium">{user.name}</p>
-            <p className="text-xs text-muted-foreground">{user.email}</p>
+            <p className="text-sm font-medium">{displayName}</p>
+            <p className="text-xs text-muted-foreground">{displayEmail}</p>
           </div>
           <div className="py-1">
             <button

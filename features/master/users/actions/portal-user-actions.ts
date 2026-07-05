@@ -381,6 +381,10 @@ export async function fetchPortalUserById(id: string) {
   const denied = await assertOwner();
   if (denied) return null;
 
-  const supabase = await createClient();
-  return getPortalUserById(supabase, id);
+  try {
+    const supabase = await createClient();
+    return await getPortalUserById(supabase, id);
+  } catch {
+    return null;
+  }
 }

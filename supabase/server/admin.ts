@@ -11,8 +11,13 @@ export function createAdminClient() {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
   if (!serviceRoleKey) {
+    const isDefinedButEmpty =
+      process.env.SUPABASE_SERVICE_ROLE_KEY !== undefined;
+
     throw new Error(
-      'SUPABASE_SERVICE_ROLE_KEY não configurada. Necessária para provisionar administradores.',
+      isDefinedButEmpty
+        ? 'SUPABASE_SERVICE_ROLE_KEY está definida, mas vazia. Remova-a do ambiente do sistema/IDE ou preencha-a corretamente em .env.local.'
+        : 'SUPABASE_SERVICE_ROLE_KEY não configurada. Necessária para provisionar administradores — configure-a em .env.local.',
     );
   }
 

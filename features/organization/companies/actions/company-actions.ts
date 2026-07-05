@@ -59,8 +59,15 @@ async function resolveWritableCompany(): Promise<
     return {success: false, error: COMPANY_ACCESS_DENIED};
   }
 
-  const settings = await getCompanyRawSettings(supabase, companyId);
-  return {success: true, data: {companyId, settings}};
+  try {
+    const settings = await getCompanyRawSettings(supabase, companyId);
+    return {success: true, data: {companyId, settings}};
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Erro ao carregar empresa.',
+    };
+  }
 }
 
 export async function updateCompanyProfileAction(
