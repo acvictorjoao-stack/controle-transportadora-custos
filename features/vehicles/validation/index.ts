@@ -8,7 +8,9 @@ export {
 } from './schemas';
 
 export type {
+  CreateVehicleFormInput,
   CreateVehicleInput,
+  UpdateVehicleFormInput,
   UpdateVehicleInput,
   UpdateVehicleStatusInput,
   UploadVehicleFileInput,

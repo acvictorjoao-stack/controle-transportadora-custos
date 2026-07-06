@@ -6,10 +6,13 @@ import {
 } from '../constants/enums';
 
 const optionalString = z
-  .string()
-  .trim()
+  .union([z.string(), z.null()])
   .optional()
-  .transform((v) => (v?.length ? v : null));
+  .transform((v) => {
+    if (v === undefined || v === null) return null;
+    const trimmed = v.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  });
 
 const optionalNumber = z
   .union([z.string(), z.number()])
@@ -33,7 +36,6 @@ export const vehicleFuelTypeSchema = z.enum(VEHICLE_FUEL_TYPES);
 
 const vehicleBaseSchema = z.object({
   plate: plateSchema,
-  fleetNumber: optionalString,
   vehicleType: z.string().trim().min(1, 'Informe o tipo do veículo.'),
   brand: optionalString,
   model: optionalString,
@@ -68,7 +70,6 @@ const vehicleBaseSchema = z.object({
       const num = typeof v === 'number' ? v : Number(String(v).replace(',', '.'));
       return Number.isFinite(num) && num >= 0 ? num : 0;
     }),
-  hourMeter: optionalNumber,
   assetStatus: vehicleAssetStatusSchema.optional().default('active'),
   branchId: z
     .string()
@@ -106,7 +107,20 @@ export const uploadVehicleFileSchema = z.object({
   fileSize: z.number().optional().nullable(),
 });
 
-export type CreateVehicleInput = z.infer<typeof createVehicleSchema>;
-export type UpdateVehicleInput = z.infer<typeof updateVehicleSchema>;
+/** Campos aceitos pelo formulário de cadastro/edição (sem frota e horímetro). */
+export type CreateVehicleFormInput = z.infer<typeof createVehicleSchema>;
+
+/** Compatível com a camada de persistência; frota e horímetro permanecem opcionais. */
+export type CreateVehicleInput = CreateVehicleFormInput & {
+  fleetNumber?: string | null;
+  hourMeter?: number | null;
+};
+
+export type UpdateVehicleFormInput = z.infer<typeof updateVehicleSchema>;
+
+export type UpdateVehicleInput = UpdateVehicleFormInput & {
+  fleetNumber?: string | null;
+  hourMeter?: number | null;
+};
 export type UpdateVehicleStatusInput = z.infer<typeof updateVehicleStatusSchema>;
 export type UploadVehicleFileInput = z.infer<typeof uploadVehicleFileSchema>;

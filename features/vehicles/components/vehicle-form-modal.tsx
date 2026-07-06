@@ -19,7 +19,7 @@ import {
   VEHICLE_FUEL_TYPE_LABELS,
   VEHICLE_TYPE_OPTIONS,
 } from '../types';
-import type {CreateVehicleInput, UpdateVehicleInput} from '../validation';
+import type {CreateVehicleFormInput, UpdateVehicleFormInput} from '../validation';
 import {VEHICLE_NATIVE_SELECT_CLASS} from '../utils/form-styles';
 
 export interface VehicleFormModalProps {
@@ -30,7 +30,7 @@ export interface VehicleFormModalProps {
   onSaved: (vehicle: Vehicle) => void;
 }
 
-type FieldErrors = Partial<Record<keyof CreateVehicleInput, string>>;
+type FieldErrors = Partial<Record<keyof CreateVehicleFormInput, string>>;
 
 function VehicleFormModal({
   open,
@@ -77,9 +77,8 @@ function VehicleFormContent({
   onClose: () => void;
   onSaved: (vehicle: Vehicle) => void;
 }) {
-  const [formData, setFormData] = React.useState<CreateVehicleInput>(() => ({
+  const [formData, setFormData] = React.useState<CreateVehicleFormInput>(() => ({
     plate: vehicle?.plate ?? '',
-    fleetNumber: vehicle?.fleetNumber ?? null,
     vehicleType: vehicle?.vehicleType ?? '',
     brand: vehicle?.brand ?? null,
     model: vehicle?.model ?? null,
@@ -93,7 +92,6 @@ function VehicleFormContent({
     tareKg: vehicle?.tareKg ?? null,
     axles: vehicle?.axles ?? null,
     initialOdometerKm: vehicle?.initialOdometerKm ?? 0,
-    hourMeter: vehicle?.hourMeter ?? null,
     assetStatus: vehicle?.assetStatus ?? 'active',
     branchId: vehicle?.branchId ?? null,
     notes: vehicle?.notes ?? null,
@@ -106,9 +104,9 @@ function VehicleFormContent({
   const [submitting, setSubmitting] = React.useState(false);
   const toast = useToast();
 
-  function updateField<K extends keyof CreateVehicleInput>(
+  function updateField<K extends keyof CreateVehicleFormInput>(
     field: K,
-    value: CreateVehicleInput[K],
+    value: CreateVehicleFormInput[K],
   ) {
     setFormData((prev) => ({...prev, [field]: value}));
     if (fieldErrors[field]) {
@@ -128,7 +126,7 @@ function VehicleFormContent({
     setFieldErrors({});
 
     const payload = isEdit
-      ? ({...formData, currentOdometerKm} as UpdateVehicleInput)
+      ? ({...formData, currentOdometerKm} as UpdateVehicleFormInput)
       : formData;
 
     const result =
@@ -168,13 +166,6 @@ function VehicleFormContent({
             placeholder="ABC1D23"
           />
         </FormField>
-        <FormField label="Frota" htmlFor="fleetNumber" error={fieldErrors.fleetNumber}>
-          <Input
-            id="fleetNumber"
-            value={formData.fleetNumber ?? ''}
-            onChange={(e) => updateField('fleetNumber', e.target.value || null)}
-          />
-        </FormField>
         <FormField label="Tipo" htmlFor="vehicleType" required error={fieldErrors.vehicleType}>
           <select
             id="vehicleType"
@@ -186,6 +177,22 @@ function VehicleFormContent({
             {VEHICLE_TYPE_OPTIONS.map((type) => (
               <option key={type} value={type}>
                 {type}
+              </option>
+            ))}
+          </select>
+        </FormField>
+        <FormField label="Situação" htmlFor="assetStatus" required>
+          <select
+            id="assetStatus"
+            value={formData.assetStatus}
+            onChange={(e) =>
+              updateField('assetStatus', e.target.value as VehicleAssetStatus)
+            }
+            className={VEHICLE_NATIVE_SELECT_CLASS}
+          >
+            {(Object.keys(VEHICLE_ASSET_STATUS_LABELS) as VehicleAssetStatus[]).map((status) => (
+              <option key={status} value={status}>
+                {VEHICLE_ASSET_STATUS_LABELS[status]}
               </option>
             ))}
           </select>
@@ -305,32 +312,6 @@ function VehicleFormContent({
             />
           </FormField>
         )}
-        <FormField label="Horímetro (h)" htmlFor="hourMeter">
-          <Input
-            id="hourMeter"
-            type="number"
-            value={formData.hourMeter ?? ''}
-            onChange={(e) =>
-              updateField('hourMeter', e.target.value ? Number(e.target.value) : null)
-            }
-          />
-        </FormField>
-        <FormField label="Situação" htmlFor="assetStatus" required>
-          <select
-            id="assetStatus"
-            value={formData.assetStatus}
-            onChange={(e) =>
-              updateField('assetStatus', e.target.value as VehicleAssetStatus)
-            }
-            className={VEHICLE_NATIVE_SELECT_CLASS}
-          >
-            {(Object.keys(VEHICLE_ASSET_STATUS_LABELS) as VehicleAssetStatus[]).map((status) => (
-              <option key={status} value={status}>
-                {VEHICLE_ASSET_STATUS_LABELS[status]}
-              </option>
-            ))}
-          </select>
-        </FormField>
         <FormField label="Filial" htmlFor="branchId">
           <select
             id="branchId"
@@ -348,7 +329,7 @@ function VehicleFormContent({
         </FormField>
       </div>
 
-      <FormField label="Observações" htmlFor="notes">
+      <FormField label="Observações" htmlFor="notes" hint="Opcional">
         <Textarea
           id="notes"
           value={formData.notes ?? ''}
