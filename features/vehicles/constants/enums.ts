@@ -17,12 +17,11 @@ export const VEHICLE_FUEL_TYPES = [
 ] as const;
 
 export const VEHICLE_TYPE_OPTIONS = [
-  'Caminhão',
   'Cavalo Mecânico',
   'Carreta',
+  'Truck',
+  'Toco',
+  '3/4',
   'Van',
   'Utilitário',
-  'Ônibus',
-  'Moto',
-  'Outro',
 ] as const;
