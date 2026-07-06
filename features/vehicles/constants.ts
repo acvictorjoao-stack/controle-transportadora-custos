@@ -1,5 +1,5 @@
 export const VEHICLE_LIST_COLUMNS = `
-  id, company_id, branch_id, plate, fleet_number, vehicle_type, body_type, brand, model, year,
+  id, company_id, branch_id, plate, vehicle_type, body_type, brand, model, year,
   current_odometer_km, asset_status, photo_url, status, notes, created_at, updated_at,
   branches:branch_id (id, name, code)
 `;

@@ -20,7 +20,6 @@ export function buildVehiclesListUrl({
   if (search.trim()) params.set('q', search.trim());
   if (page > 1) params.set('page', String(page));
   if (filters.plate) params.set('plate', filters.plate);
-  if (filters.fleetNumber) params.set('fleet', filters.fleetNumber);
   if (filters.assetStatus) params.set('status', filters.assetStatus);
   if (filters.branchId) params.set('branch', filters.branchId);
   if (filters.vehicleType) params.set('type', filters.vehicleType);

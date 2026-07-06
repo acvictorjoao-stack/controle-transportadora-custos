@@ -17,7 +17,6 @@ interface VeiculosPageProps {
     q?: string;
     page?: string;
     plate?: string;
-    fleet?: string;
     status?: string;
     branch?: string;
     type?: string;
@@ -46,7 +45,6 @@ export default async function VeiculosPage({searchParams}: VeiculosPageProps) {
 
   const filters: VehicleListFilters = {
     plate: params.plate,
-    fleetNumber: params.fleet,
     assetStatus: params.status as VehicleAssetStatus | undefined,
     branchId: params.branch,
     vehicleType: params.type,

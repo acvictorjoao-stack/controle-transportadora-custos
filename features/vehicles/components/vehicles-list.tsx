@@ -142,11 +142,6 @@ function VehiclesList({
       ),
     },
     {
-      id: 'fleetNumber',
-      header: 'Frota',
-      cell: (row: Vehicle) => row.fleetNumber ?? '—',
-    },
-    {
       id: 'vehicleType',
       header: 'Tipo',
       cell: (row: Vehicle) => row.vehicleType,
@@ -238,7 +233,7 @@ function VehiclesList({
             <SearchInput
               value={search}
               onValueChange={setSearch}
-              placeholder="Buscar por placa, frota, marca ou modelo..."
+              placeholder="Buscar por placa, marca ou modelo..."
               className="w-full max-w-md"
             />
             <VehicleFilters

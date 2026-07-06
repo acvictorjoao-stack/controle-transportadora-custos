@@ -153,7 +153,6 @@ export interface PaginatedVehicles {
 
 export interface VehicleListFilters {
   plate?: string;
-  fleetNumber?: string;
   assetStatus?: VehicleAssetStatus;
   branchId?: string;
   vehicleType?: string;
@@ -161,7 +160,7 @@ export interface VehicleListFilters {
 }
 
 export interface VehicleSortOptions {
-  sortBy?: 'plate' | 'fleet_number' | 'brand' | 'asset_status' | 'created_at';
+  sortBy?: 'plate' | 'brand' | 'asset_status' | 'created_at';
   sortOrder?: 'asc' | 'desc';
 }
 

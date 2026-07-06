@@ -40,17 +40,11 @@ function VehicleFilters({branches, initialFilters, initialSort}: VehicleFiltersP
   }
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
       <input
         placeholder="Placa"
         value={filters.plate ?? ''}
         onChange={(e) => updateFilter('plate', e.target.value)}
-        className={VEHICLE_NATIVE_SELECT_CLASS}
-      />
-      <input
-        placeholder="Frota"
-        value={filters.fleetNumber ?? ''}
-        onChange={(e) => updateFilter('fleetNumber', e.target.value)}
         className={VEHICLE_NATIVE_SELECT_CLASS}
       />
       <select
@@ -109,7 +103,6 @@ function VehicleFilters({branches, initialFilters, initialSort}: VehicleFiltersP
           className={VEHICLE_NATIVE_SELECT_CLASS}
         >
           <option value="plate">Placa</option>
-          <option value="fleet_number">Frota</option>
           <option value="brand">Marca</option>
           <option value="asset_status">Situação</option>
           <option value="created_at">Cadastro</option>

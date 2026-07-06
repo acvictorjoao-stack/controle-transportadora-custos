@@ -38,7 +38,6 @@ export interface ListVehiclesOptions {
 
 const SORT_COLUMNS: Record<NonNullable<VehicleSortOptions['sortBy']>, string> = {
   plate: 'plate',
-  fleet_number: 'fleet_number',
   brand: 'brand',
   asset_status: 'asset_status',
   created_at: 'created_at',
@@ -111,9 +110,6 @@ export async function listVehicles(
   if (filters.plate) {
     query = query.ilike('plate', `%${filters.plate.trim()}%`);
   }
-  if (filters.fleetNumber) {
-    query = query.ilike('fleet_number', `%${filters.fleetNumber.trim()}%`);
-  }
   if (filters.assetStatus) {
     query = query.eq('asset_status', filters.assetStatus);
   }
@@ -134,7 +130,7 @@ export async function listVehicles(
 
   if (search) {
     query = query.or(
-      `plate.ilike.%${search}%,fleet_number.ilike.%${search}%,brand.ilike.%${search}%,model.ilike.%${search}%`,
+      `plate.ilike.%${search}%,brand.ilike.%${search}%,model.ilike.%${search}%`,
     );
   }
 
