@@ -1,5 +1,6 @@
 import type {
   Vehicle,
+  VehicleBodyType,
   VehicleDocument,
   VehicleDocumentRow,
   VehicleHistory,
@@ -25,6 +26,7 @@ export function mapVehicleRow(row: VehicleRow): Vehicle {
     plate: row.plate,
     fleetNumber: row.fleet_number,
     vehicleType: row.vehicle_type,
+    bodyType: (row.body_type as VehicleBodyType | null) ?? null,
     brand: row.brand,
     model: row.model,
     year: row.year,

@@ -152,6 +152,11 @@ function VehiclesList({
       cell: (row: Vehicle) => row.vehicleType,
     },
     {
+      id: 'bodyType',
+      header: 'Implemento',
+      cell: (row: Vehicle) => row.bodyType ?? '—',
+    },
+    {
       id: 'brand',
       header: 'Marca / Modelo',
       cell: (row: Vehicle) =>

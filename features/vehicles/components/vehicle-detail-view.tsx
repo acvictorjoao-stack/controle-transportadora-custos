@@ -69,6 +69,7 @@ function VehicleDetailView({companyId, data, branches}: VehicleDetailViewProps) 
     ['Placa', vehicle.plate],
     ['Frota', vehicle.fleetNumber ?? '—'],
     ['Tipo', vehicle.vehicleType],
+    ['Implemento / Carroceria', vehicle.bodyType ?? '—'],
     ['Marca', vehicle.brand ?? '—'],
     ['Modelo', vehicle.model ?? '—'],
     ['Ano', vehicle.year?.toString() ?? '—'],

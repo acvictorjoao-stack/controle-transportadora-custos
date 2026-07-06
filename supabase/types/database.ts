@@ -549,6 +549,7 @@ export type Database = {
           plate: string;
           fleet_number: string | null;
           vehicle_type: string;
+          body_type: string | null;
           brand: string | null;
           model: string | null;
           year: number | null;
@@ -586,6 +587,7 @@ export type Database = {
           plate: string;
           fleet_number?: string | null;
           vehicle_type: string;
+          body_type?: string | null;
           brand?: string | null;
           model?: string | null;
           year?: number | null;
@@ -623,6 +625,7 @@ export type Database = {
           plate?: string;
           fleet_number?: string | null;
           vehicle_type?: string;
+          body_type?: string | null;
           brand?: string | null;
           model?: string | null;
           year?: number | null;

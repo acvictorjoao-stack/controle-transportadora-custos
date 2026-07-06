@@ -2,6 +2,7 @@ import {z} from 'zod';
 
 import {
   VEHICLE_ASSET_STATUSES,
+  VEHICLE_BODY_TYPE_OPTIONS,
   VEHICLE_FUEL_TYPES,
 } from '../constants/enums';
 
@@ -34,9 +35,15 @@ export const vehicleAssetStatusSchema = z.enum(VEHICLE_ASSET_STATUSES);
 
 export const vehicleFuelTypeSchema = z.enum(VEHICLE_FUEL_TYPES);
 
+export const vehicleBodyTypeSchema = z.enum(VEHICLE_BODY_TYPE_OPTIONS);
+
 const vehicleBaseSchema = z.object({
   plate: plateSchema,
   vehicleType: z.string().trim().min(1, 'Informe o tipo do veículo.'),
+  bodyType: z
+    .union([vehicleBodyTypeSchema, z.literal(''), z.null()])
+    .optional()
+    .transform((v) => (v && v.length ? v : null)),
   brand: optionalString,
   model: optionalString,
   year: z

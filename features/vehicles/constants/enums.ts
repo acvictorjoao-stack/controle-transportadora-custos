@@ -25,3 +25,23 @@ export const VEHICLE_TYPE_OPTIONS = [
   'Van',
   'Utilitário',
 ] as const;
+
+export const VEHICLE_BODY_TYPE_OPTIONS = [
+  'Baú Seco',
+  'Baú Frigorífico',
+  'Sider',
+  'Graneleiro',
+  'Tanque',
+  'Carga Seca',
+  'Plataforma',
+  'Prancha',
+  'Basculante',
+  'Porta-contêiner',
+  'Gaiola',
+  'Canavieiro',
+  'Cegonha',
+  'Bitrem',
+  'Rodotrem',
+  'Dolly',
+  'Outro',
+] as const;

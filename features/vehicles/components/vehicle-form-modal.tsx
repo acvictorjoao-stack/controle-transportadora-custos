@@ -13,9 +13,10 @@ import {useToast} from '@/contexts/feedback/toast-context';
 import type {BranchSelectOption} from '@/features/organization/branches/types';
 
 import {createVehicleAction, updateVehicleAction} from '../actions';
-import type {Vehicle, VehicleAssetStatus, VehicleFuelType} from '../types';
+import type {Vehicle, VehicleAssetStatus, VehicleBodyType, VehicleFuelType} from '../types';
 import {
   VEHICLE_ASSET_STATUS_LABELS,
+  VEHICLE_BODY_TYPE_OPTIONS,
   VEHICLE_FUEL_TYPE_LABELS,
   VEHICLE_TYPE_OPTIONS,
 } from '../types';
@@ -80,6 +81,7 @@ function VehicleFormContent({
   const [formData, setFormData] = React.useState<CreateVehicleFormInput>(() => ({
     plate: vehicle?.plate ?? '',
     vehicleType: vehicle?.vehicleType ?? '',
+    bodyType: vehicle?.bodyType ?? null,
     brand: vehicle?.brand ?? null,
     model: vehicle?.model ?? null,
     year: vehicle?.year ?? null,
@@ -203,6 +205,28 @@ function VehicleFormContent({
             value={formData.brand ?? ''}
             onChange={(e) => updateField('brand', e.target.value || null)}
           />
+        </FormField>
+        <FormField
+          label="Implemento / Carroceria"
+          htmlFor="bodyType"
+          error={fieldErrors.bodyType}
+          hint="Opcional"
+        >
+          <select
+            id="bodyType"
+            value={formData.bodyType ?? ''}
+            onChange={(e) =>
+              updateField('bodyType', (e.target.value || null) as VehicleBodyType | null)
+            }
+            className={VEHICLE_NATIVE_SELECT_CLASS}
+          >
+            <option value="">Selecione</option>
+            {VEHICLE_BODY_TYPE_OPTIONS.map((bodyType) => (
+              <option key={bodyType} value={bodyType}>
+                {bodyType}
+              </option>
+            ))}
+          </select>
         </FormField>
         <FormField label="Modelo" htmlFor="model" error={fieldErrors.model}>
           <Input

@@ -2,6 +2,7 @@ import type {EntityStatus} from '@/features/organization/companies/types';
 
 import type {
   VEHICLE_ASSET_STATUSES,
+  VEHICLE_BODY_TYPE_OPTIONS,
   VEHICLE_FUEL_TYPES,
   VEHICLE_TYPE_OPTIONS,
 } from '../constants/enums';
@@ -11,6 +12,8 @@ export type VehicleAssetStatus = (typeof VEHICLE_ASSET_STATUSES)[number];
 
 export type VehicleFuelType = (typeof VEHICLE_FUEL_TYPES)[number];
 
+export type VehicleBodyType = (typeof VEHICLE_BODY_TYPE_OPTIONS)[number];
+
 export interface VehicleRow {
   id: string;
   company_id: string;
@@ -18,6 +21,7 @@ export interface VehicleRow {
   plate: string;
   fleet_number: string | null;
   vehicle_type: string;
+  body_type: VehicleBodyType | null;
   brand: string | null;
   model: string | null;
   year: number | null;
@@ -58,6 +62,7 @@ export interface Vehicle {
   plate: string;
   fleetNumber: string | null;
   vehicleType: string;
+  bodyType: VehicleBodyType | null;
   brand: string | null;
   model: string | null;
   year: number | null;
@@ -194,4 +199,4 @@ export const VEHICLE_FUEL_TYPE_LABELS: Record<VehicleFuelType, string> = {
   other: 'Outro',
 };
 
-export {VEHICLE_TYPE_OPTIONS} from '../constants/enums';
+export {VEHICLE_BODY_TYPE_OPTIONS, VEHICLE_TYPE_OPTIONS} from '../constants/enums';

@@ -2,6 +2,7 @@ export type {
   Vehicle,
   VehicleSelectOption,
   VehicleAssetStatus,
+  VehicleBodyType,
   VehicleDetailData,
   VehicleDocument,
   VehicleDocumentRow,
@@ -28,6 +29,7 @@ export type {
 
 export {
   VEHICLE_ASSET_STATUS_LABELS,
+  VEHICLE_BODY_TYPE_OPTIONS,
   VEHICLE_FUEL_TYPE_LABELS,
   VEHICLE_TYPE_OPTIONS,
 } from './vehicle';

@@ -57,6 +57,7 @@ function buildVehiclePayload(
     plate: input.plate,
     fleet_number: input.fleetNumber,
     vehicle_type: input.vehicleType,
+    body_type: input.bodyType,
     brand: input.brand,
     model: input.model,
     year: input.year,
