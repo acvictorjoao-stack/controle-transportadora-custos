@@ -11,6 +11,7 @@ import {Input} from '@/components/ui/input';
 import {Textarea} from '@/components/ui/textarea';
 import {useToast} from '@/contexts/feedback/toast-context';
 import type {BranchSelectOption} from '@/features/organization/branches/types';
+import {digitsOnly} from '@/features/master/companies/utils/format';
 
 import {createDriverAction, updateDriverAction} from '../actions';
 import {DRIVER_CONTRACT_TYPES, DRIVER_LICENSE_CATEGORIES} from '../constants/enums';
@@ -23,6 +24,29 @@ import {
 import type {CreateDriverInput} from '../validation';
 import {formatCpf} from '../utils/driver-status';
 import {DRIVER_NATIVE_SELECT_CLASS} from '../utils/form-styles';
+
+function formatPhoneInput(digits: string | null | undefined): string {
+  const clean = digitsOnly(digits ?? '');
+  if (!clean) return '';
+
+  const ddd = clean.slice(0, 2);
+  const rest = clean.slice(2);
+
+  // WhatsApp/phone in Brazil can be 10 digits (xxxx-xxxx) or 11 digits (xxxxx-xxxx).
+  const isElevenDigits = clean.length > 10;
+
+  if (clean.length <= 2) return `(${ddd}`;
+
+  if (!isElevenDigits) {
+    const part1 = rest.slice(0, 4);
+    const part2 = rest.slice(4, 8);
+    return `(${ddd}) ${part1}${part2 ? `-${part2}` : ''}`;
+  }
+
+  const part1 = rest.slice(0, 5);
+  const part2 = rest.slice(5, 9);
+  return `(${ddd}) ${part1}${part2 ? `-${part2}` : ''}`;
+}
 
 export interface DriverFormModalProps {
   open: boolean;
@@ -258,15 +282,25 @@ function DriverFormContent({
         <FormField label="Telefone" htmlFor="driver-phone" error={fieldErrors.phone}>
           <Input
             id="driver-phone"
-            value={formData.phone ?? ''}
-            onChange={(e) => updateField('phone', e.target.value || null)}
+            type="tel"
+            inputMode="numeric"
+            value={formatPhoneInput(formData.phone)}
+            onChange={(e) => {
+              const digits = digitsOnly(e.target.value).slice(0, 11);
+              updateField('phone', digits.length ? digits : null);
+            }}
           />
         </FormField>
         <FormField label="WhatsApp" htmlFor="driver-whatsapp" error={fieldErrors.whatsapp}>
           <Input
             id="driver-whatsapp"
-            value={formData.whatsapp ?? ''}
-            onChange={(e) => updateField('whatsapp', e.target.value || null)}
+            type="tel"
+            inputMode="numeric"
+            value={formatPhoneInput(formData.whatsapp)}
+            onChange={(e) => {
+              const digits = digitsOnly(e.target.value).slice(0, 11);
+              updateField('whatsapp', digits.length ? digits : null);
+            }}
           />
         </FormField>
         <FormField label="E-mail" htmlFor="driver-email" error={fieldErrors.email}>
