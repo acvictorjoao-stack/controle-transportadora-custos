@@ -19,12 +19,15 @@ import {
   createCustomerContact,
   createCustomerDocument,
   createCustomerContract,
+  replaceCustomerDocument,
   softDeleteCustomer,
   softDeleteCustomerAddress,
   softDeleteCustomerContact,
   softDeleteCustomerContract,
   softDeleteCustomerDocument,
   updateCustomer,
+  updateCustomerAddress,
+  updateCustomerContact,
   updateCustomerContract,
   updateCustomerStatus,
 } from '../queries';
@@ -232,6 +235,38 @@ export async function createCustomerAddressAction(
   }
 }
 
+export async function updateCustomerAddressAction(
+  customerId: string,
+  addressId: string,
+  input: unknown,
+): Promise<ActionResult<CustomerAddress>> {
+  const resolved = await resolveCustomerAccess('customers:update');
+  if (!resolved.success) return resolved;
+
+  const parsed = customerAddressSchema.safeParse(input);
+  if (!parsed.success) {
+    return {success: false, error: 'Verifique os campos do endereço.'};
+  }
+
+  try {
+    const supabase = await getServerSupabaseClient();
+    const data = await updateCustomerAddress(
+      supabase,
+      resolved.data.companyId,
+      addressId,
+      parsed.data,
+      resolved.data.profileId,
+    );
+    revalidateCustomerPaths(customerId);
+    return {success: true, data};
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Erro ao atualizar endereço.',
+    };
+  }
+}
+
 export async function deleteCustomerAddressAction(
   customerId: string,
   addressId: string,
@@ -284,6 +319,38 @@ export async function createCustomerContactAction(
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Erro ao adicionar contato.',
+    };
+  }
+}
+
+export async function updateCustomerContactAction(
+  customerId: string,
+  contactId: string,
+  input: unknown,
+): Promise<ActionResult<CustomerContact>> {
+  const resolved = await resolveCustomerAccess('customers:update');
+  if (!resolved.success) return resolved;
+
+  const parsed = customerContactSchema.safeParse(input);
+  if (!parsed.success) {
+    return {success: false, error: 'Verifique os campos do contato.'};
+  }
+
+  try {
+    const supabase = await getServerSupabaseClient();
+    const data = await updateCustomerContact(
+      supabase,
+      resolved.data.companyId,
+      contactId,
+      parsed.data,
+      resolved.data.profileId,
+    );
+    revalidateCustomerPaths(customerId);
+    return {success: true, data};
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Erro ao atualizar contato.',
     };
   }
 }
@@ -441,6 +508,49 @@ export async function registerCustomerFileAction(
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Erro ao registrar documento.',
+    };
+  }
+}
+
+export async function replaceCustomerDocumentAction(
+  customerId: string,
+  documentId: string,
+  input: unknown,
+): Promise<ActionResult<CustomerDocument>> {
+  const resolved = await resolveCustomerAccess('customers:update');
+  if (!resolved.success) return resolved;
+
+  const parsed = uploadCustomerFileSchema.safeParse(input);
+  if (!parsed.success) {
+    return {success: false, error: 'Dados do arquivo inválidos.'};
+  }
+
+  if (parsed.data.customerId !== customerId) {
+    return {success: false, error: 'Cliente inválido para o documento.'};
+  }
+
+  try {
+    const supabase = await getServerSupabaseClient();
+    const data = await replaceCustomerDocument(
+      supabase,
+      resolved.data.companyId,
+      documentId,
+      {
+        name: parsed.data.name,
+        fileUrl: parsed.data.fileUrl,
+        storagePath: parsed.data.storagePath,
+        documentType: parsed.data.documentType,
+        mimeType: parsed.data.mimeType,
+        fileSize: parsed.data.fileSize,
+      },
+      resolved.data.profileId,
+    );
+    revalidateCustomerPaths(customerId);
+    return {success: true, data};
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Erro ao substituir documento.',
     };
   }
 }

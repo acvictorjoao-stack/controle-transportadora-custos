@@ -9,13 +9,6 @@ import {
   DRIVER_OPERATIONAL_STATUSES,
 } from '../constants/enums';
 
-const optionalString = z
-  .string()
-  .trim()
-  .nullable()
-  .optional()
-  .transform((v) => (v?.length ? v : null));
-
 const optionalDate = z
   .string()
   .trim()
@@ -29,6 +22,18 @@ const optionalUppercaseString = z
   .nullable()
   .optional()
   .transform((v) => (v?.length ? v.toUpperCase() : null));
+
+const zipCodeSchema = z
+  .string()
+  .trim()
+  .nullable()
+  .optional()
+  .transform((v) => {
+    if (!v?.length) return null;
+    const digits = digitsOnly(v).slice(0, 8);
+    return digits.length ? digits : null;
+  })
+  .refine((v) => v === null || v.length === 8, 'CEP inválido.');
 
 const optionalRgString = z
   .string()
@@ -95,7 +100,7 @@ const driverBaseSchema = z.object({
     .transform((v) => (v?.length ? v : null))
     .refine((v) => !v || z.string().email().safeParse(v).success, 'E-mail inválido.'),
   address: optionalUppercaseString,
-  zipCode: optionalString,
+  zipCode: zipCodeSchema,
   city: optionalUppercaseString,
   state: optionalUppercaseString,
   notes: optionalUppercaseString,

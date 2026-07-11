@@ -11,6 +11,9 @@ export {
   registerCustomerFileAction,
   resolveContractFreightAction,
   updateCustomerAction,
+  updateCustomerAddressAction,
+  updateCustomerContactAction,
   updateCustomerContractAction,
   updateCustomerStatusAction,
+  replaceCustomerDocumentAction,
 } from './customer-actions';

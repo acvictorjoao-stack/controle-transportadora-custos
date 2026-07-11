@@ -26,9 +26,12 @@ import {
 import {
   formatCpf,
   formatDateBr,
+  formatPhone,
+  formatZipCode,
   getDriverOperationalStatusVariant,
   isCnhExpired,
   isCnhExpiring,
+  splitEmergencyContact,
 } from '../utils/driver-status';
 import {DriverFileUpload} from './driver-file-upload';
 import {DriverFormModal} from './driver-form-modal';
@@ -63,6 +66,10 @@ function DriverDetailView({companyId, data, branches}: DriverDetailViewProps) {
   const [activeTab, setActiveTab] = React.useState<TabId>('dados');
   const [modalOpen, setModalOpen] = React.useState(false);
   const {driver} = data;
+  const emergencyContact = React.useMemo(
+    () => splitEmergencyContact(driver.emergencyContact),
+    [driver.emergencyContact],
+  );
 
   function handleRefresh() {
     router.refresh();
@@ -84,11 +91,11 @@ function DriverDetailView({companyId, data, branches}: DriverDetailViewProps) {
     ['Validade CNH', formatDateBr(driver.licenseExpiresAt)],
     ['EAR', driver.ear ? 'Sim' : 'Não'],
     ['Nascimento', formatDateBr(driver.birthDate)],
-    ['Telefone', driver.phone ?? '—'],
-    ['WhatsApp', driver.whatsapp ?? '—'],
+    ['Telefone', formatPhone(driver.phone)],
+    ['WhatsApp', formatPhone(driver.whatsapp)],
     ['E-mail', driver.email ?? '—'],
     ['Endereço', driver.address ?? '—'],
-    ['CEP', driver.zipCode ?? '—'],
+    ['CEP', formatZipCode(driver.zipCode)],
     ['Cidade', driver.city ?? '—'],
     ['Estado', driver.state ?? '—'],
     ['Filial', driver.branchName ?? '—'],
@@ -98,7 +105,8 @@ function DriverDetailView({companyId, data, branches}: DriverDetailViewProps) {
       'Contratação',
       driver.contractType ? DRIVER_CONTRACT_TYPE_LABELS[driver.contractType] : '—',
     ],
-    ['Contato de emergência', driver.emergencyContact ?? '—'],
+    ['Contato de emergência - Nome', emergencyContact.name ?? '—'],
+    ['Contato de emergência - Telefone', formatPhone(emergencyContact.phone)],
   ];
 
   return (

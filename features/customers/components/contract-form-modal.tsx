@@ -11,12 +11,13 @@ import {Input} from '@/components/ui/input';
 import {Textarea} from '@/components/ui/textarea';
 import {useToast} from '@/contexts/feedback/toast-context';
 
-import {createCustomerContractAction} from '../actions';
+import {createCustomerContractAction, updateCustomerContractAction} from '../actions';
 import {
   CUSTOMER_CONTRACT_STATUSES,
   CUSTOMER_CONTRACT_TYPES,
   CUSTOMER_READJUSTMENT_INDICES,
 } from '../constants/enums';
+import type {CustomerContract} from '../types';
 import {
   CUSTOMER_CONTRACT_STATUS_LABELS,
   CUSTOMER_CONTRACT_TYPE_LABELS,
@@ -29,6 +30,7 @@ export interface ContractFormModalProps {
   open: boolean;
   onClose: () => void;
   customerId: string;
+  contract?: CustomerContract | null;
   onSaved: () => void;
 }
 
@@ -46,7 +48,38 @@ const EMPTY_ITEM = {
   additionalValue: null,
 };
 
-function createInitialFormData(customerId: string): CreateCustomerContractInput {
+function createInitialFormData(customerId: string, contract?: CustomerContract | null): CreateCustomerContractInput {
+  if (contract) {
+    return {
+      customerId,
+      contractNumber: contract.contractNumber,
+      contractStatus: contract.contractStatus,
+      startsAt: contract.startsAt,
+      endsAt: contract.endsAt,
+      contractType: contract.contractType,
+      freightTable: contract.freightTable,
+      currency: contract.currency,
+      notes: contract.notes,
+      readjustmentIndex: contract.readjustmentIndex,
+      readjustmentNotes: contract.readjustmentNotes,
+      items: contract.items?.length
+        ? contract.items.map((item) => ({
+            origin: item.origin,
+            destination: item.destination,
+            freightValue: item.freightValue,
+            minimumValue: item.minimumValue,
+            weightKg: item.weightKg,
+            volumeM3: item.volumeM3,
+            deliveryDays: item.deliveryDays,
+            tollIncluded: item.tollIncluded,
+            grisPercent: item.grisPercent,
+            insurancePercent: item.insurancePercent,
+            additionalValue: item.additionalValue,
+          }))
+        : [{...EMPTY_ITEM}],
+    };
+  }
+
   return {
     customerId,
     contractNumber: '',
@@ -63,14 +96,23 @@ function createInitialFormData(customerId: string): CreateCustomerContractInput 
   };
 }
 
-function ContractFormModal({open, onClose, customerId, onSaved}: ContractFormModalProps) {
-  const formKey = `${open}-${customerId}`;
+function ContractFormModal({open, onClose, customerId, contract, onSaved}: ContractFormModalProps) {
+  const isEdit = Boolean(contract);
+  const formKey = `${open}-${customerId}-${contract?.id ?? 'new'}`;
 
   return (
-    <Modal open={open} onClose={onClose} title="Novo contrato" description="Cadastre um contrato comercial" size="xl">
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={isEdit ? 'Editar contrato' : 'Novo contrato'}
+      description={isEdit ? 'Atualize os dados do contrato comercial' : 'Cadastre um contrato comercial'}
+      size="xl"
+    >
       <ContractFormContent
         key={formKey}
         customerId={customerId}
+        contract={contract}
+        isEdit={isEdit}
         onClose={onClose}
         onSaved={onSaved}
       />
@@ -80,15 +122,19 @@ function ContractFormModal({open, onClose, customerId, onSaved}: ContractFormMod
 
 function ContractFormContent({
   customerId,
+  contract,
+  isEdit,
   onClose,
   onSaved,
 }: {
   customerId: string;
+  contract?: CustomerContract | null;
+  isEdit: boolean;
   onClose: () => void;
   onSaved: () => void;
 }) {
   const [formData, setFormData] = React.useState<CreateCustomerContractInput>(() =>
-    createInitialFormData(customerId),
+    createInitialFormData(customerId, contract),
   );
   const [formError, setFormError] = React.useState<string | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
@@ -121,7 +167,11 @@ function ContractFormContent({
     setSubmitting(true);
     setFormError(null);
 
-    const result = await createCustomerContractAction({...formData, customerId});
+    const payload = {...formData, customerId};
+    const result = isEdit && contract
+      ? await updateCustomerContractAction(contract.id, customerId, payload)
+      : await createCustomerContractAction(payload);
+
     setSubmitting(false);
 
     if (!result.success) {
@@ -130,7 +180,7 @@ function ContractFormContent({
     }
 
     onSaved();
-    toast.success('Contrato criado com sucesso');
+    toast.success(isEdit ? 'Contrato atualizado com sucesso' : 'Contrato criado com sucesso');
     onClose();
   }
 
@@ -197,6 +247,15 @@ function ContractFormContent({
 
       <FormField label="Observações" htmlFor="contract-notes">
         <Textarea id="contract-notes" rows={2} value={formData.notes ?? ''} onChange={(e) => setFormData((p) => ({...p, notes: e.target.value || null}))} />
+      </FormField>
+
+      <FormField label="Notas de reajuste" htmlFor="contract-readjustment-notes">
+        <Textarea
+          id="contract-readjustment-notes"
+          rows={2}
+          value={formData.readjustmentNotes ?? ''}
+          onChange={(e) => setFormData((p) => ({...p, readjustmentNotes: e.target.value || null}))}
+        />
       </FormField>
 
       <div className="space-y-3">

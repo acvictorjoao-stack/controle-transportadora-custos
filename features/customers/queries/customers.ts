@@ -225,7 +225,7 @@ export async function listCustomers(
 
   if (search) {
     query = query.or(
-      `legal_name.ilike.%${search}%,trade_name.ilike.%${search}%,tax_id.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`,
+      `legal_name.ilike.%${search}%,trade_name.ilike.%${search}%,tax_id.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%,whatsapp.ilike.%${search}%`,
     );
   }
 
@@ -394,6 +394,39 @@ export async function createCustomerAddress(
   return mapCustomerAddressRow(data as CustomerAddressRow);
 }
 
+export async function updateCustomerAddress(
+  supabase: SupabaseClient,
+  companyId: string,
+  addressId: string,
+  input: CustomerAddressInput,
+  profileId: string,
+): Promise<CustomerAddress> {
+  const {data, error} = await supabase
+    .from('customer_addresses')
+    .update({
+      address_type: input.addressType,
+      label: input.label,
+      street: input.street,
+      number: input.number,
+      complement: input.complement,
+      neighborhood: input.neighborhood,
+      city: input.city,
+      state: input.state,
+      zip_code: input.zipCode,
+      country: input.country ?? 'BR',
+      is_primary: input.isPrimary ?? false,
+      updated_by: profileId,
+    })
+    .eq('company_id', companyId)
+    .eq('id', addressId)
+    .is('deleted_at', null)
+    .select('*')
+    .single();
+
+  if (error) throw new Error(mapDatabaseError(error));
+  return mapCustomerAddressRow(data as CustomerAddressRow);
+}
+
 export async function softDeleteCustomerAddress(
   supabase: SupabaseClient,
   companyId: string,
@@ -448,6 +481,34 @@ export async function createCustomerContact(
       created_by: profileId,
       updated_by: profileId,
     })
+    .select('*')
+    .single();
+
+  if (error) throw new Error(mapDatabaseError(error));
+  return mapCustomerContactRow(data as CustomerContactRow);
+}
+
+export async function updateCustomerContact(
+  supabase: SupabaseClient,
+  companyId: string,
+  contactId: string,
+  input: CustomerContactInput,
+  profileId: string,
+): Promise<CustomerContact> {
+  const {data, error} = await supabase
+    .from('customer_contacts')
+    .update({
+      name: input.name,
+      job_title: input.jobTitle,
+      phone: input.phone,
+      whatsapp: input.whatsapp,
+      email: input.email,
+      is_primary: input.isPrimary ?? false,
+      updated_by: profileId,
+    })
+    .eq('company_id', companyId)
+    .eq('id', contactId)
+    .is('deleted_at', null)
     .select('*')
     .single();
 
@@ -647,6 +708,59 @@ export async function softDeleteCustomerDocument(
   if (storagePath) {
     await supabase.storage.from(CUSTOMER_STORAGE_BUCKET).remove([storagePath]);
   }
+}
+
+export async function replaceCustomerDocument(
+  supabase: SupabaseClient,
+  companyId: string,
+  documentId: string,
+  input: {
+    name: string;
+    fileUrl: string;
+    storagePath: string;
+    documentType: string;
+    mimeType?: string | null;
+    fileSize?: number | null;
+  },
+  profileId: string,
+): Promise<CustomerDocument> {
+  const {data: existing, error: fetchError} = await supabase
+    .from('customer_documents')
+    .select('storage_path')
+    .eq('company_id', companyId)
+    .eq('id', documentId)
+    .is('deleted_at', null)
+    .maybeSingle();
+
+  if (fetchError) throw new Error(mapDatabaseError(fetchError));
+  if (!existing) throw new Error('Documento não encontrado.');
+
+  const oldPath = (existing as {storage_path: string | null}).storage_path;
+
+  const {data, error} = await supabase
+    .from('customer_documents')
+    .update({
+      name: input.name,
+      file_url: input.fileUrl,
+      storage_path: input.storagePath,
+      document_type: input.documentType,
+      mime_type: input.mimeType,
+      file_size: input.fileSize,
+      updated_by: profileId,
+    })
+    .eq('company_id', companyId)
+    .eq('id', documentId)
+    .is('deleted_at', null)
+    .select('*')
+    .single();
+
+  if (error) throw new Error(mapDatabaseError(error));
+
+  if (oldPath && oldPath !== input.storagePath) {
+    await supabase.storage.from(CUSTOMER_STORAGE_BUCKET).remove([oldPath]);
+  }
+
+  return mapCustomerDocumentRow(data as CustomerDocumentRow);
 }
 
 export async function listCustomerHistory(

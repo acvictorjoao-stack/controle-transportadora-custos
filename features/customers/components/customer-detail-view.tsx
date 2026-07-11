@@ -1,6 +1,6 @@
 'use client';
 
-import {ArrowLeft, Pencil, Plus, Trash2} from 'lucide-react';
+import {ArrowLeft, Pencil, Plus, RefreshCw, Trash2} from 'lucide-react';
 import Link from 'next/link';
 import {useRouter} from 'next/navigation';
 import * as React from 'react';
@@ -22,9 +22,20 @@ import {
   deleteCustomerContactAction,
   deleteCustomerContractAction,
   deleteCustomerDocumentAction,
+  updateCustomerAddressAction,
+  updateCustomerContactAction,
 } from '../actions';
+import {CUSTOMER_ADDRESS_TYPES} from '../constants/enums';
 import type {CustomerTripRecord, CustomerFinancialRecord} from '../types/integrations';
-import type {CustomerDetailData, CustomerAddress, CustomerContact, CustomerContract, CustomerDocument, CustomerHistory} from '../types';
+import type {
+  CustomerDetailData,
+  CustomerAddress,
+  CustomerAddressType,
+  CustomerContact,
+  CustomerContract,
+  CustomerDocument,
+  CustomerHistory,
+} from '../types';
 import {
   CUSTOMER_ADDRESS_TYPE_LABELS,
   CUSTOMER_CONTRACT_STATUS_LABELS,
@@ -39,11 +50,19 @@ import {
   formatCnpj,
   formatCurrency,
   formatDateBr,
+  formatPhone,
+  formatPhoneInput,
+  formatZipCode,
+  formatZipCodeInput,
   getContractStatusVariant,
   getCustomerStatusVariant,
   isContractExpired,
   isContractExpiring,
+  normalizePhoneDigits,
+  normalizeZipCodeDigits,
 } from '../utils/customer-format';
+import {formatStateRegistration} from '../utils/state-registration';
+import type {CustomerAddressInput, CustomerContactInput} from '../validation';
 import {ContractFormModal} from './contract-form-modal';
 import {CustomerFileUpload} from './customer-file-upload';
 import {CustomerFormModal} from './customer-form-modal';
@@ -56,7 +75,7 @@ export interface CustomerDetailViewProps {
 
 const TABS = [
   {id: 'resumo', label: 'Resumo'},
-  {id: 'dados', label: 'Dados'},
+  {id: 'dados', label: 'Dados Gerais'},
   {id: 'enderecos', label: 'Endereços'},
   {id: 'contatos', label: 'Contatos'},
   {id: 'contratos', label: 'Contratos'},
@@ -78,10 +97,18 @@ function CustomerDetailView({companyId, data, branches}: CustomerDetailViewProps
   const [activeTab, setActiveTab] = React.useState<TabId>('resumo');
   const [modalOpen, setModalOpen] = React.useState(false);
   const [contractModalOpen, setContractModalOpen] = React.useState(false);
+  const [editingContract, setEditingContract] = React.useState<CustomerContract | null>(null);
+  const [editingAddress, setEditingAddress] = React.useState<string | null>(null);
+  const [editingContact, setEditingContact] = React.useState<string | null>(null);
+  const [replacingDocument, setReplacingDocument] = React.useState<CustomerDocument | null>(null);
   const {customer, addresses, contacts, contracts, documents, history, trips, financial} = data;
 
   const activeContracts = contracts.filter((c) => c.contractStatus === 'active');
   const totalContractedRevenue = activeContracts.reduce((sum, c) => sum + c.contractedRevenue, 0);
+  const ieStateUf =
+    addresses.find((address) => address.isPrimary)?.state ??
+    addresses[0]?.state ??
+    null;
 
   function handleRefresh() {
     router.refresh();
@@ -91,11 +118,11 @@ function CustomerDetailView({companyId, data, branches}: CustomerDetailViewProps
     ['Razão Social', customer.legalName],
     ['Nome Fantasia', customer.tradeName ?? '—'],
     ['CNPJ', formatCnpj(customer.taxId)],
-    ['IE', customer.stateRegistration ?? '—'],
+    ['IE', formatStateRegistration(customer.stateRegistration, ieStateUf)],
     ['IM', customer.municipalRegistration ?? '—'],
     ['E-mail', customer.email ?? '—'],
-    ['Telefone', customer.phone ?? '—'],
-    ['WhatsApp', customer.whatsapp ?? '—'],
+    ['Telefone', formatPhone(customer.phone)],
+    ['WhatsApp', formatPhone(customer.whatsapp)],
     ['Site', customer.website ?? '—'],
     ['Segmento', customer.segment ? CUSTOMER_SEGMENT_LABELS[customer.segment] : '—'],
     ['Responsável Comercial', customer.salesRepresentative ?? '—'],
@@ -190,23 +217,38 @@ function CustomerDetailView({companyId, data, branches}: CustomerDetailViewProps
             <DataTable
               columns={[
                 {id: 'type', header: 'Tipo', cell: (row) => CUSTOMER_ADDRESS_TYPE_LABELS[(row as CustomerAddress).addressType]},
-                {id: 'address', header: 'Endereço', cell: (row) => (row as CustomerAddress).formattedAddress},
+                {id: 'zip', header: 'CEP', cell: (row) => formatZipCode((row as CustomerAddress).zipCode)},
+                {id: 'street', header: 'Rua', cell: (row) => (row as CustomerAddress).street ?? '—'},
+                {id: 'number', header: 'Número', cell: (row) => (row as CustomerAddress).number ?? '—'},
+                {id: 'complement', header: 'Complemento', cell: (row) => (row as CustomerAddress).complement ?? '—'},
+                {id: 'neighborhood', header: 'Bairro', cell: (row) => (row as CustomerAddress).neighborhood ?? '—'},
+                {id: 'city', header: 'Cidade', cell: (row) => (row as CustomerAddress).city ?? '—'},
+                {id: 'state', header: 'UF', cell: (row) => (row as CustomerAddress).state ?? '—'},
                 {id: 'primary', header: 'Principal', cell: (row) => ((row as CustomerAddress).isPrimary ? 'Sim' : '—')},
                 {
                   id: 'actions',
                   header: '',
                   cell: (row) => (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={async () => {
-                        if (!confirm('Excluir endereço?')) return;
-                        await deleteCustomerAddressAction(customer.id, (row as CustomerAddress).id);
-                        handleRefresh();
-                      }}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setEditingAddress((row as CustomerAddress).id)}
+                      >
+                        <Pencil className="size-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={async () => {
+                          if (!confirm('Excluir endereço?')) return;
+                          await deleteCustomerAddressAction(customer.id, (row as CustomerAddress).id);
+                          handleRefresh();
+                        }}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
                   ),
                 },
               ]}
@@ -215,7 +257,16 @@ function CustomerDetailView({companyId, data, branches}: CustomerDetailViewProps
               getRowKey={(row) => (row as CustomerAddress).id}
             />
           </TableContainer>
-          <AddressQuickForm customerId={customer.id} onSaved={handleRefresh} />
+          <AddressForm
+            key={editingAddress ?? 'new'}
+            customerId={customer.id}
+            address={editingAddress ? addresses.find((a) => a.id === editingAddress) ?? null : null}
+            onCancel={() => setEditingAddress(null)}
+            onSaved={() => {
+              setEditingAddress(null);
+              handleRefresh();
+            }}
+          />
         </div>
       )}
 
@@ -226,24 +277,34 @@ function CustomerDetailView({companyId, data, branches}: CustomerDetailViewProps
               columns={[
                 {id: 'name', header: 'Nome', cell: (row) => (row as CustomerContact).name},
                 {id: 'job', header: 'Cargo', cell: (row) => (row as CustomerContact).jobTitle ?? '—'},
-                {id: 'phone', header: 'Telefone', cell: (row) => (row as CustomerContact).phone ?? (row as CustomerContact).whatsapp ?? '—'},
+                {id: 'phone', header: 'Telefone', cell: (row) => formatPhone((row as CustomerContact).phone)},
+                {id: 'whatsapp', header: 'WhatsApp', cell: (row) => formatPhone((row as CustomerContact).whatsapp)},
                 {id: 'email', header: 'E-mail', cell: (row) => (row as CustomerContact).email ?? '—'},
                 {id: 'primary', header: 'Principal', cell: (row) => ((row as CustomerContact).isPrimary ? 'Sim' : '—')},
                 {
                   id: 'actions',
                   header: '',
                   cell: (row) => (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={async () => {
-                        if (!confirm('Excluir contato?')) return;
-                        await deleteCustomerContactAction(customer.id, (row as CustomerContact).id);
-                        handleRefresh();
-                      }}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setEditingContact((row as CustomerContact).id)}
+                      >
+                        <Pencil className="size-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={async () => {
+                          if (!confirm('Excluir contato?')) return;
+                          await deleteCustomerContactAction(customer.id, (row as CustomerContact).id);
+                          handleRefresh();
+                        }}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
                   ),
                 },
               ]}
@@ -252,14 +313,29 @@ function CustomerDetailView({companyId, data, branches}: CustomerDetailViewProps
               getRowKey={(row) => (row as CustomerContact).id}
             />
           </TableContainer>
-          <ContactQuickForm customerId={customer.id} onSaved={handleRefresh} />
+          <ContactForm
+            key={editingContact ?? 'new'}
+            customerId={customer.id}
+            contact={editingContact ? contacts.find((c) => c.id === editingContact) ?? null : null}
+            onCancel={() => setEditingContact(null)}
+            onSaved={() => {
+              setEditingContact(null);
+              handleRefresh();
+            }}
+          />
         </div>
       )}
 
       {activeTab === 'contratos' && (
         <div className="space-y-4">
           <div className="flex justify-end">
-            <Button size="sm" onClick={() => setContractModalOpen(true)}>
+            <Button
+              size="sm"
+              onClick={() => {
+                setEditingContract(null);
+                setContractModalOpen(true);
+              }}
+            >
               <Plus className="size-4" /> Novo contrato
             </Button>
           </div>
@@ -281,23 +357,37 @@ function CustomerDetailView({companyId, data, branches}: CustomerDetailViewProps
                   ),
                 },
                 {id: 'type', header: 'Tipo', cell: (row) => CUSTOMER_CONTRACT_TYPE_LABELS[(row as CustomerContract).contractType]},
+                {id: 'freightTable', header: 'Tabela', cell: (row) => (row as CustomerContract).freightTable ?? '—'},
                 {id: 'vigencia', header: 'Vigência', cell: (row) => `${formatDateBr((row as CustomerContract).startsAt)} — ${formatDateBr((row as CustomerContract).endsAt)}`},
                 {id: 'revenue', header: 'Receita', cell: (row) => formatCurrency((row as CustomerContract).contractedRevenue, (row as CustomerContract).currency)},
+                {id: 'readjustment', header: 'Reajuste', cell: (row) => CUSTOMER_READJUSTMENT_INDEX_LABELS[(row as CustomerContract).readjustmentIndex]},
                 {
                   id: 'actions',
                   header: '',
                   cell: (row) => (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={async () => {
-                        if (!confirm('Cancelar contrato?')) return;
-                        await deleteCustomerContractAction(customer.id, (row as CustomerContract).id);
-                        handleRefresh();
-                      }}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setEditingContract(row as CustomerContract);
+                          setContractModalOpen(true);
+                        }}
+                      >
+                        <Pencil className="size-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={async () => {
+                          if (!confirm('Cancelar contrato?')) return;
+                          await deleteCustomerContractAction(customer.id, (row as CustomerContract).id);
+                          handleRefresh();
+                        }}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
                   ),
                 },
               ]}
@@ -311,7 +401,16 @@ function CustomerDetailView({companyId, data, branches}: CustomerDetailViewProps
 
       {activeTab === 'documentos' && (
         <div className="space-y-4">
-          <CustomerFileUpload companyId={companyId} customerId={customer.id} onUploaded={handleRefresh} />
+          <CustomerFileUpload
+            companyId={companyId}
+            customerId={customer.id}
+            replacingDocument={replacingDocument}
+            onCancelReplace={() => setReplacingDocument(null)}
+            onUploaded={() => {
+              setReplacingDocument(null);
+              handleRefresh();
+            }}
+          />
           <TableContainer>
             <DataTable
               columns={[
@@ -326,17 +425,26 @@ function CustomerDetailView({companyId, data, branches}: CustomerDetailViewProps
                   id: 'actions',
                   header: '',
                   cell: (row) => (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={async () => {
-                        if (!confirm('Excluir documento?')) return;
-                        await deleteCustomerDocumentAction(customer.id, (row as CustomerDocument).id);
-                        handleRefresh();
-                      }}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setReplacingDocument(row as CustomerDocument)}
+                      >
+                        <RefreshCw className="size-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={async () => {
+                          if (!confirm('Excluir documento?')) return;
+                          await deleteCustomerDocumentAction(customer.id, (row as CustomerDocument).id);
+                          handleRefresh();
+                        }}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
                   ),
                 },
               ]}
@@ -430,66 +538,306 @@ function CustomerDetailView({companyId, data, branches}: CustomerDetailViewProps
         customer={customer}
         branches={branches}
         onSaved={handleRefresh}
+        ieStateUf={ieStateUf}
       />
 
       <ContractFormModal
         open={contractModalOpen}
-        onClose={() => setContractModalOpen(false)}
+        onClose={() => {
+          setContractModalOpen(false);
+          setEditingContract(null);
+        }}
         customerId={customer.id}
-        onSaved={handleRefresh}
+        contract={editingContract}
+        onSaved={() => {
+          setEditingContract(null);
+          handleRefresh();
+        }}
       />
     </PageTemplate>
   );
 }
 
-function AddressQuickForm({customerId, onSaved}: {customerId: string; onSaved: () => void}) {
-  const [street, setStreet] = React.useState('');
-  const [city, setCity] = React.useState('');
-  const [state, setState] = React.useState('');
+function emptyAddressForm(): CustomerAddressInput {
+  return {
+    addressType: 'headquarters',
+    label: null,
+    street: null,
+    number: null,
+    complement: null,
+    neighborhood: null,
+    city: null,
+    state: null,
+    zipCode: null,
+    country: 'BR',
+    isPrimary: false,
+  };
+}
+
+function addressToForm(address: CustomerAddress): CustomerAddressInput {
+  return {
+    addressType: address.addressType,
+    label: address.label,
+    street: address.street,
+    number: address.number,
+    complement: address.complement,
+    neighborhood: address.neighborhood,
+    city: address.city,
+    state: address.state,
+    zipCode: address.zipCode,
+    country: address.country,
+    isPrimary: address.isPrimary,
+  };
+}
+
+function AddressForm({
+  customerId,
+  address,
+  onCancel,
+  onSaved,
+}: {
+  customerId: string;
+  address: CustomerAddress | null;
+  onCancel: () => void;
+  onSaved: () => void;
+}) {
+  const isEdit = Boolean(address);
+  const [form, setForm] = React.useState<CustomerAddressInput>(() =>
+    address ? addressToForm(address) : emptyAddressForm(),
+  );
+  const [submitting, setSubmitting] = React.useState(false);
+
+  function updateField<K extends keyof CustomerAddressInput>(field: K, value: CustomerAddressInput[K]) {
+    setForm((prev) => ({...prev, [field]: value}));
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    await createCustomerAddressAction(customerId, {
-      addressType: 'headquarters',
-      street: street || null,
-      city: city || null,
-      state: state || null,
-      isPrimary: true,
-    });
-    setStreet('');
-    setCity('');
-    setState('');
+    setSubmitting(true);
+    const payload: CustomerAddressInput = {
+      ...form,
+      street: form.street?.toUpperCase() ?? null,
+      complement: form.complement?.toUpperCase() ?? null,
+      neighborhood: form.neighborhood?.toUpperCase() ?? null,
+      city: form.city?.toUpperCase() ?? null,
+      state: form.state?.toUpperCase() ?? null,
+      label: form.label?.toUpperCase() ?? null,
+    };
+
+    if (isEdit && address) {
+      await updateCustomerAddressAction(customerId, address.id, payload);
+    } else {
+      await createCustomerAddressAction(customerId, payload);
+    }
+
+    setSubmitting(false);
+    if (!isEdit) setForm(emptyAddressForm());
     onSaved();
   }
 
+  const inputClass = 'h-9 rounded-md border px-2 text-sm';
+
   return (
-    <form onSubmit={handleSubmit} className="flex flex-wrap gap-2 rounded-lg border p-3">
-      <input className="h-9 flex-1 rounded-md border px-2 text-sm" placeholder="Rua" value={street} onChange={(e) => setStreet(e.target.value)} />
-      <input className="h-9 w-32 rounded-md border px-2 text-sm" placeholder="Cidade" value={city} onChange={(e) => setCity(e.target.value)} />
-      <input className="h-9 w-20 rounded-md border px-2 text-sm" placeholder="UF" value={state} onChange={(e) => setState(e.target.value)} />
-      <Button type="submit" size="sm">Adicionar endereço</Button>
+    <form onSubmit={handleSubmit} className="space-y-3 rounded-lg border p-3">
+      <p className="text-sm font-medium">{isEdit ? 'Editar endereço' : 'Adicionar endereço'}</p>
+      <div className="grid gap-2 md:grid-cols-4">
+        <select
+          className={inputClass}
+          value={form.addressType}
+          onChange={(e) => updateField('addressType', e.target.value as CustomerAddressType)}
+        >
+          {CUSTOMER_ADDRESS_TYPES.map((type) => (
+            <option key={type} value={type}>{CUSTOMER_ADDRESS_TYPE_LABELS[type]}</option>
+          ))}
+        </select>
+        <input
+          className={inputClass}
+          placeholder="CEP"
+          inputMode="numeric"
+          value={formatZipCodeInput(form.zipCode)}
+          onChange={(e) => updateField('zipCode', normalizeZipCodeDigits(e.target.value))}
+          maxLength={9}
+        />
+        <input
+          className={`${inputClass} md:col-span-2`}
+          placeholder="Rua"
+          value={form.street ?? ''}
+          onChange={(e) => updateField('street', e.target.value.toUpperCase() || null)}
+        />
+        <input
+          className={inputClass}
+          placeholder="Número"
+          value={form.number ?? ''}
+          onChange={(e) => updateField('number', e.target.value || null)}
+        />
+        <input
+          className={inputClass}
+          placeholder="Complemento"
+          value={form.complement ?? ''}
+          onChange={(e) => updateField('complement', e.target.value.toUpperCase() || null)}
+        />
+        <input
+          className={inputClass}
+          placeholder="Bairro"
+          value={form.neighborhood ?? ''}
+          onChange={(e) => updateField('neighborhood', e.target.value.toUpperCase() || null)}
+        />
+        <input
+          className={inputClass}
+          placeholder="Cidade"
+          value={form.city ?? ''}
+          onChange={(e) => updateField('city', e.target.value.toUpperCase() || null)}
+        />
+        <input
+          className={inputClass}
+          placeholder="UF"
+          value={form.state ?? ''}
+          onChange={(e) => updateField('state', e.target.value.toUpperCase() || null)}
+          maxLength={2}
+        />
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={form.isPrimary ?? false}
+            onChange={(e) => updateField('isPrimary', e.target.checked)}
+          />
+          Endereço principal
+        </label>
+      </div>
+      <div className="flex gap-2">
+        {isEdit && (
+          <Button type="button" size="sm" variant="outline" onClick={onCancel} disabled={submitting}>
+            Cancelar
+          </Button>
+        )}
+        <Button type="submit" size="sm" disabled={submitting}>
+          {isEdit ? 'Salvar endereço' : 'Adicionar endereço'}
+        </Button>
+      </div>
     </form>
   );
 }
 
-function ContactQuickForm({customerId, onSaved}: {customerId: string; onSaved: () => void}) {
-  const [name, setName] = React.useState('');
-  const [email, setEmail] = React.useState('');
+function emptyContactForm(): CustomerContactInput {
+  return {
+    name: '',
+    jobTitle: null,
+    phone: null,
+    whatsapp: null,
+    email: null,
+    isPrimary: false,
+  };
+}
+
+function contactToForm(contact: CustomerContact): CustomerContactInput {
+  return {
+    name: contact.name,
+    jobTitle: contact.jobTitle,
+    phone: contact.phone,
+    whatsapp: contact.whatsapp,
+    email: contact.email,
+    isPrimary: contact.isPrimary,
+  };
+}
+
+function ContactForm({
+  customerId,
+  contact,
+  onCancel,
+  onSaved,
+}: {
+  customerId: string;
+  contact: CustomerContact | null;
+  onCancel: () => void;
+  onSaved: () => void;
+}) {
+  const isEdit = Boolean(contact);
+  const [form, setForm] = React.useState<CustomerContactInput>(() =>
+    contact ? contactToForm(contact) : emptyContactForm(),
+  );
+  const [submitting, setSubmitting] = React.useState(false);
+
+  function updateField<K extends keyof CustomerContactInput>(field: K, value: CustomerContactInput[K]) {
+    setForm((prev) => ({...prev, [field]: value}));
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) return;
-    await createCustomerContactAction(customerId, {name, email: email || null, isPrimary: false});
-    setName('');
-    setEmail('');
+    if (!form.name.trim()) return;
+    setSubmitting(true);
+
+    if (isEdit && contact) {
+      await updateCustomerContactAction(customerId, contact.id, form);
+    } else {
+      await createCustomerContactAction(customerId, form);
+    }
+
+    setSubmitting(false);
+    if (!isEdit) setForm(emptyContactForm());
     onSaved();
   }
 
+  const inputClass = 'h-9 rounded-md border px-2 text-sm';
+
   return (
-    <form onSubmit={handleSubmit} className="flex flex-wrap gap-2 rounded-lg border p-3">
-      <input className="h-9 flex-1 rounded-md border px-2 text-sm" placeholder="Nome" value={name} onChange={(e) => setName(e.target.value)} />
-      <input className="h-9 flex-1 rounded-md border px-2 text-sm" placeholder="E-mail" value={email} onChange={(e) => setEmail(e.target.value)} />
-      <Button type="submit" size="sm">Adicionar contato</Button>
+    <form onSubmit={handleSubmit} className="space-y-3 rounded-lg border p-3">
+      <p className="text-sm font-medium">{isEdit ? 'Editar contato' : 'Adicionar contato'}</p>
+      <div className="grid gap-2 md:grid-cols-3">
+        <input
+          className={inputClass}
+          placeholder="Nome"
+          value={form.name}
+          onChange={(e) => updateField('name', e.target.value)}
+          required
+        />
+        <input
+          className={inputClass}
+          placeholder="Cargo"
+          value={form.jobTitle ?? ''}
+          onChange={(e) => updateField('jobTitle', e.target.value || null)}
+        />
+        <input
+          className={inputClass}
+          placeholder="E-mail"
+          type="email"
+          value={form.email ?? ''}
+          onChange={(e) => updateField('email', e.target.value || null)}
+        />
+        <input
+          className={inputClass}
+          placeholder="Telefone"
+          inputMode="numeric"
+          value={formatPhoneInput(form.phone)}
+          onChange={(e) => updateField('phone', normalizePhoneDigits(e.target.value))}
+          maxLength={15}
+        />
+        <input
+          className={inputClass}
+          placeholder="WhatsApp"
+          inputMode="numeric"
+          value={formatPhoneInput(form.whatsapp)}
+          onChange={(e) => updateField('whatsapp', normalizePhoneDigits(e.target.value))}
+          maxLength={15}
+        />
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={form.isPrimary ?? false}
+            onChange={(e) => updateField('isPrimary', e.target.checked)}
+          />
+          Contato principal
+        </label>
+      </div>
+      <div className="flex gap-2">
+        {isEdit && (
+          <Button type="button" size="sm" variant="outline" onClick={onCancel} disabled={submitting}>
+            Cancelar
+          </Button>
+        )}
+        <Button type="submit" size="sm" disabled={submitting}>
+          {isEdit ? 'Salvar contato' : 'Adicionar contato'}
+        </Button>
+      </div>
     </form>
   );
 }

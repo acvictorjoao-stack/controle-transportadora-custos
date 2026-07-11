@@ -19,7 +19,10 @@ export {
   softDeleteCustomerContact,
   softDeleteCustomerDocument,
   updateCustomer,
+  updateCustomerAddress,
+  updateCustomerContact,
   updateCustomerStatus,
+  replaceCustomerDocument,
 } from './customers';
 export {
   createCustomerContract,

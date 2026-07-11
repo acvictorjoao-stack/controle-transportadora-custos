@@ -22,31 +22,14 @@ import {
   DRIVER_OPERATIONAL_STATUS_LABELS,
 } from '../types';
 import type {CreateDriverInput} from '../validation';
-import {formatCpf} from '../utils/driver-status';
+import {
+  buildEmergencyContact,
+  formatCpf,
+  formatPhone,
+  formatZipCode,
+  splitEmergencyContact,
+} from '../utils/driver-status';
 import {DRIVER_NATIVE_SELECT_CLASS} from '../utils/form-styles';
-
-function formatPhoneInput(digits: string | null | undefined): string {
-  const clean = digitsOnly(digits ?? '');
-  if (!clean) return '';
-
-  const ddd = clean.slice(0, 2);
-  const rest = clean.slice(2);
-
-  // WhatsApp/phone in Brazil can be 10 digits (xxxx-xxxx) or 11 digits (xxxxx-xxxx).
-  const isElevenDigits = clean.length > 10;
-
-  if (clean.length <= 2) return `(${ddd}`;
-
-  if (!isElevenDigits) {
-    const part1 = rest.slice(0, 4);
-    const part2 = rest.slice(4, 8);
-    return `(${ddd}) ${part1}${part2 ? `-${part2}` : ''}`;
-  }
-
-  const part1 = rest.slice(0, 5);
-  const part2 = rest.slice(5, 9);
-  return `(${ddd}) ${part1}${part2 ? `-${part2}` : ''}`;
-}
 
 export interface DriverFormModalProps {
   open: boolean;
@@ -103,6 +86,10 @@ function DriverFormContent({
   onClose: () => void;
   onSaved: (driver: Driver) => void;
 }) {
+  const emergencyContact = React.useMemo(
+    () => splitEmergencyContact(driver?.emergencyContact),
+    [driver?.emergencyContact],
+  );
   const [formData, setFormData] = React.useState<CreateDriverInput>(() => ({
     name: driver?.name ?? '',
     cpf: driver?.cpf ?? '',
@@ -125,9 +112,18 @@ function DriverFormContent({
     hiredAt: driver?.hiredAt ?? null,
     terminatedAt: driver?.terminatedAt ?? null,
     contractType: driver?.contractType ?? null,
-    emergencyContact: driver?.emergencyContact ?? null,
+    emergencyContact: buildEmergencyContact(
+      emergencyContact.name,
+      emergencyContact.phone,
+    ),
     branchId: driver?.branchId ?? null,
   }));
+  const [emergencyContactName, setEmergencyContactName] = React.useState(
+    emergencyContact.name ?? '',
+  );
+  const [emergencyContactPhone, setEmergencyContactPhone] = React.useState(
+    emergencyContact.phone ?? '',
+  );
   const [fieldErrors, setFieldErrors] = React.useState<FieldErrors>({});
   const [formError, setFormError] = React.useState<string | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
@@ -153,9 +149,17 @@ function DriverFormContent({
     setSubmitting(true);
     setFormError(null);
 
+    const payload: CreateDriverInput = {
+      ...formData,
+      emergencyContact: buildEmergencyContact(
+        emergencyContactName,
+        emergencyContactPhone,
+      ),
+    };
+
     const result = isEdit
-      ? await updateDriverAction(driver!.id, formData)
-      : await createDriverAction(formData);
+      ? await updateDriverAction(driver!.id, payload)
+      : await createDriverAction(payload);
 
     if (!result.success) {
       setFormError(result.error);
@@ -185,7 +189,7 @@ function DriverFormContent({
           <Input
             id="driver-name"
             value={formData.name}
-            onChange={(e) => updateField('name', e.target.value)}
+            onChange={(e) => updateField('name', e.target.value.toUpperCase())}
           />
         </FormField>
         <FormField label="CPF" htmlFor="driver-cpf" error={fieldErrors.cpf} required>
@@ -207,7 +211,7 @@ function DriverFormContent({
           <Input
             id="driver-cnh"
             value={formData.cnhNumber}
-            onChange={(e) => updateField('cnhNumber', e.target.value)}
+            onChange={(e) => updateField('cnhNumber', e.target.value.toUpperCase())}
           />
         </FormField>
         <FormField label="Categoria CNH" htmlFor="driver-license-category" error={fieldErrors.licenseCategory} required>
@@ -284,7 +288,7 @@ function DriverFormContent({
             id="driver-phone"
             type="tel"
             inputMode="numeric"
-            value={formatPhoneInput(formData.phone)}
+            value={formData.phone ? formatPhone(formData.phone) : ''}
             onChange={(e) => {
               const digits = digitsOnly(e.target.value).slice(0, 11);
               updateField('phone', digits.length ? digits : null);
@@ -296,7 +300,7 @@ function DriverFormContent({
             id="driver-whatsapp"
             type="tel"
             inputMode="numeric"
-            value={formatPhoneInput(formData.whatsapp)}
+            value={formData.whatsapp ? formatPhone(formData.whatsapp) : ''}
             onChange={(e) => {
               const digits = digitsOnly(e.target.value).slice(0, 11);
               updateField('whatsapp', digits.length ? digits : null);
@@ -308,7 +312,7 @@ function DriverFormContent({
             id="driver-email"
             type="email"
             value={formData.email ?? ''}
-            onChange={(e) => updateField('email', e.target.value || null)}
+            onChange={(e) => updateField('email', e.target.value.trim() || null)}
           />
         </FormField>
         <FormField label="Filial" htmlFor="driver-branch" error={fieldErrors.branchId}>
@@ -362,32 +366,71 @@ function DriverFormContent({
             ))}
           </select>
         </FormField>
-        <FormField label="Contato de emergência" htmlFor="driver-emergency-contact" error={fieldErrors.emergencyContact}>
-          <Input
-            id="driver-emergency-contact"
-            value={formData.emergencyContact ?? ''}
-            onChange={(e) => updateField('emergencyContact', e.target.value || null)}
-          />
+        <FormField
+          label="Contato de emergência"
+          htmlFor="driver-emergency-contact-name"
+          error={fieldErrors.emergencyContact}
+          className="sm:col-span-2"
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Input
+              id="driver-emergency-contact-name"
+              placeholder="Nome"
+              value={emergencyContactName}
+              onChange={(e) => {
+                setEmergencyContactName(e.target.value.toUpperCase());
+                if (fieldErrors.emergencyContact) {
+                  setFieldErrors((prev) => {
+                    const next = {...prev};
+                    delete next.emergencyContact;
+                    return next;
+                  });
+                }
+              }}
+            />
+            <Input
+              id="driver-emergency-contact-phone"
+              type="tel"
+              inputMode="numeric"
+              placeholder="Telefone"
+              value={emergencyContactPhone ? formatPhone(emergencyContactPhone) : ''}
+              onChange={(e) => {
+                setEmergencyContactPhone(digitsOnly(e.target.value).slice(0, 11));
+                if (fieldErrors.emergencyContact) {
+                  setFieldErrors((prev) => {
+                    const next = {...prev};
+                    delete next.emergencyContact;
+                    return next;
+                  });
+                }
+              }}
+            />
+          </div>
         </FormField>
         <FormField label="CEP" htmlFor="driver-zip-code" error={fieldErrors.zipCode}>
           <Input
             id="driver-zip-code"
-            value={formData.zipCode ?? ''}
-            onChange={(e) => updateField('zipCode', e.target.value || null)}
+            inputMode="numeric"
+            value={formData.zipCode ? formatZipCode(formData.zipCode) : ''}
+            onChange={(e) => {
+              const digits = digitsOnly(e.target.value).slice(0, 8);
+              updateField('zipCode', digits.length ? digits : null);
+            }}
+            maxLength={9}
           />
         </FormField>
         <FormField label="Cidade" htmlFor="driver-city" error={fieldErrors.city}>
           <Input
             id="driver-city"
             value={formData.city ?? ''}
-            onChange={(e) => updateField('city', e.target.value || null)}
+            onChange={(e) => updateField('city', e.target.value.toUpperCase() || null)}
           />
         </FormField>
         <FormField label="Estado" htmlFor="driver-state" error={fieldErrors.state}>
           <Input
             id="driver-state"
             value={formData.state ?? ''}
-            onChange={(e) => updateField('state', e.target.value || null)}
+            onChange={(e) => updateField('state', e.target.value.toUpperCase() || null)}
             maxLength={2}
           />
         </FormField>
@@ -397,7 +440,7 @@ function DriverFormContent({
         <Input
           id="driver-address"
           value={formData.address ?? ''}
-          onChange={(e) => updateField('address', e.target.value || null)}
+          onChange={(e) => updateField('address', e.target.value.toUpperCase() || null)}
         />
       </FormField>
 

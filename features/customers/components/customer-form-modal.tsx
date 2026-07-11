@@ -11,6 +11,7 @@ import {Input} from '@/components/ui/input';
 import {Textarea} from '@/components/ui/textarea';
 import {useToast} from '@/contexts/feedback/toast-context';
 import type {BranchSelectOption} from '@/features/organization/branches/types';
+import {digitsOnly, formatTaxId} from '@/features/master/companies/utils/format';
 
 import {createCustomerAction, updateCustomerAction} from '../actions';
 import {CUSTOMER_SEGMENTS, CUSTOMER_STATUSES} from '../constants/enums';
@@ -18,6 +19,11 @@ import type {Customer, CustomerSegment, CustomerStatus} from '../types';
 import {CUSTOMER_SEGMENT_LABELS, CUSTOMER_STATUS_LABELS} from '../types';
 import type {CreateCustomerInput} from '../validation';
 import {CUSTOMER_NATIVE_SELECT_CLASS} from '../utils/form-styles';
+import {formatPhoneInput, normalizePhoneDigits} from '../utils/customer-format';
+import {
+  formatStateRegistrationInput,
+  parseStateRegistrationInput,
+} from '../utils/state-registration';
 
 export interface CustomerFormModalProps {
   open: boolean;
@@ -25,11 +31,19 @@ export interface CustomerFormModalProps {
   customer?: Customer | null;
   branches: BranchSelectOption[];
   onSaved: () => void;
+  ieStateUf?: string | null;
 }
 
 type FieldErrors = Partial<Record<keyof CreateCustomerInput, string>>;
 
-function CustomerFormModal({open, onClose, customer, branches, onSaved}: CustomerFormModalProps) {
+function CustomerFormModal({
+  open,
+  onClose,
+  customer,
+  branches,
+  onSaved,
+  ieStateUf,
+}: CustomerFormModalProps) {
   const isEdit = Boolean(customer);
   const formKey = `${open}-${customer?.id ?? 'new'}`;
 
@@ -48,6 +62,7 @@ function CustomerFormModal({open, onClose, customer, branches, onSaved}: Custome
         branches={branches}
         onClose={onClose}
         onSaved={onSaved}
+        ieStateUf={ieStateUf}
       />
     </Modal>
   );
@@ -59,12 +74,14 @@ function CustomerFormContent({
   branches,
   onClose,
   onSaved,
+  ieStateUf,
 }: {
   customer?: Customer | null;
   isEdit: boolean;
   branches: BranchSelectOption[];
   onClose: () => void;
   onSaved: () => void;
+  ieStateUf?: string | null;
 }) {
   const [formData, setFormData] = React.useState<CreateCustomerInput>(() => ({
     legalName: customer?.legalName ?? '',
@@ -135,21 +152,26 @@ function CustomerFormContent({
           <Input
             id="customer-legal-name"
             value={formData.legalName}
-            onChange={(e) => updateField('legalName', e.target.value)}
+            onChange={(e) => updateField('legalName', e.target.value.toUpperCase())}
           />
         </FormField>
         <FormField label="Nome Fantasia" htmlFor="customer-trade-name" error={fieldErrors.tradeName}>
           <Input
             id="customer-trade-name"
             value={formData.tradeName ?? ''}
-            onChange={(e) => updateField('tradeName', e.target.value || null)}
+            onChange={(e) => updateField('tradeName', e.target.value.toUpperCase() || null)}
           />
         </FormField>
         <FormField label="CNPJ" htmlFor="customer-tax-id" error={fieldErrors.taxId}>
           <Input
             id="customer-tax-id"
-            value={formData.taxId ?? ''}
-            onChange={(e) => updateField('taxId', e.target.value || null)}
+            inputMode="numeric"
+            value={formData.taxId ? formatTaxId(formData.taxId) : ''}
+            onChange={(e) => {
+              const digits = digitsOnly(e.target.value).slice(0, 14);
+              updateField('taxId', digits.length ? digits : null);
+            }}
+            maxLength={18}
           />
         </FormField>
         <FormField label="Status" htmlFor="customer-status" error={fieldErrors.customerStatus}>
@@ -165,19 +187,44 @@ function CustomerFormContent({
           </select>
         </FormField>
         <FormField label="IE" htmlFor="customer-ie" error={fieldErrors.stateRegistration}>
-          <Input id="customer-ie" value={formData.stateRegistration ?? ''} onChange={(e) => updateField('stateRegistration', e.target.value || null)} />
+          <Input
+            id="customer-ie"
+            value={formatStateRegistrationInput(formData.stateRegistration, ieStateUf)}
+            onChange={(e) =>
+              updateField(
+                'stateRegistration',
+                parseStateRegistrationInput(e.target.value, ieStateUf) || null,
+              )
+            }
+          />
         </FormField>
         <FormField label="IM" htmlFor="customer-im" error={fieldErrors.municipalRegistration}>
-          <Input id="customer-im" value={formData.municipalRegistration ?? ''} onChange={(e) => updateField('municipalRegistration', e.target.value || null)} />
+          <Input
+            id="customer-im"
+            value={formData.municipalRegistration ?? ''}
+            onChange={(e) => updateField('municipalRegistration', e.target.value.toUpperCase() || null)}
+          />
         </FormField>
         <FormField label="E-mail" htmlFor="customer-email" error={fieldErrors.email}>
           <Input id="customer-email" type="email" value={formData.email ?? ''} onChange={(e) => updateField('email', e.target.value || null)} />
         </FormField>
         <FormField label="Telefone" htmlFor="customer-phone" error={fieldErrors.phone}>
-          <Input id="customer-phone" value={formData.phone ?? ''} onChange={(e) => updateField('phone', e.target.value || null)} />
+          <Input
+            id="customer-phone"
+            inputMode="numeric"
+            value={formatPhoneInput(formData.phone)}
+            onChange={(e) => updateField('phone', normalizePhoneDigits(e.target.value))}
+            maxLength={15}
+          />
         </FormField>
         <FormField label="WhatsApp" htmlFor="customer-whatsapp" error={fieldErrors.whatsapp}>
-          <Input id="customer-whatsapp" value={formData.whatsapp ?? ''} onChange={(e) => updateField('whatsapp', e.target.value || null)} />
+          <Input
+            id="customer-whatsapp"
+            inputMode="numeric"
+            value={formatPhoneInput(formData.whatsapp)}
+            onChange={(e) => updateField('whatsapp', normalizePhoneDigits(e.target.value))}
+            maxLength={15}
+          />
         </FormField>
         <FormField label="Site" htmlFor="customer-website" error={fieldErrors.website}>
           <Input id="customer-website" value={formData.website ?? ''} onChange={(e) => updateField('website', e.target.value || null)} />
@@ -196,7 +243,11 @@ function CustomerFormContent({
           </select>
         </FormField>
         <FormField label="Responsável Comercial" htmlFor="customer-sales-rep" error={fieldErrors.salesRepresentative}>
-          <Input id="customer-sales-rep" value={formData.salesRepresentative ?? ''} onChange={(e) => updateField('salesRepresentative', e.target.value || null)} />
+          <Input
+            id="customer-sales-rep"
+            value={formData.salesRepresentative ?? ''}
+            onChange={(e) => updateField('salesRepresentative', e.target.value.toUpperCase() || null)}
+          />
         </FormField>
         <FormField label="Limite de Crédito" htmlFor="customer-credit-limit" error={fieldErrors.creditLimit}>
           <Input
@@ -235,7 +286,7 @@ function CustomerFormContent({
           id="customer-notes"
           rows={3}
           value={formData.notes ?? ''}
-          onChange={(e) => updateField('notes', e.target.value || null)}
+          onChange={(e) => updateField('notes', e.target.value.toUpperCase() || null)}
         />
       </FormField>
 

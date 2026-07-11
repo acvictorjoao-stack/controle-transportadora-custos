@@ -14,6 +14,7 @@ import type {
   CustomerHistoryRow,
   CustomerRow,
 } from '../types/customer';
+import {formatZipCode} from '../utils/customer-format';
 
 function mapBranchName(row: CustomerRow): string | null {
   const branch = row.branches;
@@ -23,6 +24,7 @@ function mapBranchName(row: CustomerRow): string | null {
 }
 
 function formatAddress(row: CustomerAddressRow): string {
+  const zip = row.zip_code ? formatZipCode(row.zip_code) : null;
   const parts = [
     row.street,
     row.number,
@@ -30,7 +32,7 @@ function formatAddress(row: CustomerAddressRow): string {
     row.neighborhood,
     row.city,
     row.state,
-    row.zip_code,
+    zip && zip !== '—' ? zip : null,
   ].filter(Boolean);
   return parts.join(', ') || '—';
 }

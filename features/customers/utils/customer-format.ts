@@ -1,10 +1,60 @@
+import {digitsOnly, formatTaxId} from '@/features/master/companies/utils/format';
+
 import type {CustomerContractStatus, CustomerStatus} from '../types';
+
+export function formatPhone(value: string | null | undefined): string {
+  const clean = digitsOnly(value ?? '');
+  if (!clean) return '—';
+
+  const ddd = clean.slice(0, 2);
+  const rest = clean.slice(2);
+  const isElevenDigits = clean.length > 10;
+
+  if (clean.length <= 2) return `(${ddd}`;
+
+  if (!isElevenDigits) {
+    const part1 = rest.slice(0, 4);
+    const part2 = rest.slice(4, 8);
+    return `(${ddd}) ${part1}${part2 ? `-${part2}` : ''}`;
+  }
+
+  const part1 = rest.slice(0, 5);
+  const part2 = rest.slice(5, 9);
+  return `(${ddd}) ${part1}${part2 ? `-${part2}` : ''}`;
+}
+
+export function formatPhoneInput(value: string | null | undefined): string {
+  const formatted = formatPhone(value);
+  return formatted === '—' ? '' : formatted;
+}
+
+export function formatZipCode(value: string | null | undefined): string {
+  const clean = digitsOnly(value ?? '').slice(0, 8);
+  if (!clean) return '—';
+  if (clean.length <= 5) return clean;
+  return `${clean.slice(0, 5)}-${clean.slice(5)}`;
+}
+
+export function formatZipCodeInput(value: string | null | undefined): string {
+  const formatted = formatZipCode(value);
+  return formatted === '—' ? '' : formatted;
+}
+
+export function normalizePhoneDigits(value: string | null | undefined): string | null {
+  const digits = digitsOnly(value ?? '').slice(0, 11);
+  return digits.length ? digits : null;
+}
+
+export function normalizeZipCodeDigits(value: string | null | undefined): string | null {
+  const digits = digitsOnly(value ?? '').slice(0, 8);
+  return digits.length ? digits : null;
+}
 
 export function formatCnpj(value: string | null): string {
   if (!value) return '—';
-  const digits = value.replace(/\D/g, '');
-  if (digits.length !== 14) return value;
-  return digits.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+  const digits = value.replace(/\D/g, '').slice(0, 14);
+  if (!digits) return '—';
+  return formatTaxId(digits);
 }
 
 export function formatCurrency(value: number | null, currency = 'BRL'): string {

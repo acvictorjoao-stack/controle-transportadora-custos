@@ -1,8 +1,9 @@
 export const CUSTOMER_LIST_COLUMNS = `
   id, company_id, branch_id, legal_name, trade_name, tax_id,
-  email, phone, whatsapp, customer_status, segment,
-  sales_representative, credit_limit, payment_term_days,
-  status, created_at, updated_at,
+  state_registration, municipal_registration, email, phone, whatsapp, website,
+  customer_status, segment, notes, sales_representative,
+  credit_limit, payment_term_days, external_id, integration_source,
+  metadata, status, created_at, updated_at, deleted_at, created_by, updated_by,
   branches:branch_id (id, name, code)
 `;
 

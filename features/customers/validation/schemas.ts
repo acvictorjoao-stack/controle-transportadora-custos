@@ -18,6 +18,23 @@ const optionalString = z
   .optional()
   .transform((v) => (v?.length ? v : null));
 
+const optionalUppercaseString = z
+  .string()
+  .trim()
+  .optional()
+  .transform((v) => (v?.length ? v.toUpperCase() : null));
+
+const stateRegistrationSchema = z
+  .string()
+  .trim()
+  .optional()
+  .transform((v) => {
+    if (!v?.length) return null;
+    const trimmed = v.trim();
+    if (/^ISENTO$/i.test(trimmed)) return 'ISENTO';
+    return trimmed.replace(/[^0-9A-Za-z]/g, '').toUpperCase() || null;
+  });
+
 const optionalDate = z
   .string()
   .trim()
@@ -40,6 +57,28 @@ const cnpjSchema = z
   .transform((v) => (v?.length ? digitsOnly(v) : null))
   .refine((v) => !v || v.length === 14, 'CNPJ inválido.');
 
+const phoneSchema = z
+  .string()
+  .trim()
+  .optional()
+  .transform((v) => {
+    if (!v?.length) return null;
+    const digits = digitsOnly(v).slice(0, 11);
+    return digits.length ? digits : null;
+  })
+  .refine((v) => v === null || v.length === 10 || v.length === 11, 'Telefone inválido.');
+
+const zipCodeSchema = z
+  .string()
+  .trim()
+  .optional()
+  .transform((v) => {
+    if (!v?.length) return null;
+    const digits = digitsOnly(v).slice(0, 8);
+    return digits.length ? digits : null;
+  })
+  .refine((v) => v === null || v.length === 8, 'CEP inválido.');
+
 export const customerStatusSchema = z.enum(CUSTOMER_STATUSES);
 export const customerSegmentSchema = z.enum(CUSTOMER_SEGMENTS);
 export const customerAddressTypeSchema = z.enum(CUSTOMER_ADDRESS_TYPES);
@@ -48,24 +87,28 @@ export const customerContractTypeSchema = z.enum(CUSTOMER_CONTRACT_TYPES);
 export const customerReadjustmentIndexSchema = z.enum(CUSTOMER_READJUSTMENT_INDICES);
 
 const customerBaseSchema = z.object({
-  legalName: z.string().trim().min(1, 'Informe a razão social.'),
-  tradeName: optionalString,
+  legalName: z
+    .string()
+    .trim()
+    .min(1, 'Informe a razão social.')
+    .transform((v) => v.toUpperCase()),
+  tradeName: optionalUppercaseString,
   taxId: cnpjSchema,
-  stateRegistration: optionalString,
-  municipalRegistration: optionalString,
+  stateRegistration: stateRegistrationSchema,
+  municipalRegistration: optionalUppercaseString,
   email: z
     .string()
     .trim()
     .optional()
     .transform((v) => (v?.length ? v : null))
     .refine((v) => !v || z.string().email().safeParse(v).success, 'E-mail inválido.'),
-  phone: optionalString,
-  whatsapp: optionalString,
+  phone: phoneSchema,
+  whatsapp: phoneSchema,
   website: optionalString,
   customerStatus: customerStatusSchema.optional().default('active'),
   segment: customerSegmentSchema.nullable().optional(),
-  notes: optionalString,
-  salesRepresentative: optionalString,
+  notes: optionalUppercaseString,
+  salesRepresentative: optionalUppercaseString,
   creditLimit: optionalNumber,
   paymentTermDays: optionalNumber,
   branchId: z
@@ -85,14 +128,14 @@ export const updateCustomerStatusSchema = z.object({
 
 export const customerAddressSchema = z.object({
   addressType: customerAddressTypeSchema,
-  label: optionalString,
-  street: optionalString,
+  label: optionalUppercaseString,
+  street: optionalUppercaseString,
   number: optionalString,
-  complement: optionalString,
-  neighborhood: optionalString,
-  city: optionalString,
-  state: optionalString,
-  zipCode: optionalString,
+  complement: optionalUppercaseString,
+  neighborhood: optionalUppercaseString,
+  city: optionalUppercaseString,
+  state: optionalUppercaseString,
+  zipCode: zipCodeSchema,
   country: z.string().trim().optional().default('BR'),
   isPrimary: z
     .union([z.boolean(), z.string()])
@@ -103,8 +146,8 @@ export const customerAddressSchema = z.object({
 export const customerContactSchema = z.object({
   name: z.string().trim().min(1, 'Informe o nome do contato.'),
   jobTitle: optionalString,
-  phone: optionalString,
-  whatsapp: optionalString,
+  phone: phoneSchema,
+  whatsapp: phoneSchema,
   email: z
     .string()
     .trim()

@@ -367,6 +367,12 @@ export interface CustomerDetailData extends CustomerIntegrationSections {
   history: CustomerHistory[];
 }
 
+/** Alias for list row payloads. */
+export type CustomerListItem = Customer;
+
+/** Alias for the detail page aggregate payload. */
+export type CustomerDetail = CustomerDetailData;
+
 export const CUSTOMER_STATUS_LABELS: Record<CustomerStatus, string> = {
   active: 'Ativo',
   inactive: 'Inativo',
