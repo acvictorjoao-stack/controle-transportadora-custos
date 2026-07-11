@@ -12,19 +12,27 @@ import {Input} from '@/components/ui/input';
 import {ROUTES} from '@/constants/routes/paths';
 import {useAuth} from '@/contexts/auth/use-auth';
 import {logAuthError} from '@/lib/auth/auth-errors';
-import {getSafeReturnTo} from '@/lib/auth/redirect';
+import {
+  getSafeReturnTo,
+  TENANT_ACCESS_DENIED_MESSAGE,
+  TENANT_ACCESS_DENIED_REASON,
+} from '@/lib/auth/redirect';
 import {cn} from '@/lib/utils';
 
 function LoginForm() {
   const {signIn} = useAuth();
   const searchParams = useSearchParams();
   const returnTo = getSafeReturnTo(searchParams.get('returnTo'));
+  const tenantAccessDenied =
+    searchParams.get('reason') === TENANT_ACCESS_DENIED_REASON;
 
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [showPassword, setShowPassword] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
+  const [error, setError] = React.useState<string | null>(
+    tenantAccessDenied ? TENANT_ACCESS_DENIED_MESSAGE : null,
+  );
   const [fieldErrors, setFieldErrors] = React.useState<{
     email?: string;
     password?: string;

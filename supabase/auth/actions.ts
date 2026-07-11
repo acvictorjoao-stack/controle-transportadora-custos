@@ -9,7 +9,9 @@ import {isPortalOwner} from '@/lib/auth/portal';
 import {
   DEFAULT_POST_LOGOUT_REDIRECT,
   resolvePostLoginRedirect,
+  TENANT_ACCESS_DENIED_MESSAGE,
 } from '@/lib/auth/redirect';
+import {checkTenantAccess} from '@/lib/auth/tenant-access';
 import {createClient} from '@/supabase/server';
 import {createAdminClient} from '@/supabase/server/admin';
 
@@ -59,6 +61,15 @@ export async function signInAction(
   }
 
   const isOwner = await isPortalOwner(supabase);
+
+  if (!isOwner) {
+    const access = await checkTenantAccess(supabase);
+
+    if (!access.valid) {
+      await supabase.auth.signOut();
+      return {success: false, error: TENANT_ACCESS_DENIED_MESSAGE};
+    }
+  }
 
   if (isOwner && user) {
     await logPortalAudit({

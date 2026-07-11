@@ -7,7 +7,9 @@ import {
   isMasterRoute,
   isProtectedRoute,
   resolvePostLoginRedirect,
+  TENANT_ACCESS_DENIED_REASON,
 } from '@/lib/auth/redirect';
+import {checkTenantAccess} from '@/lib/auth/tenant-access';
 import type {Database} from '@/supabase/types';
 
 type PortalRole = 'OWNER' | 'SUPPORT' | 'FINANCE';
@@ -59,6 +61,42 @@ async function fetchPortalUserRole(
   }
 
   return (data as PortalRole | null) ?? null;
+}
+
+function copyCookies(source: NextResponse, target: NextResponse): void {
+  source.cookies.getAll().forEach((cookie) => {
+    target.cookies.set(cookie);
+  });
+}
+
+function buildTenantInvalidLoginRedirect(
+  request: NextRequest,
+  supabaseResponse: NextResponse,
+): NextResponse {
+  const loginUrl = request.nextUrl.clone();
+  loginUrl.pathname = ROUTES.login;
+  loginUrl.search = '';
+  loginUrl.searchParams.set('reason', TENANT_ACCESS_DENIED_REASON);
+
+  const redirectResponse = NextResponse.redirect(loginUrl);
+  copyCookies(supabaseResponse, redirectResponse);
+  return redirectResponse;
+}
+
+async function invalidateSessionAndRedirectToLogin(
+  supabase: MiddlewareSupabase,
+  request: NextRequest,
+  supabaseResponse: NextResponse,
+): Promise<NextResponse> {
+  await supabase.auth.signOut();
+  return buildTenantInvalidLoginRedirect(request, supabaseResponse);
+}
+
+async function hasValidTenantAccess(
+  supabase: MiddlewareSupabase,
+): Promise<boolean> {
+  const access = await checkTenantAccess(supabase);
+  return access.valid;
 }
 
 /**
@@ -120,6 +158,18 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
+  if (user && isProtectedRoute(pathname) && !isMasterRoute(pathname)) {
+    const role = await fetchPortalUserRole(supabase);
+
+    if (role !== 'OWNER' && !(await hasValidTenantAccess(supabase))) {
+      return invalidateSessionAndRedirectToLogin(
+        supabase,
+        request,
+        supabaseResponse,
+      );
+    }
+  }
+
   if (user && isMasterRoute(pathname)) {
     const role = await fetchPortalUserRole(supabase);
 
@@ -133,6 +183,11 @@ export async function updateSession(request: NextRequest) {
 
   if (user && isAuthRoute(pathname)) {
     const role = await fetchPortalUserRole(supabase);
+
+    if (role !== 'OWNER' && !(await hasValidTenantAccess(supabase))) {
+      return supabaseResponse;
+    }
+
     const returnTo = request.nextUrl.searchParams.get('returnTo');
     const destination = resolvePostLoginRedirect(
       returnTo,

@@ -9,6 +9,16 @@ export const PUBLIC_ROUTES = ['/api/health'] as const;
 export const DEFAULT_POST_LOGIN_REDIRECT = ROUTES.home;
 export const DEFAULT_POST_LOGOUT_REDIRECT = ROUTES.login;
 
+export const TENANT_ACCESS_DENIED_REASON = 'tenant_invalid';
+
+export const TENANT_ACCESS_DENIED_MESSAGE =
+  'Empresa desativada ou removida. Faça login novamente ou entre em contato com o administrador.';
+
+export function getTenantAccessDeniedLoginUrl(): string {
+  const params = new URLSearchParams({reason: TENANT_ACCESS_DENIED_REASON});
+  return `${ROUTES.login}?${params.toString()}`;
+}
+
 export function isAuthRoute(pathname: string): boolean {
   return AUTH_ROUTES.some(
     (route) => pathname === route || pathname.startsWith(`${route}/`),
