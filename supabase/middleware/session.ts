@@ -69,16 +69,16 @@ function copyCookies(source: NextResponse, target: NextResponse): void {
   });
 }
 
-function buildTenantInvalidLoginRedirect(
+function buildRedirectWithCookies(
   request: NextRequest,
   supabaseResponse: NextResponse,
+  pathname: string,
 ): NextResponse {
-  const loginUrl = request.nextUrl.clone();
-  loginUrl.pathname = ROUTES.login;
-  loginUrl.search = '';
-  loginUrl.searchParams.set('reason', TENANT_ACCESS_DENIED_REASON);
+  const redirectUrl = request.nextUrl.clone();
+  redirectUrl.pathname = pathname;
+  redirectUrl.search = '';
 
-  const redirectResponse = NextResponse.redirect(loginUrl);
+  const redirectResponse = NextResponse.redirect(redirectUrl);
   copyCookies(supabaseResponse, redirectResponse);
   return redirectResponse;
 }
@@ -89,7 +89,15 @@ async function invalidateSessionAndRedirectToLogin(
   supabaseResponse: NextResponse,
 ): Promise<NextResponse> {
   await supabase.auth.signOut();
-  return buildTenantInvalidLoginRedirect(request, supabaseResponse);
+
+  const loginUrl = request.nextUrl.clone();
+  loginUrl.pathname = ROUTES.login;
+  loginUrl.search = '';
+  loginUrl.searchParams.set('reason', TENANT_ACCESS_DENIED_REASON);
+
+  const redirectResponse = NextResponse.redirect(loginUrl);
+  copyCookies(supabaseResponse, redirectResponse);
+  return redirectResponse;
 }
 
 async function hasValidTenantAccess(
@@ -174,10 +182,11 @@ export async function updateSession(request: NextRequest) {
     const role = await fetchPortalUserRole(supabase);
 
     if (role !== 'OWNER') {
-      const redirectUrl = request.nextUrl.clone();
-      redirectUrl.pathname = ROUTES.dashboard;
-      redirectUrl.search = '';
-      return NextResponse.redirect(redirectUrl);
+      return buildRedirectWithCookies(
+        request,
+        supabaseResponse,
+        ROUTES.dashboard,
+      );
     }
   }
 
@@ -194,10 +203,7 @@ export async function updateSession(request: NextRequest) {
       role === 'OWNER',
     );
 
-    const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = destination;
-    redirectUrl.search = '';
-    return NextResponse.redirect(redirectUrl);
+    return buildRedirectWithCookies(request, supabaseResponse, destination);
   }
 
   return supabaseResponse;

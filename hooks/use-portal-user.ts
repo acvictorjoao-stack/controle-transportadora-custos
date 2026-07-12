@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 
+import {useAuth} from '@/contexts/auth/use-auth';
 import {getPortalRoleFromUser, isOwnerRole} from '@/lib/auth/permissions';
 import {getClientPortalUser} from '@/supabase/portal/client';
 import type {PortalUser} from '@/types/portal/user';
@@ -14,11 +15,12 @@ export interface UsePortalUserResult {
 }
 
 export function usePortalUser(): UsePortalUserResult {
+  const {isAuthenticated, isLoading: isAuthLoading} = useAuth();
   const [portalUser, setPortalUser] = React.useState<PortalUser | null>(null);
-  const [isLoading, setIsLoading] = React.useState(true);
+  const [isFetching, setIsFetching] = React.useState(false);
 
   const refreshPortalUser = React.useCallback(async () => {
-    setIsLoading(true);
+    setIsFetching(true);
 
     try {
       const nextPortalUser = await getClientPortalUser();
@@ -26,12 +28,22 @@ export function usePortalUser(): UsePortalUserResult {
     } catch {
       setPortalUser(null);
     } finally {
-      setIsLoading(false);
+      setIsFetching(false);
     }
   }, []);
 
   React.useEffect(() => {
+    if (isAuthLoading || !isAuthenticated) {
+      return;
+    }
+
     let cancelled = false;
+
+    void Promise.resolve().then(() => {
+      if (!cancelled) {
+        setIsFetching(true);
+      }
+    });
 
     getClientPortalUser()
       .then((nextPortalUser) => {
@@ -46,21 +58,22 @@ export function usePortalUser(): UsePortalUserResult {
       })
       .finally(() => {
         if (!cancelled) {
-          setIsLoading(false);
+          setIsFetching(false);
         }
       });
 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isAuthenticated, isAuthLoading]);
 
-  const role = getPortalRoleFromUser(portalUser);
+  const effectivePortalUser = isAuthenticated ? portalUser : null;
+  const role = getPortalRoleFromUser(effectivePortalUser);
 
   return {
-    portalUser,
+    portalUser: effectivePortalUser,
     isOwner: isOwnerRole(role),
-    isLoading,
+    isLoading: isAuthLoading || (isAuthenticated && isFetching),
     refreshPortalUser,
   };
 }
