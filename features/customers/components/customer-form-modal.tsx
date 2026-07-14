@@ -210,23 +210,11 @@ function CustomerCreateFormContent({
       return;
     }
 
-    const payload: CreateCustomerInput = {
+    const payload = {
       legalName: legalName.trim().toUpperCase(),
       tradeName: tradeName?.trim().toUpperCase() || null,
       taxId,
       customerStatus,
-      stateRegistration: null,
-      municipalRegistration: null,
-      email: null,
-      phone: null,
-      whatsapp: null,
-      website: null,
-      segment: null,
-      notes: null,
-      salesRepresentative: null,
-      creditLimit: null,
-      paymentTermDays: null,
-      branchId: null,
     };
 
     const result = await createCustomerAction(payload);

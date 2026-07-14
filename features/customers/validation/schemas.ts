@@ -13,36 +13,44 @@ import {
 } from '../constants/enums';
 
 const optionalString = z
-  .string()
-  .trim()
-  .optional()
-  .transform((v) => (v?.length ? v : null));
-
-const optionalUppercaseString = z
-  .string()
-  .trim()
-  .optional()
-  .transform((v) => (v?.length ? v.toUpperCase() : null));
-
-const stateRegistrationSchema = z
-  .string()
-  .trim()
+  .union([z.string(), z.null()])
   .optional()
   .transform((v) => {
-    if (!v?.length) return null;
+    if (v === undefined || v === null) return null;
+    const trimmed = v.trim();
+    return trimmed.length ? trimmed : null;
+  });
+
+const optionalUppercaseString = z
+  .union([z.string(), z.null()])
+  .optional()
+  .transform((v) => {
+    if (v === undefined || v === null) return null;
+    const trimmed = v.trim();
+    return trimmed.length ? trimmed.toUpperCase() : null;
+  });
+
+const stateRegistrationSchema = z
+  .union([z.string(), z.null()])
+  .optional()
+  .transform((v) => {
+    if (v === undefined || v === null || !v.length) return null;
     const trimmed = v.trim();
     if (/^ISENTO$/i.test(trimmed)) return 'ISENTO';
     return trimmed.replace(/[^0-9A-Za-z]/g, '').toUpperCase() || null;
   });
 
 const optionalDate = z
-  .string()
-  .trim()
+  .union([z.string(), z.null()])
   .optional()
-  .transform((v) => (v?.length ? v : null));
+  .transform((v) => {
+    if (v === undefined || v === null) return null;
+    const trimmed = v.trim();
+    return trimmed.length ? trimmed : null;
+  });
 
 const optionalNumber = z
-  .union([z.number(), z.string()])
+  .union([z.number(), z.string(), z.null()])
   .optional()
   .transform((v) => {
     if (v === undefined || v === null || v === '') return null;
@@ -51,30 +59,30 @@ const optionalNumber = z
   });
 
 const cnpjSchema = z
-  .string()
-  .trim()
+  .union([z.string(), z.null()])
   .optional()
-  .transform((v) => (v?.length ? digitsOnly(v) : null))
+  .transform((v) => {
+    if (v === undefined || v === null || !String(v).trim().length) return null;
+    return digitsOnly(String(v));
+  })
   .refine((v) => !v || v.length === 14, 'CNPJ inválido.');
 
 const phoneSchema = z
-  .string()
-  .trim()
+  .union([z.string(), z.null()])
   .optional()
   .transform((v) => {
-    if (!v?.length) return null;
-    const digits = digitsOnly(v).slice(0, 11);
+    if (v === undefined || v === null || !String(v).trim().length) return null;
+    const digits = digitsOnly(String(v)).slice(0, 11);
     return digits.length ? digits : null;
   })
   .refine((v) => v === null || v.length === 10 || v.length === 11, 'Telefone inválido.');
 
 const zipCodeSchema = z
-  .string()
-  .trim()
+  .union([z.string(), z.null()])
   .optional()
   .transform((v) => {
-    if (!v?.length) return null;
-    const digits = digitsOnly(v).slice(0, 8);
+    if (v === undefined || v === null || !String(v).trim().length) return null;
+    const digits = digitsOnly(String(v)).slice(0, 8);
     return digits.length ? digits : null;
   })
   .refine((v) => v === null || v.length === 8, 'CEP inválido.');
@@ -97,10 +105,13 @@ const customerBaseSchema = z.object({
   stateRegistration: stateRegistrationSchema,
   municipalRegistration: optionalUppercaseString,
   email: z
-    .string()
-    .trim()
+    .union([z.string(), z.null()])
     .optional()
-    .transform((v) => (v?.length ? v : null))
+    .transform((v) => {
+      if (v === undefined || v === null) return null;
+      const trimmed = v.trim();
+      return trimmed.length ? trimmed : null;
+    })
     .refine((v) => !v || z.string().email().safeParse(v).success, 'E-mail inválido.'),
   phone: phoneSchema,
   whatsapp: phoneSchema,
@@ -112,14 +123,16 @@ const customerBaseSchema = z.object({
   creditLimit: optionalNumber,
   paymentTermDays: optionalNumber,
   branchId: z
-    .string()
-    .uuid('Filial inválida.')
-    .nullable()
+    .union([z.string().uuid('Filial inválida.'), z.null()])
     .optional()
     .transform((v) => v ?? null),
 });
 
-export const createCustomerSchema = customerBaseSchema;
+/** Cadastro simplificado: exige identificação + documento; demais campos opcionais. */
+export const createCustomerSchema = customerBaseSchema.extend({
+  taxId: cnpjSchema.refine((v) => Boolean(v && v.length === 14), 'Informe um CNPJ válido.'),
+});
+
 export const updateCustomerSchema = customerBaseSchema;
 
 export const updateCustomerStatusSchema = z.object({
@@ -149,10 +162,13 @@ export const customerContactSchema = z.object({
   phone: phoneSchema,
   whatsapp: phoneSchema,
   email: z
-    .string()
-    .trim()
+    .union([z.string(), z.null()])
     .optional()
-    .transform((v) => (v?.length ? v : null))
+    .transform((v) => {
+      if (v === undefined || v === null) return null;
+      const trimmed = v.trim();
+      return trimmed.length ? trimmed : null;
+    })
     .refine((v) => !v || z.string().email().safeParse(v).success, 'E-mail inválido.'),
   isPrimary: z
     .union([z.boolean(), z.string()])

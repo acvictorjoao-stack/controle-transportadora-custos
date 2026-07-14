@@ -11,7 +11,7 @@ import {
   getServerSupabaseClient,
   getUserCompanyMembership,
 } from '@/lib/auth/company';
-import {zodFieldErrors} from '@/lib/validators/zod-field-errors';
+import {zodFieldErrors, zodValidationSummary} from '@/lib/validators/zod-field-errors';
 
 import {
   createCustomer,
@@ -91,7 +91,7 @@ export async function createCustomerAction(
   if (!parsed.success) {
     return {
       success: false,
-      error: 'Verifique os campos do formulário.',
+      error: zodValidationSummary(parsed.error.issues),
       fieldErrors: zodFieldErrors(parsed.error.issues),
     };
   }
@@ -125,7 +125,7 @@ export async function updateCustomerAction(
   if (!parsed.success) {
     return {
       success: false,
-      error: 'Verifique os campos do formulário.',
+      error: zodValidationSummary(parsed.error.issues),
       fieldErrors: zodFieldErrors(parsed.error.issues),
     };
   }
