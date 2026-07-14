@@ -30,6 +30,7 @@ import type {
 import {VEHICLE_ASSET_STATUS_LABELS} from '../types';
 import {getVehicleAssetStatusVariant} from '../utils/asset-status';
 import {buildVehiclesListUrl} from '../utils/list-url';
+import {formatPlate} from '../utils/vehicle-format';
 import {VehicleFilters} from './vehicle-filters';
 import {VehicleFormModal} from './vehicle-form-modal';
 
@@ -87,7 +88,7 @@ function VehiclesList({
   async function handleDelete(vehicle: Vehicle) {
     const confirmed = await confirm({
       title: 'Excluir veículo',
-      description: `Excluir o veículo "${vehicle.plate}"? Esta ação não pode ser desfeita.`,
+      description: `Excluir o veículo "${formatPlate(vehicle.plate)}"? Esta ação não pode ser desfeita.`,
       confirmLabel: 'Excluir',
       variant: 'destructive',
     });
@@ -137,7 +138,7 @@ function VehiclesList({
           href={ROUTES.veiculoDetail(row.id)}
           className="font-mono text-sm font-medium hover:underline"
         >
-          {row.plate}
+          {formatPlate(row.plate)}
         </Link>
       ),
     },

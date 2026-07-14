@@ -9,6 +9,7 @@ import type {VehicleAssetStatus, VehicleListFilters, VehicleSortOptions} from '.
 import {VEHICLE_ASSET_STATUS_LABELS, VEHICLE_TYPE_OPTIONS} from '../types';
 import {buildVehiclesListUrl} from '../utils/list-url';
 import {VEHICLE_NATIVE_SELECT_CLASS} from '../utils/form-styles';
+import {formatPlateInput, normalizePlate} from '../utils/vehicle-format';
 
 export interface VehicleFiltersProps {
   branches: BranchSelectOption[];
@@ -43,9 +44,13 @@ function VehicleFilters({branches, initialFilters, initialSort}: VehicleFiltersP
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
       <input
         placeholder="Placa"
-        value={filters.plate ?? ''}
-        onChange={(e) => updateFilter('plate', e.target.value)}
-        className={VEHICLE_NATIVE_SELECT_CLASS}
+        value={filters.plate ? formatPlateInput(filters.plate) : ''}
+        onChange={(e) =>
+          updateFilter('plate', normalizePlate(e.target.value) || undefined)
+        }
+        className={`${VEHICLE_NATIVE_SELECT_CLASS} uppercase`}
+        maxLength={8}
+        autoComplete="off"
       />
       <select
         value={filters.assetStatus ?? ''}

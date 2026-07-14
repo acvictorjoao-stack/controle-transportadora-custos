@@ -20,8 +20,17 @@ import {
   VEHICLE_FUEL_TYPE_LABELS,
   VEHICLE_TYPE_OPTIONS,
 } from '../types';
-import type {CreateVehicleFormInput, UpdateVehicleFormInput} from '../validation';
 import {VEHICLE_NATIVE_SELECT_CLASS} from '../utils/form-styles';
+import {
+  formatChassisInput,
+  formatDecimalInput,
+  formatIntegerInput,
+  formatOdometerInput,
+  formatPlateInput,
+  formatRenavamInput,
+  formatYearInput,
+  toUpperTrimmed,
+} from '../utils/vehicle-format';
 
 export interface VehicleFormModalProps {
   open: boolean;
@@ -31,7 +40,53 @@ export interface VehicleFormModalProps {
   onSaved: (vehicle: Vehicle) => void;
 }
 
-type FieldErrors = Partial<Record<keyof CreateVehicleFormInput, string>>;
+type FormState = {
+  plate: string;
+  vehicleType: string;
+  bodyType: VehicleBodyType | null;
+  brand: string;
+  model: string;
+  year: string;
+  renavam: string;
+  chassis: string;
+  color: string;
+  fuelType: VehicleFuelType | null;
+  loadCapacityKg: string;
+  grossWeightKg: string;
+  tareKg: string;
+  axles: string;
+  initialOdometerKm: string;
+  assetStatus: VehicleAssetStatus;
+  branchId: string | null;
+  notes: string;
+};
+
+type FieldErrors = Partial<Record<keyof FormState | 'currentOdometerKm', string>>;
+
+function buildInitialState(vehicle?: Vehicle | null): FormState {
+  return {
+    plate: formatPlateInput(vehicle?.plate),
+    vehicleType: vehicle?.vehicleType ?? '',
+    bodyType: vehicle?.bodyType ?? null,
+    brand: vehicle?.brand ? toUpperTrimmed(vehicle.brand) : '',
+    model: vehicle?.model ? toUpperTrimmed(vehicle.model) : '',
+    year: vehicle?.year != null ? String(vehicle.year) : '',
+    renavam: formatRenavamInput(vehicle?.renavam),
+    chassis: formatChassisInput(vehicle?.chassis),
+    color: vehicle?.color ? toUpperTrimmed(vehicle.color) : '',
+    fuelType: vehicle?.fuelType ?? null,
+    loadCapacityKg:
+      vehicle?.loadCapacityKg != null ? String(vehicle.loadCapacityKg) : '',
+    grossWeightKg:
+      vehicle?.grossWeightKg != null ? String(vehicle.grossWeightKg) : '',
+    tareKg: vehicle?.tareKg != null ? String(vehicle.tareKg) : '',
+    axles: vehicle?.axles != null ? String(vehicle.axles) : '',
+    initialOdometerKm: String(vehicle?.initialOdometerKm ?? 0),
+    assetStatus: vehicle?.assetStatus ?? 'active',
+    branchId: vehicle?.branchId ?? null,
+    notes: vehicle?.notes ? toUpperTrimmed(vehicle.notes) : '',
+  };
+}
 
 function VehicleFormModal({
   open,
@@ -78,38 +133,18 @@ function VehicleFormContent({
   onClose: () => void;
   onSaved: (vehicle: Vehicle) => void;
 }) {
-  const [formData, setFormData] = React.useState<CreateVehicleFormInput>(() => ({
-    plate: vehicle?.plate ?? '',
-    vehicleType: vehicle?.vehicleType ?? '',
-    bodyType: vehicle?.bodyType ?? null,
-    brand: vehicle?.brand ?? null,
-    model: vehicle?.model ?? null,
-    year: vehicle?.year ?? null,
-    renavam: vehicle?.renavam ?? null,
-    chassis: vehicle?.chassis ?? null,
-    color: vehicle?.color ?? null,
-    fuelType: vehicle?.fuelType ?? null,
-    loadCapacityKg: vehicle?.loadCapacityKg ?? null,
-    grossWeightKg: vehicle?.grossWeightKg ?? null,
-    tareKg: vehicle?.tareKg ?? null,
-    axles: vehicle?.axles ?? null,
-    initialOdometerKm: vehicle?.initialOdometerKm ?? 0,
-    assetStatus: vehicle?.assetStatus ?? 'active',
-    branchId: vehicle?.branchId ?? null,
-    notes: vehicle?.notes ?? null,
-  }));
+  const [formData, setFormData] = React.useState<FormState>(() =>
+    buildInitialState(vehicle),
+  );
   const [currentOdometerKm, setCurrentOdometerKm] = React.useState(
-    vehicle?.currentOdometerKm ?? 0,
+    String(vehicle?.currentOdometerKm ?? 0),
   );
   const [fieldErrors, setFieldErrors] = React.useState<FieldErrors>({});
   const [formError, setFormError] = React.useState<string | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
   const toast = useToast();
 
-  function updateField<K extends keyof CreateVehicleFormInput>(
-    field: K,
-    value: CreateVehicleFormInput[K],
-  ) {
+  function updateField<K extends keyof FormState>(field: K, value: FormState[K]) {
     setFormData((prev) => ({...prev, [field]: value}));
     if (fieldErrors[field]) {
       setFieldErrors((prev) => {
@@ -127,9 +162,27 @@ function VehicleFormContent({
     setFormError(null);
     setFieldErrors({});
 
-    const payload = isEdit
-      ? ({...formData, currentOdometerKm} as UpdateVehicleFormInput)
-      : formData;
+    const payload = {
+      plate: formData.plate,
+      vehicleType: formData.vehicleType,
+      bodyType: formData.bodyType,
+      brand: formData.brand || null,
+      model: formData.model || null,
+      year: formData.year || null,
+      renavam: formData.renavam || null,
+      chassis: formData.chassis || null,
+      color: formData.color || null,
+      fuelType: formData.fuelType,
+      loadCapacityKg: formData.loadCapacityKg || null,
+      grossWeightKg: formData.grossWeightKg || null,
+      tareKg: formData.tareKg || null,
+      axles: formData.axles || null,
+      initialOdometerKm: formData.initialOdometerKm || 0,
+      assetStatus: formData.assetStatus,
+      branchId: formData.branchId,
+      notes: formData.notes || null,
+      ...(isEdit ? {currentOdometerKm: currentOdometerKm || 0} : {}),
+    };
 
     const result =
       isEdit && vehicle
@@ -164,8 +217,11 @@ function VehicleFormContent({
           <Input
             id="plate"
             value={formData.plate}
-            onChange={(e) => updateField('plate', e.target.value)}
-            placeholder="ABC1D23"
+            onChange={(e) => updateField('plate', formatPlateInput(e.target.value))}
+            placeholder="ABC-1D45"
+            maxLength={8}
+            autoComplete="off"
+            className="uppercase"
           />
         </FormField>
         <FormField label="Tipo" htmlFor="vehicleType" required error={fieldErrors.vehicleType}>
@@ -202,8 +258,10 @@ function VehicleFormContent({
         <FormField label="Marca" htmlFor="brand" error={fieldErrors.brand}>
           <Input
             id="brand"
-            value={formData.brand ?? ''}
-            onChange={(e) => updateField('brand', e.target.value || null)}
+            value={formData.brand}
+            onChange={(e) => updateField('brand', toUpperTrimmed(e.target.value))}
+            className="uppercase"
+            autoComplete="off"
           />
         </FormField>
         <FormField
@@ -231,37 +289,51 @@ function VehicleFormContent({
         <FormField label="Modelo" htmlFor="model" error={fieldErrors.model}>
           <Input
             id="model"
-            value={formData.model ?? ''}
-            onChange={(e) => updateField('model', e.target.value || null)}
+            value={formData.model}
+            onChange={(e) => updateField('model', toUpperTrimmed(e.target.value))}
+            className="uppercase"
+            autoComplete="off"
           />
         </FormField>
         <FormField label="Ano" htmlFor="year" error={fieldErrors.year}>
           <Input
             id="year"
-            type="number"
-            value={formData.year ?? ''}
-            onChange={(e) => updateField('year', e.target.value ? Number(e.target.value) : null)}
+            inputMode="numeric"
+            value={formData.year}
+            onChange={(e) => updateField('year', formatYearInput(e.target.value))}
+            placeholder="2024"
+            maxLength={4}
+            autoComplete="off"
           />
         </FormField>
         <FormField label="Renavam" htmlFor="renavam" error={fieldErrors.renavam}>
           <Input
             id="renavam"
-            value={formData.renavam ?? ''}
-            onChange={(e) => updateField('renavam', e.target.value || null)}
+            inputMode="numeric"
+            value={formData.renavam}
+            onChange={(e) => updateField('renavam', formatRenavamInput(e.target.value))}
+            placeholder="00000000000"
+            maxLength={11}
+            autoComplete="off"
           />
         </FormField>
         <FormField label="Chassi" htmlFor="chassis" error={fieldErrors.chassis}>
           <Input
             id="chassis"
-            value={formData.chassis ?? ''}
-            onChange={(e) => updateField('chassis', e.target.value || null)}
+            value={formData.chassis}
+            onChange={(e) => updateField('chassis', formatChassisInput(e.target.value))}
+            className="uppercase"
+            maxLength={17}
+            autoComplete="off"
           />
         </FormField>
         <FormField label="Cor" htmlFor="color" error={fieldErrors.color}>
           <Input
             id="color"
-            value={formData.color ?? ''}
-            onChange={(e) => updateField('color', e.target.value || null)}
+            value={formData.color}
+            onChange={(e) => updateField('color', toUpperTrimmed(e.target.value))}
+            className="uppercase"
+            autoComplete="off"
           />
         </FormField>
         <FormField label="Combustível" htmlFor="fuelType" error={fieldErrors.fuelType}>
@@ -281,58 +353,82 @@ function VehicleFormContent({
             ))}
           </select>
         </FormField>
-        <FormField label="Capacidade de carga (kg)" htmlFor="loadCapacityKg">
+        <FormField
+          label="Capacidade de carga (kg)"
+          htmlFor="loadCapacityKg"
+          error={fieldErrors.loadCapacityKg}
+        >
           <Input
             id="loadCapacityKg"
-            type="number"
-            value={formData.loadCapacityKg ?? ''}
+            inputMode="decimal"
+            value={formData.loadCapacityKg}
             onChange={(e) =>
-              updateField('loadCapacityKg', e.target.value ? Number(e.target.value) : null)
+              updateField('loadCapacityKg', formatDecimalInput(e.target.value))
             }
+            autoComplete="off"
           />
         </FormField>
-        <FormField label="Peso bruto (kg)" htmlFor="grossWeightKg">
+        <FormField
+          label="Peso bruto (kg)"
+          htmlFor="grossWeightKg"
+          error={fieldErrors.grossWeightKg}
+        >
           <Input
             id="grossWeightKg"
-            type="number"
-            value={formData.grossWeightKg ?? ''}
+            inputMode="decimal"
+            value={formData.grossWeightKg}
             onChange={(e) =>
-              updateField('grossWeightKg', e.target.value ? Number(e.target.value) : null)
+              updateField('grossWeightKg', formatDecimalInput(e.target.value))
             }
+            autoComplete="off"
           />
         </FormField>
-        <FormField label="Tara (kg)" htmlFor="tareKg">
+        <FormField label="Tara (kg)" htmlFor="tareKg" error={fieldErrors.tareKg}>
           <Input
             id="tareKg"
-            type="number"
-            value={formData.tareKg ?? ''}
-            onChange={(e) => updateField('tareKg', e.target.value ? Number(e.target.value) : null)}
+            inputMode="decimal"
+            value={formData.tareKg}
+            onChange={(e) => updateField('tareKg', formatDecimalInput(e.target.value))}
+            autoComplete="off"
           />
         </FormField>
-        <FormField label="Nº de eixos" htmlFor="axles">
+        <FormField label="Nº de eixos" htmlFor="axles" error={fieldErrors.axles}>
           <Input
             id="axles"
-            type="number"
-            value={formData.axles ?? ''}
-            onChange={(e) => updateField('axles', e.target.value ? Number(e.target.value) : null)}
+            inputMode="numeric"
+            value={formData.axles}
+            onChange={(e) => updateField('axles', formatIntegerInput(e.target.value))}
+            autoComplete="off"
           />
         </FormField>
-        <FormField label="Hodômetro inicial (km)" htmlFor="initialOdometerKm">
+        <FormField
+          label="Hodômetro inicial (km)"
+          htmlFor="initialOdometerKm"
+          error={fieldErrors.initialOdometerKm}
+        >
           <Input
             id="initialOdometerKm"
-            type="number"
+            inputMode="numeric"
             disabled={isEdit}
-            value={formData.initialOdometerKm ?? 0}
-            onChange={(e) => updateField('initialOdometerKm', Number(e.target.value))}
+            value={formData.initialOdometerKm}
+            onChange={(e) =>
+              updateField('initialOdometerKm', formatOdometerInput(e.target.value))
+            }
+            autoComplete="off"
           />
         </FormField>
         {isEdit && (
-          <FormField label="Hodômetro atual (km)" htmlFor="currentOdometerKm">
+          <FormField
+            label="Hodômetro atual (km)"
+            htmlFor="currentOdometerKm"
+            error={fieldErrors.currentOdometerKm}
+          >
             <Input
               id="currentOdometerKm"
-              type="number"
+              inputMode="numeric"
               value={currentOdometerKm}
-              onChange={(e) => setCurrentOdometerKm(Number(e.target.value))}
+              onChange={(e) => setCurrentOdometerKm(formatOdometerInput(e.target.value))}
+              autoComplete="off"
             />
           </FormField>
         )}
@@ -353,12 +449,13 @@ function VehicleFormContent({
         </FormField>
       </div>
 
-      <FormField label="Observações" htmlFor="notes" hint="Opcional">
+      <FormField label="Observações" htmlFor="notes" hint="Opcional" error={fieldErrors.notes}>
         <Textarea
           id="notes"
-          value={formData.notes ?? ''}
-          onChange={(e) => updateField('notes', e.target.value || null)}
+          value={formData.notes}
+          onChange={(e) => updateField('notes', toUpperTrimmed(e.target.value))}
           rows={3}
+          className="uppercase"
         />
       </FormField>
 

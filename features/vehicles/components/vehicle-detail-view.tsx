@@ -22,6 +22,7 @@ import {
   VEHICLE_FUEL_TYPE_LABELS,
 } from '../types';
 import {getVehicleAssetStatusVariant} from '../utils/asset-status';
+import {formatPlate} from '../utils/vehicle-format';
 import {VehicleFileUpload} from './vehicle-file-upload';
 import {VehicleFormModal} from './vehicle-form-modal';
 
@@ -66,7 +67,7 @@ function VehicleDetailView({companyId, data, branches}: VehicleDetailViewProps) 
   }
 
   const infoRows = [
-    ['Placa', vehicle.plate],
+    ['Placa', formatPlate(vehicle.plate)],
     ['Frota', vehicle.fleetNumber ?? '—'],
     ['Tipo', vehicle.vehicleType],
     ['Implemento / Carroceria', vehicle.bodyType ?? '—'],
@@ -117,7 +118,7 @@ function VehicleDetailView({companyId, data, branches}: VehicleDetailViewProps) 
 
   return (
     <PageTemplate
-      title={vehicle.plate}
+      title={formatPlate(vehicle.plate)}
       description={[vehicle.brand, vehicle.model].filter(Boolean).join(' ') || vehicle.vehicleType}
       actions={
         <div className="flex gap-2">
@@ -143,7 +144,7 @@ function VehicleDetailView({companyId, data, branches}: VehicleDetailViewProps) 
           <div className="relative size-20 overflow-hidden rounded-lg border border-border">
             <Image
               src={vehicle.photoUrl}
-              alt={`Foto do veículo ${vehicle.plate}`}
+              alt={`Foto do veículo ${formatPlate(vehicle.plate)}`}
               fill
               className="object-cover"
               unoptimized
