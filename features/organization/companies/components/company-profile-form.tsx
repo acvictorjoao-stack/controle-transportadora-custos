@@ -14,7 +14,15 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import {useToast} from '@/contexts/feedback/toast-context';
+import {
+  formatPhoneInput,
+  formatZipCodeInput,
+  normalizePhoneDigits,
+  normalizeZipCodeDigits,
+} from '@/features/customers/utils/customer-format';
 import {formatTaxId} from '@/features/master/companies/utils/format';
+import {MSG} from '@/lib/feedback/messages';
 
 import {updateCompanyProfileAction} from '../actions';
 import type {CompanyProfile} from '../types';
@@ -34,6 +42,7 @@ const BRAZILIAN_STATES = [
 ];
 
 function CompanyProfileForm({company, onSaved}: CompanyProfileFormProps) {
+  const toast = useToast();
   const [formData, setFormData] = React.useState<UpdateCompanyProfileInput>(() => ({
     legalName: company.legalName,
     tradeName: company.tradeName,
@@ -81,7 +90,7 @@ function CompanyProfileForm({company, onSaved}: CompanyProfileFormProps) {
     const result = await updateCompanyProfileAction(formData);
 
     if (!result.success) {
-      setFormError(result.error);
+      setFormError(result.error ?? MSG.operationFailed);
       if (result.fieldErrors) {
         setFieldErrors(result.fieldErrors as FieldErrors);
       }
@@ -90,6 +99,7 @@ function CompanyProfileForm({company, onSaved}: CompanyProfileFormProps) {
     }
 
     onSaved(result.data);
+    toast.success(MSG.updatedFeminine('Empresa'));
     setSubmitting(false);
   }
 
@@ -110,15 +120,19 @@ function CompanyProfileForm({company, onSaved}: CompanyProfileFormProps) {
           <FormField label="Razão Social" htmlFor="legalName" required error={fieldErrors.legalName}>
             <Input
               id="legalName"
+              className="uppercase"
               value={formData.legalName}
-              onChange={(e) => updateField('legalName', e.target.value)}
+              onChange={(e) => updateField('legalName', e.target.value.toUpperCase())}
             />
           </FormField>
           <FormField label="Nome Fantasia" htmlFor="tradeName" error={fieldErrors.tradeName}>
             <Input
               id="tradeName"
+              className="uppercase"
               value={formData.tradeName ?? ''}
-              onChange={(e) => updateField('tradeName', e.target.value || null)}
+              onChange={(e) =>
+                updateField('tradeName', e.target.value ? e.target.value.toUpperCase() : null)
+              }
             />
           </FormField>
           <FormField label="CNPJ" htmlFor="taxId" required error={fieldErrors.taxId}>
@@ -131,15 +145,27 @@ function CompanyProfileForm({company, onSaved}: CompanyProfileFormProps) {
           <FormField label="Inscrição Estadual" htmlFor="stateRegistration" error={fieldErrors.stateRegistration}>
             <Input
               id="stateRegistration"
+              className="uppercase"
               value={formData.stateRegistration ?? ''}
-              onChange={(e) => updateField('stateRegistration', e.target.value || null)}
+              onChange={(e) =>
+                updateField(
+                  'stateRegistration',
+                  e.target.value ? e.target.value.toUpperCase() : null,
+                )
+              }
             />
           </FormField>
           <FormField label="Inscrição Municipal" htmlFor="municipalRegistration" error={fieldErrors.municipalRegistration}>
             <Input
               id="municipalRegistration"
+              className="uppercase"
               value={formData.municipalRegistration ?? ''}
-              onChange={(e) => updateField('municipalRegistration', e.target.value || null)}
+              onChange={(e) =>
+                updateField(
+                  'municipalRegistration',
+                  e.target.value ? e.target.value.toUpperCase() : null,
+                )
+              }
             />
           </FormField>
         </CardContent>
@@ -161,15 +187,15 @@ function CompanyProfileForm({company, onSaved}: CompanyProfileFormProps) {
           <FormField label="Telefone" htmlFor="phone" error={fieldErrors.phone}>
             <Input
               id="phone"
-              value={formData.phone ?? ''}
-              onChange={(e) => updateField('phone', e.target.value || null)}
+              value={formatPhoneInput(formData.phone)}
+              onChange={(e) => updateField('phone', normalizePhoneDigits(e.target.value))}
             />
           </FormField>
           <FormField label="WhatsApp" htmlFor="whatsapp" error={fieldErrors.whatsapp}>
             <Input
               id="whatsapp"
-              value={formData.whatsapp ?? ''}
-              onChange={(e) => updateField('whatsapp', e.target.value || null)}
+              value={formatPhoneInput(formData.whatsapp)}
+              onChange={(e) => updateField('whatsapp', normalizePhoneDigits(e.target.value))}
             />
           </FormField>
           <FormField label="Site" htmlFor="website" error={fieldErrors.website}>
@@ -191,15 +217,21 @@ function CompanyProfileForm({company, onSaved}: CompanyProfileFormProps) {
           <FormField label="CEP" htmlFor="addressZip" error={fieldErrors.addressZip}>
             <Input
               id="addressZip"
-              value={formData.addressZip ?? ''}
-              onChange={(e) => updateField('addressZip', e.target.value || null)}
+              value={formatZipCodeInput(formData.addressZip)}
+              onChange={(e) => updateField('addressZip', normalizeZipCodeDigits(e.target.value))}
             />
           </FormField>
           <FormField label="Endereço" htmlFor="addressStreet" error={fieldErrors.addressStreet} className="sm:col-span-2">
             <Input
               id="addressStreet"
+              className="uppercase"
               value={formData.addressStreet ?? ''}
-              onChange={(e) => updateField('addressStreet', e.target.value || null)}
+              onChange={(e) =>
+                updateField(
+                  'addressStreet',
+                  e.target.value ? e.target.value.toUpperCase() : null,
+                )
+              }
             />
           </FormField>
           <FormField label="Número" htmlFor="addressNumber" error={fieldErrors.addressNumber}>
@@ -212,22 +244,40 @@ function CompanyProfileForm({company, onSaved}: CompanyProfileFormProps) {
           <FormField label="Complemento" htmlFor="addressComplement" error={fieldErrors.addressComplement}>
             <Input
               id="addressComplement"
+              className="uppercase"
               value={formData.addressComplement ?? ''}
-              onChange={(e) => updateField('addressComplement', e.target.value || null)}
+              onChange={(e) =>
+                updateField(
+                  'addressComplement',
+                  e.target.value ? e.target.value.toUpperCase() : null,
+                )
+              }
             />
           </FormField>
           <FormField label="Bairro" htmlFor="addressNeighborhood" error={fieldErrors.addressNeighborhood}>
             <Input
               id="addressNeighborhood"
+              className="uppercase"
               value={formData.addressNeighborhood ?? ''}
-              onChange={(e) => updateField('addressNeighborhood', e.target.value || null)}
+              onChange={(e) =>
+                updateField(
+                  'addressNeighborhood',
+                  e.target.value ? e.target.value.toUpperCase() : null,
+                )
+              }
             />
           </FormField>
           <FormField label="Cidade" htmlFor="addressCity" error={fieldErrors.addressCity}>
             <Input
               id="addressCity"
+              className="uppercase"
               value={formData.addressCity ?? ''}
-              onChange={(e) => updateField('addressCity', e.target.value || null)}
+              onChange={(e) =>
+                updateField(
+                  'addressCity',
+                  e.target.value ? e.target.value.toUpperCase() : null,
+                )
+              }
             />
           </FormField>
           <FormField label="Estado" htmlFor="addressState" error={fieldErrors.addressState}>
@@ -246,8 +296,11 @@ function CompanyProfileForm({company, onSaved}: CompanyProfileFormProps) {
           <FormField label="País" htmlFor="addressCountry" error={fieldErrors.addressCountry}>
             <Input
               id="addressCountry"
+              className="uppercase"
               value={formData.addressCountry ?? 'Brasil'}
-              onChange={(e) => updateField('addressCountry', e.target.value || 'Brasil')}
+              onChange={(e) =>
+                updateField('addressCountry', e.target.value ? e.target.value.toUpperCase() : 'BRASIL')
+              }
             />
           </FormField>
         </CardContent>
@@ -256,7 +309,7 @@ function CompanyProfileForm({company, onSaved}: CompanyProfileFormProps) {
       <div className="flex justify-end">
         <Button type="submit" disabled={submitting}>
           {submitting ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-          Salvar alterações
+          Salvar
         </Button>
       </div>
     </form>

@@ -16,7 +16,9 @@ import {Button} from '@/components/ui/button';
 import {useConfirm} from '@/contexts/feedback/confirm-context';
 import {useToast} from '@/contexts/feedback/toast-context';
 import {ROUTES} from '@/constants/routes/paths';
+import {formatPhone} from '@/features/customers/utils/customer-format';
 import {formatTaxId} from '@/features/master/companies/utils/format';
+import {MSG} from '@/lib/feedback/messages';
 
 import {
   deleteBranchAction,
@@ -30,7 +32,6 @@ import {BranchFormModal} from './branch-form-modal';
 export interface BranchesListProps {
   initialData: PaginatedBranches;
   initialSearch: string;
-  initialPage: number;
   error: string | null;
 }
 
@@ -58,7 +59,6 @@ function buildListUrl(search: string, page: number): string {
 function BranchesList({
   initialData,
   initialSearch,
-  initialPage,
   error: initialError,
 }: BranchesListProps) {
   const router = useRouter();
@@ -72,7 +72,6 @@ function BranchesList({
   const [openMenuId, setOpenMenuId] = React.useState<string | null>(null);
 
   const data = initialData;
-  const page = data.page;
 
   React.useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -98,9 +97,9 @@ function BranchesList({
 
   async function handleDelete(branch: Branch) {
     const confirmed = await confirm({
-      title: 'Excluir filial',
-      description: `Excluir a filial "${branch.name}"? Esta ação não pode ser desfeita.`,
-      confirmLabel: 'Excluir',
+      title: MSG.deleteConfirmTitle,
+      description: MSG.deleteConfirmDescription,
+      confirmLabel: MSG.deleteConfirmLabel,
       variant: 'destructive',
     });
     if (!confirmed) return;
@@ -110,10 +109,9 @@ function BranchesList({
 
     const result = await deleteBranchAction(branch.id);
     if (!result.success) {
-      setActionError(result.error);
-      toast.error(result.error);
+      toast.error(result.error ?? MSG.operationFailed);
     } else {
-      toast.success('Filial excluída com sucesso');
+      toast.success(MSG.deletedFeminine('Filial'));
       router.refresh();
     }
     setActionLoading(null);
@@ -129,10 +127,13 @@ function BranchesList({
       branch.status !== 'active',
     );
     if (!result.success) {
-      setActionError(result.error);
-      toast.error(result.error);
+      toast.error(result.error ?? MSG.operationFailed);
     } else {
-      toast.success(branch.status === 'active' ? 'Filial inativada' : 'Filial ativada');
+      toast.success(
+        branch.status === 'active'
+          ? MSG.deactivatedFeminine('Filial')
+          : MSG.activatedFeminine('Filial'),
+      );
       router.refresh();
     }
     setActionLoading(null);
@@ -145,10 +146,9 @@ function BranchesList({
 
     const result = await setHeadquartersAction(branch.id);
     if (!result.success) {
-      setActionError(result.error);
-      toast.error(result.error);
+      toast.error(result.error ?? MSG.operationFailed);
     } else {
-      toast.success('Filial definida como matriz');
+      toast.success('Filial definida como matriz com sucesso.');
       router.refresh();
     }
     setActionLoading(null);
@@ -199,7 +199,7 @@ function BranchesList({
     {
       id: 'phone',
       header: 'Telefone',
-      cell: (row: Branch) => row.phone ?? '—',
+      cell: (row: Branch) => formatPhone(row.phone),
     },
     {
       id: 'status',

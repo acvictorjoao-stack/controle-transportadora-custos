@@ -12,6 +12,13 @@ const optionalTrimmedString = z
   .optional()
   .transform((v) => (v?.length ? v : null));
 
+const optionalUppercaseString = z
+  .string()
+  .trim()
+  .nullable()
+  .optional()
+  .transform((v) => (v?.length ? v.toUpperCase() : null));
+
 const optionalNonNegativeNumber = z
   .union([z.number(), z.string(), z.null(), z.undefined()])
   .transform((v) => {
@@ -26,10 +33,22 @@ export const routeOperationalStatusSchema = z.enum(ROUTE_OPERATIONAL_STATUSES);
 export const routeTypeSchema = z.enum(ROUTE_TYPES);
 
 const routeBaseSchema = z.object({
-  name: z.string().trim().min(1, 'Informe o nome da rota.'),
-  code: optionalTrimmedString,
-  origin: z.string().trim().min(1, 'Informe a origem.'),
-  destination: z.string().trim().min(1, 'Informe o destino.'),
+  name: z
+    .string()
+    .trim()
+    .min(1, 'Informe o nome da rota.')
+    .transform((v) => v.toUpperCase()),
+  code: optionalUppercaseString,
+  origin: z
+    .string()
+    .trim()
+    .min(1, 'Informe a origem.')
+    .transform((v) => v.toUpperCase()),
+  destination: z
+    .string()
+    .trim()
+    .min(1, 'Informe o destino.')
+    .transform((v) => v.toUpperCase()),
   routeType: routeTypeSchema,
   plannedDistanceKm: optionalNonNegativeNumber,
   notes: optionalTrimmedString,

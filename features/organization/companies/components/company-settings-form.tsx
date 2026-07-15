@@ -14,7 +14,9 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import {useToast} from '@/contexts/feedback/toast-context';
 import type {CompanySettings} from '@/features/organization/settings/types';
+import {MSG} from '@/lib/feedback/messages';
 
 import {updateCompanySettingsAction} from '../actions';
 import type {CompanyProfile} from '../types';
@@ -38,6 +40,7 @@ export interface CompanySettingsFormProps {
 type FieldErrors = Partial<Record<keyof CompanySettingsInput, string>>;
 
 function CompanySettingsForm({company, onSaved}: CompanySettingsFormProps) {
+  const toast = useToast();
   const [formData, setFormData] = React.useState<CompanySettingsInput>(() => ({
     currency: company.settings.currency,
     language: company.settings.language,
@@ -79,7 +82,7 @@ function CompanySettingsForm({company, onSaved}: CompanySettingsFormProps) {
     const result = await updateCompanySettingsAction(formData);
 
     if (!result.success) {
-      setFormError(result.error);
+      setFormError(result.error ?? MSG.operationFailed);
       if (result.fieldErrors) {
         setFieldErrors(result.fieldErrors as FieldErrors);
       }
@@ -88,6 +91,7 @@ function CompanySettingsForm({company, onSaved}: CompanySettingsFormProps) {
     }
 
     onSaved(result.data);
+    toast.success('Configurações salvas com sucesso.');
     setSubmitting(false);
   }
 

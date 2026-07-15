@@ -12,6 +12,7 @@ import {Textarea} from '@/components/ui/textarea';
 import {useToast} from '@/contexts/feedback/toast-context';
 import type {BranchSelectOption} from '@/features/organization/branches/types';
 import {digitsOnly} from '@/features/master/companies/utils/format';
+import {MSG} from '@/lib/feedback/messages';
 
 import {createDriverAction, updateDriverAction} from '../actions';
 import {DRIVER_CONTRACT_TYPES, DRIVER_LICENSE_CATEGORIES} from '../constants/enums';
@@ -171,7 +172,7 @@ function DriverFormContent({
     }
 
     onSaved(result.data);
-    toast.success(isEdit ? 'Motorista atualizado com sucesso' : 'Motorista criado com sucesso');
+    toast.success(isEdit ? MSG.updated('Motorista') : MSG.created('Motorista'));
     onClose();
     setSubmitting(false);
   }

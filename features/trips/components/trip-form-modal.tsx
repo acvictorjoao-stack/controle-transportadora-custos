@@ -16,11 +16,11 @@ import type {BranchSelectOption} from '@/features/organization/branches/types';
 import type {RouteSelectOption} from '@/features/routes/types';
 import {formatDistanceKm} from '@/features/routes/utils/route-format';
 import type {VehicleSelectOption} from '@/features/vehicles/types';
+import {MSG} from '@/lib/feedback/messages';
 
 import {createTripAction, updateTripAction} from '../actions';
 import {resolveContractFreightAction} from '@/features/customers/actions';
-import {TRIP_STATUSES} from '../constants/enums';
-import type {Trip, TripStatus} from '../types';
+import type {Trip} from '../types';
 import {TRIP_STATUS_LABELS} from '../types';
 import type {CreateTripInput} from '../validation';
 import {TRIP_NATIVE_SELECT_CLASS} from '../utils/form-styles';
@@ -271,6 +271,7 @@ function TripFormContent({
 
     const payload: CreateTripInput = {
       ...formData,
+      tripStatus: isEdit ? formData.tripStatus : 'planned',
     };
 
     const result =
@@ -288,7 +289,7 @@ function TripFormContent({
     }
 
     onSaved(result.data);
-    toast.success(isEdit ? 'Viagem atualizada com sucesso' : 'Viagem criada com sucesso');
+    toast.success(isEdit ? MSG.updatedFeminine('Viagem') : MSG.createdFeminine('Viagem'));
     onClose();
     setSubmitting(false);
   }
@@ -389,22 +390,28 @@ function TripFormContent({
           />
         </FormField>
 
-        <FormField label="Status" htmlFor="trip-status" error={fieldErrors.tripStatus}>
-          <select
-            id="trip-status"
-            value={formData.tripStatus ?? 'planned'}
-            onChange={(e) =>
-              updateField('tripStatus', e.target.value as TripStatus)
-            }
-            className={TRIP_NATIVE_SELECT_CLASS}
-          >
-            {TRIP_STATUSES.map((status) => (
-              <option key={status} value={status}>
-                {TRIP_STATUS_LABELS[status]}
-              </option>
-            ))}
-          </select>
-        </FormField>
+        {isEdit ? (
+          <FormField label="Status" htmlFor="trip-status">
+            <Input
+              id="trip-status"
+              value={TRIP_STATUS_LABELS[formData.tripStatus ?? 'planned']}
+              disabled
+              readOnly
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Use Iniciar, Concluir ou Cancelar na tela de detalhes.
+            </p>
+          </FormField>
+        ) : (
+          <FormField label="Status" htmlFor="trip-status">
+            <Input
+              id="trip-status"
+              value={TRIP_STATUS_LABELS.planned}
+              disabled
+              readOnly
+            />
+          </FormField>
+        )}
         <FormField label="Filial" htmlFor="trip-branch" error={fieldErrors.branchId}>
           <select
             id="trip-branch"
@@ -705,7 +712,7 @@ function TripFormContent({
           ) : (
             <Save className="size-4" />
           )}
-          Salvar
+          {isEdit ? 'Salvar' : 'Cadastrar'}
         </Button>
       </div>
     </form>

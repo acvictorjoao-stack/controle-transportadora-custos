@@ -15,11 +15,41 @@ const optionalPhoneSchema = z
   .string()
   .trim()
   .optional()
-  .transform((value) => (value?.length ? value : null));
+  .transform((value) => {
+    if (!value?.length) return null;
+    const digits = digitsOnly(value).slice(0, 11);
+    return digits.length ? digits : null;
+  })
+  .refine(
+    (value) => value === null || value.length === 10 || value.length === 11,
+    'Telefone inválido.',
+  );
+
+const optionalUppercase = z
+  .string()
+  .trim()
+  .optional()
+  .transform((value) => {
+    if (!value?.length) return null;
+    return value.toUpperCase();
+  });
 
 export const updateCompanyProfileSchema = z.object({
-  legalName: z.string().trim().min(1, 'Informe a razão social.'),
-  tradeName: z.string().trim().nullable().optional(),
+  legalName: z
+    .string()
+    .trim()
+    .min(1, 'Informe a razão social.')
+    .transform((value) => value.toUpperCase()),
+  tradeName: z
+    .string()
+    .trim()
+    .nullable()
+    .optional()
+    .transform((value) => {
+      if (value === null || value === undefined) return null;
+      const trimmed = value.trim();
+      return trimmed.length ? trimmed.toUpperCase() : null;
+    }),
   taxId: taxIdSchema,
   email: z.string().trim().min(1, 'Informe o e-mail.').email('E-mail inválido.'),
   phone: optionalPhoneSchema,
@@ -29,56 +59,40 @@ export const updateCompanyProfileSchema = z.object({
     .trim()
     .optional()
     .transform((value) => (value?.length ? value : null)),
-  stateRegistration: z
-    .string()
-    .trim()
-    .optional()
-    .transform((value) => (value?.length ? value : null)),
-  municipalRegistration: z
-    .string()
-    .trim()
-    .optional()
-    .transform((value) => (value?.length ? value : null)),
-  addressStreet: z
-    .string()
-    .trim()
-    .optional()
-    .transform((value) => (value?.length ? value : null)),
+  stateRegistration: optionalUppercase,
+  municipalRegistration: optionalUppercase,
+  addressStreet: optionalUppercase,
   addressNumber: z
     .string()
     .trim()
     .optional()
     .transform((value) => (value?.length ? value : null)),
-  addressComplement: z
-    .string()
-    .trim()
-    .optional()
-    .transform((value) => (value?.length ? value : null)),
-  addressNeighborhood: z
-    .string()
-    .trim()
-    .optional()
-    .transform((value) => (value?.length ? value : null)),
-  addressCity: z
-    .string()
-    .trim()
-    .optional()
-    .transform((value) => (value?.length ? value : null)),
+  addressComplement: optionalUppercase,
+  addressNeighborhood: optionalUppercase,
+  addressCity: optionalUppercase,
   addressState: z
     .string()
     .trim()
     .optional()
-    .transform((value) => (value?.length ? value : null)),
+    .transform((value) => {
+      if (!value?.length) return null;
+      return value.toUpperCase();
+    }),
   addressZip: z
     .string()
     .trim()
     .optional()
-    .transform((value) => (value?.length ? digitsOnly(value) : null)),
+    .transform((value) => {
+      if (!value?.length) return null;
+      const digits = digitsOnly(value).slice(0, 8);
+      return digits.length ? digits : null;
+    })
+    .refine((value) => value === null || value.length === 8, 'CEP inválido.'),
   addressCountry: z
     .string()
     .trim()
     .optional()
-    .transform((value) => (value?.length ? value : 'Brasil')),
+    .transform((value) => (value?.length ? value.toUpperCase() : 'BRASIL')),
 });
 
 export type UpdateCompanyProfileInput = z.infer<typeof updateCompanyProfileSchema>;

@@ -1,1 +1,1 @@
-export {getCompanyDashboardData} from './dashboard';
+export {getOperationalDashboardData} from './operational-dashboard';

@@ -22,19 +22,20 @@ import type {BranchSelectOption} from '@/features/organization/branches/types';
 import type {DriverSelectOption} from '@/features/drivers/types';
 import type {RouteFilterOptions, RouteSelectOption} from '@/features/routes/types';
 import type {VehicleSelectOption} from '@/features/vehicles/types';
+import {MSG} from '@/lib/feedback/messages';
 
-import {deleteTripAction, updateTripStatusAction} from '../actions';
+import {deleteTripAction} from '../actions';
 import type {
   PaginatedTrips,
   Trip,
   TripListFilters,
   TripSortOptions,
-  TripStatus,
 } from '../types';
-import {TRIP_STATUS_LABELS} from '../types';
-import {formatDateTimeBr, getTripStatusVariant} from '../utils/trip-status';
+import {TRIP_STATUS_INDICATORS, TRIP_STATUS_LABELS} from '../types';
+import {getTripFreightValue} from '../utils/trip-lifecycle';
 import {buildTripsListUrl} from '../utils/list-url';
 import {getTripRouteLabel} from '../utils/route-planning';
+import {getTripStatusVariant} from '../utils/trip-status';
 import {TripFilters} from './trip-filters';
 import {TripFormModal} from './trip-form-modal';
 
@@ -50,6 +51,10 @@ export interface TripsListProps {
   routes: RouteSelectOption[];
   routeFilterOptions: RouteFilterOptions;
   error: string | null;
+}
+
+function formatMoney(value: number) {
+  return value.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
 }
 
 function TripsList({
@@ -101,9 +106,9 @@ function TripsList({
 
   async function handleDelete(trip: Trip) {
     const confirmed = await confirm({
-      title: 'Excluir viagem',
-      description: `Excluir a viagem "${trip.tripNumber}"? Esta ação não pode ser desfeita.`,
-      confirmLabel: 'Excluir',
+      title: MSG.deleteConfirmTitle,
+      description: MSG.deleteConfirmDescription,
+      confirmLabel: MSG.deleteConfirmLabel,
       variant: 'destructive',
     });
     if (!confirmed) return;
@@ -113,26 +118,9 @@ function TripsList({
 
     const result = await deleteTripAction(trip.id);
     if (!result.success) {
-      setActionError(result.error);
-      toast.error(result.error);
+      toast.error(result.error ?? MSG.operationFailed);
     } else {
-      toast.success('Viagem excluída com sucesso');
-      router.refresh();
-    }
-    setActionLoading(null);
-    setOpenMenuId(null);
-  }
-
-  async function handleStatusChange(trip: Trip, tripStatus: TripStatus) {
-    setActionLoading(trip.id);
-    setActionError(null);
-
-    const result = await updateTripStatusAction(trip.id, {tripStatus});
-    if (!result.success) {
-      setActionError(result.error);
-      toast.error(result.error);
-    } else {
-      toast.success(`Viagem marcada como ${TRIP_STATUS_LABELS[tripStatus]}`);
+      toast.success(MSG.deletedFeminine('Viagem'));
       router.refresh();
     }
     setActionLoading(null);
@@ -157,18 +145,9 @@ function TripsList({
       ),
     },
     {
-      id: 'status',
-      header: 'Status',
-      cell: (row: Trip) => (
-        <Badge variant={getTripStatusVariant(row.tripStatus)}>
-          {TRIP_STATUS_LABELS[row.tripStatus]}
-        </Badge>
-      ),
-    },
-    {
-      id: 'driver',
-      header: 'Motorista',
-      cell: (row: Trip) => row.driverName ?? '—',
+      id: 'client',
+      header: 'Cliente',
+      cell: (row: Trip) => row.customerName ?? row.clientName ?? '—',
     },
     {
       id: 'vehicle',
@@ -176,9 +155,9 @@ function TripsList({
       cell: (row: Trip) => row.vehiclePlate ?? '—',
     },
     {
-      id: 'client',
-      header: 'Cliente',
-      cell: (row: Trip) => row.customerName ?? row.clientName ?? '—',
+      id: 'driver',
+      header: 'Motorista',
+      cell: (row: Trip) => row.driverName ?? '—',
     },
     {
       id: 'routeName',
@@ -186,20 +165,21 @@ function TripsList({
       cell: (row: Trip) => getTripRouteLabel(row),
     },
     {
-      id: 'route',
-      header: 'Origem → Destino',
-      cell: (row: Trip) =>
-        [row.origin, row.destination].filter(Boolean).join(' → ') || '—',
+      id: 'freight',
+      header: 'Frete',
+      cell: (row: Trip) => {
+        const value = getTripFreightValue(row);
+        return value > 0 ? formatMoney(value) : '—';
+      },
     },
     {
-      id: 'departedAt',
-      header: 'Saída',
-      cell: (row: Trip) => formatDateTimeBr(row.departedAt),
-    },
-    {
-      id: 'branch',
-      header: 'Filial',
-      cell: (row: Trip) => row.branchName ?? '—',
+      id: 'status',
+      header: 'Status',
+      cell: (row: Trip) => (
+        <Badge variant={getTripStatusVariant(row.tripStatus)}>
+          {TRIP_STATUS_INDICATORS[row.tripStatus]} {TRIP_STATUS_LABELS[row.tripStatus]}
+        </Badge>
+      ),
     },
     {
       id: 'actions',
@@ -226,13 +206,6 @@ function TripsList({
           >
             <Pencil className="size-4" /> Editar
           </RowActionsMenuItem>
-          {(['in_progress', 'completed', 'cancelled'] as TripStatus[])
-            .filter((s) => s !== row.tripStatus)
-            .map((status) => (
-              <RowActionsMenuItem key={status} onClick={() => handleStatusChange(row, status)}>
-                {TRIP_STATUS_LABELS[status]}
-              </RowActionsMenuItem>
-            ))}
           <RowActionsMenuItem destructive onClick={() => handleDelete(row)}>
             <Trash2 className="size-4" /> Excluir
           </RowActionsMenuItem>

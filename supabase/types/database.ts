@@ -964,6 +964,10 @@ export type Database = {
           final_hour_meter: number | null;
           departed_at: string | null;
           arrived_at: string | null;
+          started_at: string | null;
+          completed_at: string | null;
+          cancelled_at: string | null;
+          cancellation_notes: string | null;
           weight_kg: number | null;
           volume_m3: number | null;
           cargo_type: string | null;
@@ -1005,6 +1009,10 @@ export type Database = {
           final_hour_meter?: number | null;
           departed_at?: string | null;
           arrived_at?: string | null;
+          started_at?: string | null;
+          completed_at?: string | null;
+          cancelled_at?: string | null;
+          cancellation_notes?: string | null;
           weight_kg?: number | null;
           volume_m3?: number | null;
           cargo_type?: string | null;
@@ -1046,6 +1054,10 @@ export type Database = {
           final_hour_meter?: number | null;
           departed_at?: string | null;
           arrived_at?: string | null;
+          started_at?: string | null;
+          completed_at?: string | null;
+          cancelled_at?: string | null;
+          cancellation_notes?: string | null;
           weight_kg?: number | null;
           volume_m3?: number | null;
           cargo_type?: string | null;
@@ -1285,10 +1297,22 @@ export type Database = {
           company_id: string;
           branch_id: string | null;
           trip_id: string;
-          expense_type: 'toll' | 'food' | 'lodging' | 'tire_shop' | 'maintenance' | 'other';
+          expense_type:
+            | 'toll'
+            | 'food'
+            | 'lodging'
+            | 'tire_shop'
+            | 'maintenance'
+            | 'parking'
+            | 'ferry'
+            | 'wash'
+            | 'advance'
+            | 'fine'
+            | 'other';
           amount: number;
           currency: string;
           description: string | null;
+          notes: string | null;
           expense_date: string;
           receipt_url: string | null;
           created_at: string;
@@ -1302,10 +1326,22 @@ export type Database = {
           company_id: string;
           branch_id?: string | null;
           trip_id: string;
-          expense_type: 'toll' | 'food' | 'lodging' | 'tire_shop' | 'maintenance' | 'other';
+          expense_type:
+            | 'toll'
+            | 'food'
+            | 'lodging'
+            | 'tire_shop'
+            | 'maintenance'
+            | 'parking'
+            | 'ferry'
+            | 'wash'
+            | 'advance'
+            | 'fine'
+            | 'other';
           amount?: number;
           currency?: string;
           description?: string | null;
+          notes?: string | null;
           expense_date?: string;
           receipt_url?: string | null;
           created_at?: string;
@@ -1319,10 +1355,22 @@ export type Database = {
           company_id?: string;
           branch_id?: string | null;
           trip_id?: string;
-          expense_type?: 'toll' | 'food' | 'lodging' | 'tire_shop' | 'maintenance' | 'other';
+          expense_type?:
+            | 'toll'
+            | 'food'
+            | 'lodging'
+            | 'tire_shop'
+            | 'maintenance'
+            | 'parking'
+            | 'ferry'
+            | 'wash'
+            | 'advance'
+            | 'fine'
+            | 'other';
           amount?: number;
           currency?: string;
           description?: string | null;
+          notes?: string | null;
           expense_date?: string;
           receipt_url?: string | null;
           created_at?: string;
@@ -2806,7 +2854,18 @@ export type Database = {
       trip_status: 'planned' | 'scheduled' | 'loading' | 'in_progress' | 'delivering' | 'waiting' | 'completed' | 'cancelled' | 'returned';
       trip_document_type: 'cte' | 'mdfe' | 'nfe' | 'canhoto' | 'photo' | 'receipt' | 'checklist' | 'other';
       trip_occurrence_type: 'delay' | 'breakdown' | 'accident' | 'fine' | 'redelivery' | 'return' | 'missing_document' | 'other';
-      trip_expense_type: 'toll' | 'food' | 'lodging' | 'tire_shop' | 'maintenance' | 'other';
+      trip_expense_type:
+        | 'toll'
+        | 'food'
+        | 'lodging'
+        | 'tire_shop'
+        | 'maintenance'
+        | 'parking'
+        | 'ferry'
+        | 'wash'
+        | 'advance'
+        | 'fine'
+        | 'other';
       fuel_document_type: 'invoice' | 'receipt' | 'proof' | 'pump_photo' | 'other';
       fuel_inconsistency_flag: 'odometer_decrease' | 'odometer_missing' | 'amount_mismatch' | 'consumption_outlier' | 'future_date' | 'duplicate_same_day';
       maintenance_type: 'preventive' | 'corrective' | 'emergency' | 'warranty' | 'review' | 'oil_change' | 'brakes' | 'suspension' | 'engine' | 'electrical' | 'cooling' | 'transmission' | 'tires' | 'other';

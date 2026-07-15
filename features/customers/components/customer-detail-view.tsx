@@ -11,9 +11,11 @@ import {PageTemplate} from '@/components/layout/page-template';
 import {Badge} from '@/components/ui/badge';
 import {Button} from '@/components/ui/button';
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
+import {useConfirm} from '@/contexts/feedback/confirm-context';
 import {ROUTES} from '@/constants/routes/paths';
 import type {BranchSelectOption} from '@/features/organization/branches/types';
 import {CUSTOMER_EXTENSION_REGISTRY} from '@/features/customers/types/integrations';
+import {MSG} from '@/lib/feedback/messages';
 
 import {
   createCustomerAddressAction,
@@ -94,6 +96,7 @@ function formatDateTime(value: string) {
 
 function CustomerDetailView({companyId, data, branches}: CustomerDetailViewProps) {
   const router = useRouter();
+  const confirm = useConfirm();
   const [activeTab, setActiveTab] = React.useState<TabId>('resumo');
   const [modalOpen, setModalOpen] = React.useState(false);
   const [contractModalOpen, setContractModalOpen] = React.useState(false);
@@ -197,7 +200,9 @@ function CustomerDetailView({companyId, data, branches}: CustomerDetailViewProps
         <Card>
           <CardContent className="pt-6">
             <dl className="grid gap-3 sm:grid-cols-2">
-              {infoRows.map(([label, value]) => (
+              {infoRows
+                .filter(([, value]) => value !== '—' && value !== null && value !== undefined)
+                .map(([label, value]) => (
                 <div key={label}>
                   <dt className="text-xs text-muted-foreground">{label}</dt>
                   <dd className="text-sm font-medium">{value}</dd>
@@ -241,7 +246,13 @@ function CustomerDetailView({companyId, data, branches}: CustomerDetailViewProps
                         size="sm"
                         variant="ghost"
                         onClick={async () => {
-                          if (!confirm('Excluir endereço?')) return;
+                          const confirmed = await confirm({
+                            title: MSG.deleteConfirmTitle,
+                            description: MSG.deleteConfirmDescription,
+                            confirmLabel: MSG.deleteConfirmLabel,
+                            variant: 'destructive',
+                          });
+                          if (!confirmed) return;
                           await deleteCustomerAddressAction(customer.id, (row as CustomerAddress).id);
                           handleRefresh();
                         }}
@@ -297,7 +308,13 @@ function CustomerDetailView({companyId, data, branches}: CustomerDetailViewProps
                         size="sm"
                         variant="ghost"
                         onClick={async () => {
-                          if (!confirm('Excluir contato?')) return;
+                          const confirmed = await confirm({
+                            title: MSG.deleteConfirmTitle,
+                            description: MSG.deleteConfirmDescription,
+                            confirmLabel: MSG.deleteConfirmLabel,
+                            variant: 'destructive',
+                          });
+                          if (!confirmed) return;
                           await deleteCustomerContactAction(customer.id, (row as CustomerContact).id);
                           handleRefresh();
                         }}
@@ -380,7 +397,13 @@ function CustomerDetailView({companyId, data, branches}: CustomerDetailViewProps
                         size="sm"
                         variant="ghost"
                         onClick={async () => {
-                          if (!confirm('Cancelar contrato?')) return;
+                          const confirmed = await confirm({
+                            title: 'Cancelar contrato',
+                            description: 'Deseja realmente cancelar este contrato?',
+                            confirmLabel: 'Cancelar contrato',
+                            variant: 'destructive',
+                          });
+                          if (!confirmed) return;
                           await deleteCustomerContractAction(customer.id, (row as CustomerContract).id);
                           handleRefresh();
                         }}
@@ -437,7 +460,13 @@ function CustomerDetailView({companyId, data, branches}: CustomerDetailViewProps
                         size="sm"
                         variant="ghost"
                         onClick={async () => {
-                          if (!confirm('Excluir documento?')) return;
+                          const confirmed = await confirm({
+                            title: MSG.deleteDocumentTitle,
+                            description: MSG.deleteDocumentDescription,
+                            confirmLabel: MSG.deleteConfirmLabel,
+                            variant: 'destructive',
+                          });
+                          if (!confirmed) return;
                           await deleteCustomerDocumentAction(customer.id, (row as CustomerDocument).id);
                           handleRefresh();
                         }}

@@ -25,5 +25,5 @@ export function mapDatabaseError(error: {code?: string; message: string}): strin
     return 'Já existe um registro com estes dados.';
   }
 
-  return error.message || 'Erro ao processar a solicitação.';
+  return 'Não foi possível concluir a operação.';
 }

@@ -1,14 +1,8 @@
 import {redirect} from 'next/navigation';
 
-import {
-  DashboardCharts,
-  DashboardKpis,
-  DashboardRankings,
-  DashboardSideCards,
-} from '@/components/dashboard';
 import {PageTemplate} from '@/components/layout/page-template';
-import {Section} from '@/components/layout/section';
-import {getCompanyDashboardData} from '@/features/organization/dashboard/queries';
+import {OperationalDashboard} from '@/features/organization/dashboard/components/operational-dashboard';
+import {getOperationalDashboardData} from '@/features/organization/dashboard/queries/operational-dashboard';
 import {getCurrentCompanyProfile, needsOnboarding} from '@/features/organization/companies/queries';
 import {listBranches} from '@/features/organization/branches/queries';
 import {OnboardingWizard} from '@/features/organization/onboarding/components';
@@ -28,14 +22,12 @@ export default async function DashboardPage() {
 
   const [company, dashboardData] = await Promise.all([
     getCurrentCompanyProfile(supabase, companyId),
-    getCompanyDashboardData(supabase, companyId),
+    getOperationalDashboardData(supabase, companyId),
   ]);
   const showOnboarding = company ? needsOnboarding(company) : false;
   const branches = showOnboarding
     ? await listBranches(supabase, {companyId})
     : null;
-
-  const {title, description} = dashboardData.header;
 
   return (
     <>
@@ -43,27 +35,11 @@ export default async function DashboardPage() {
         <OnboardingWizard company={company} branches={branches} />
       )}
       <PageTemplate
-        title={title}
-        description={description}
+        title="Dashboard Operacional"
+        description="Visão rápida da operação: viagens, fretes, frota e cadastros."
         showBreadcrumb={false}
       >
-        <Section>
-          <DashboardKpis kpis={dashboardData.kpis} />
-        </Section>
-
-        <div className="grid grid-cols-1 gap-4 lg:gap-5 xl:grid-cols-3 2xl:grid-cols-4">
-          <div className="flex flex-col gap-4 lg:gap-5 xl:col-span-2 2xl:col-span-3">
-            <DashboardCharts charts={dashboardData.charts} />
-            <DashboardRankings rankings={dashboardData.rankings} />
-          </div>
-          <div className="xl:col-span-1">
-            <DashboardSideCards
-              alerts={dashboardData.alerts}
-              activities={dashboardData.activities}
-              upcomingDue={dashboardData.upcomingDue}
-            />
-          </div>
-        </div>
+        <OperationalDashboard data={dashboardData} />
       </PageTemplate>
     </>
   );

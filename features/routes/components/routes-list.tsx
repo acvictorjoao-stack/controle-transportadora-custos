@@ -17,6 +17,7 @@ import {Button} from '@/components/ui/button';
 import {useConfirm} from '@/contexts/feedback/confirm-context';
 import {useToast} from '@/contexts/feedback/toast-context';
 import {ROUTES} from '@/constants/routes/paths';
+import {MSG} from '@/lib/feedback/messages';
 
 import {deleteRouteAction, updateRouteStatusAction} from '../actions';
 import type {
@@ -106,9 +107,9 @@ function RoutesList({
 
   async function handleDelete(route: Route) {
     const confirmed = await confirm({
-      title: 'Excluir rota',
-      description: `Excluir a rota "${route.name}"? Esta ação não pode ser desfeita.`,
-      confirmLabel: 'Excluir',
+      title: MSG.deleteConfirmTitle,
+      description: MSG.deleteConfirmDescription,
+      confirmLabel: MSG.deleteConfirmLabel,
       variant: 'destructive',
     });
     if (!confirmed) return;
@@ -118,10 +119,9 @@ function RoutesList({
 
     const result = await deleteRouteAction(route.id);
     if (!result.success) {
-      setActionError(result.error);
-      toast.error(result.error);
+      toast.error(result.error ?? MSG.operationFailed);
     } else {
-      toast.success('Rota excluída com sucesso');
+      toast.success(MSG.deletedFeminine('Rota'));
       router.refresh();
     }
     setActionLoading(null);
@@ -137,11 +137,13 @@ function RoutesList({
 
     const result = await updateRouteStatusAction(route.id, {operationalStatus});
     if (!result.success) {
-      setActionError(result.error);
-      toast.error(result.error);
+      toast.error(result.error ?? MSG.operationFailed);
     } else {
       toast.success(
-        `Rota marcada como ${ROUTE_OPERATIONAL_STATUS_LABELS[operationalStatus]}`,
+        MSG.statusChangedFeminine(
+          'Rota',
+          ROUTE_OPERATIONAL_STATUS_LABELS[operationalStatus],
+        ),
       );
       router.refresh();
     }

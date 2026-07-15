@@ -11,6 +11,7 @@ import {Input} from '@/components/ui/input';
 import {Textarea} from '@/components/ui/textarea';
 import {useToast} from '@/contexts/feedback/toast-context';
 import type {BranchSelectOption} from '@/features/organization/branches/types';
+import {MSG} from '@/lib/feedback/messages';
 
 import {createVehicleAction, updateVehicleAction} from '../actions';
 import type {Vehicle, VehicleAssetStatus, VehicleBodyType, VehicleFuelType} from '../types';
@@ -199,7 +200,7 @@ function VehicleFormContent({
     }
 
     onSaved(result.data);
-    toast.success(isEdit ? 'Veículo atualizado com sucesso' : 'Veículo criado com sucesso');
+    toast.success(isEdit ? MSG.updated('Veículo') : MSG.created('Veículo'));
     setSubmitting(false);
     onClose();
   }
@@ -465,7 +466,7 @@ function VehicleFormContent({
         </Button>
         <Button type="submit" disabled={submitting}>
           {submitting ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-          Salvar
+          {isEdit ? 'Salvar' : 'Cadastrar'}
         </Button>
       </div>
     </form>

@@ -8,10 +8,11 @@ export async function composeRouteDetail(
   companyId: string,
   routeId: string,
 ): Promise<RouteDetailData | null> {
-  const route = await getRouteById(supabase, companyId, routeId);
+  const [route, history] = await Promise.all([
+    getRouteById(supabase, companyId, routeId),
+    listRouteHistory(supabase, companyId, routeId),
+  ]);
   if (!route) return null;
-
-  const history = await listRouteHistory(supabase, companyId, routeId);
 
   return {route, history};
 }

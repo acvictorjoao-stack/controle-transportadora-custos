@@ -8,11 +8,11 @@ import * as React from 'react';
 import {DataTable} from '@/components/data-display/data-table';
 import {TableContainer} from '@/components/data-display/table-container';
 import {PageTemplate} from '@/components/layout/page-template';
-import {Badge} from '@/components/ui/badge';
 import {Button} from '@/components/ui/button';
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
 import {Input} from '@/components/ui/input';
 import {Textarea} from '@/components/ui/textarea';
+import {useConfirm} from '@/contexts/feedback/confirm-context';
 import {ROUTES} from '@/constants/routes/paths';
 import type {Customer} from '@/features/customers/types';
 import type {BranchSelectOption} from '@/features/organization/branches/types';
@@ -20,28 +20,29 @@ import type {DriverSelectOption} from '@/features/drivers/types';
 import type {RouteSelectOption} from '@/features/routes/types';
 import {formatDistanceKm} from '@/features/routes/utils/route-format';
 import type {VehicleSelectOption} from '@/features/vehicles/types';
+import {MSG} from '@/lib/feedback/messages';
 
 import {
-  createTripExpenseAction,
   createTripOccurrenceAction,
   createTripStopAction,
   deleteTripDocumentAction,
   upsertTripChecklistAction,
 } from '../actions';
-import {TRIP_DOCUMENT_TYPES, TRIP_EXPENSE_TYPES, TRIP_OCCURRENCE_TYPES} from '../constants/enums';
-import type {TripDetailData, TripExpenseType, TripOccurrenceType} from '../types';
+import {TRIP_DOCUMENT_TYPES, TRIP_OCCURRENCE_TYPES} from '../constants/enums';
+import type {TripDetailData, TripOccurrenceType} from '../types';
 import {
   TRIP_DOCUMENT_TYPE_LABELS,
-  TRIP_EXPENSE_TYPE_LABELS,
   TRIP_HISTORY_ACTION_LABELS,
   TRIP_OCCURRENCE_TYPE_LABELS,
   TRIP_STATUS_LABELS,
 } from '../types';
-import {formatDateBr, formatDateTimeBr, getTripStatusVariant} from '../utils/trip-status';
+import {formatDateBr, formatDateTimeBr} from '../utils/trip-status';
 import {getTripRouteLabel} from '../utils/route-planning';
 import {TRIP_NATIVE_SELECT_CLASS} from '../utils/form-styles';
+import {TripExpensesTab} from './trip-expenses-tab';
 import {TripFileUpload} from './trip-file-upload';
 import {TripFormModal} from './trip-form-modal';
+import {TripLifecycleCard} from './trip-lifecycle-card';
 
 export interface TripDetailViewProps {
   companyId: string;
@@ -79,6 +80,7 @@ function TripDetailView({
   routes,
 }: TripDetailViewProps) {
   const router = useRouter();
+  const confirm = useConfirm();
   const [activeTab, setActiveTab] = React.useState<TabId>('resumo');
   const [modalOpen, setModalOpen] = React.useState(false);
   const {trip} = data;
@@ -88,7 +90,13 @@ function TripDetailView({
   }
 
   async function handleDeleteDocument(documentId: string) {
-    if (!confirm('Excluir este documento?')) return;
+    const confirmed = await confirm({
+      title: MSG.deleteDocumentTitle,
+      description: MSG.deleteDocumentDescription,
+      confirmLabel: MSG.deleteConfirmLabel,
+      variant: 'destructive',
+    });
+    if (!confirmed) return;
     const result = await deleteTripDocumentAction(documentId, trip.id);
     if (result.success) handleRefresh();
   }
@@ -127,6 +135,14 @@ function TripDetailView({
     ['Data da viagem', formatDateTimeBr(trip.plannedDepartureAt)],
   ];
 
+  const expensesTotal = data.expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const freightValue = trip.contractedFreightValue ?? trip.actualFreightValue ?? 0;
+  const operationalResult = freightValue - expensesTotal;
+
+  function formatMoney(value: number) {
+    return value.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+  }
+
   return (
     <PageTemplate
       title={trip.tripNumber}
@@ -147,15 +163,8 @@ function TripDetailView({
         </div>
       }
     >
-      <div className="mb-6 flex flex-wrap items-center gap-3">
-        <Badge variant={getTripStatusVariant(trip.tripStatus)}>
-          {TRIP_STATUS_LABELS[trip.tripStatus]}
-        </Badge>
-        {(trip.customerName ?? trip.clientName) && (
-          <span className="text-sm text-muted-foreground">
-            {trip.customerName ?? trip.clientName}
-          </span>
-        )}
+      <div className="mb-6">
+        <TripLifecycleCard trip={trip} onChanged={handleRefresh} />
       </div>
 
       <div className="mb-6 flex flex-wrap gap-2 border-b border-border pb-2">
@@ -173,6 +182,37 @@ function TripDetailView({
 
       {activeTab === 'resumo' && (
         <div className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-3">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Frete</CardTitle>
+              </CardHeader>
+              <CardContent className="text-2xl font-semibold">
+                {formatMoney(freightValue)}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Despesas</CardTitle>
+              </CardHeader>
+              <CardContent className="text-2xl font-semibold">
+                {formatMoney(expensesTotal)}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Resultado</CardTitle>
+              </CardHeader>
+              <CardContent
+                className={`text-2xl font-semibold ${
+                  operationalResult < 0 ? 'text-destructive' : ''
+                }`}
+              >
+                {formatMoney(operationalResult)}
+              </CardContent>
+            </Card>
+          </div>
+
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
               <CardHeader className="pb-2">
@@ -216,7 +256,9 @@ function TripDetailView({
             </CardHeader>
             <CardContent>
               <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                {planningRows.map(([label, value]) => (
+                {planningRows
+                  .filter(([, value]) => value !== '—' && value !== null && value !== undefined)
+                  .map(([label, value]) => (
                   <div key={label}>
                     <dt className="text-xs text-muted-foreground">{label}</dt>
                     <dd className="text-sm font-medium">{value}</dd>
@@ -235,7 +277,9 @@ function TripDetailView({
           </CardHeader>
           <CardContent>
             <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {infoRows.map(([label, value]) => (
+              {infoRows
+                .filter(([, value]) => value !== '—' && value !== null && value !== undefined)
+                .map(([label, value]) => (
                 <div key={label}>
                   <dt className="text-xs text-muted-foreground">{label}</dt>
                   <dd className="text-sm font-medium">{value}</dd>
@@ -273,7 +317,8 @@ function TripDetailView({
       )}
 
       {activeTab === 'despesas' && (
-        <ExpensesTab
+        <TripExpensesTab
+          companyId={companyId}
           tripId={trip.id}
           expenses={data.expenses}
           onSaved={handleRefresh}
@@ -773,111 +818,6 @@ function OccurrencesTab({
           getRowKey={(r) => r.id}
           emptyTitle="Nenhuma ocorrência"
           emptyDescription="Registre atrasos, panes, multas e outros eventos."
-        />
-      </TableContainer>
-    </div>
-  );
-}
-
-function ExpensesTab({
-  tripId,
-  expenses,
-  onSaved,
-}: {
-  tripId: string;
-  expenses: TripDetailData['expenses'];
-  onSaved: () => void;
-}) {
-  const [type, setType] = React.useState<TripExpenseType>('toll');
-  const [amount, setAmount] = React.useState('');
-  const [description, setDescription] = React.useState('');
-  const [saving, setSaving] = React.useState(false);
-
-  async function handleAdd() {
-    setSaving(true);
-    const result = await createTripExpenseAction({
-      tripId,
-      expenseType: type,
-      amount: amount || 0,
-      description: description || null,
-    });
-    setSaving(false);
-    if (result.success) {
-      setAmount('');
-      setDescription('');
-      onSaved();
-    }
-  }
-
-  const total = expenses.reduce((sum, e) => sum + e.amount, 0);
-
-  return (
-    <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        Estrutura de despesas preparada — sem integração financeira nesta sprint.
-        Total registrado:{' '}
-        <strong>
-          {total.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}
-        </strong>
-      </p>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Registrar despesa</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-3">
-          <select
-            value={type}
-            onChange={(e) => setType(e.target.value as TripExpenseType)}
-            className={TRIP_NATIVE_SELECT_CLASS}
-          >
-            {TRIP_EXPENSE_TYPES.map((t) => (
-              <option key={t} value={t}>
-                {TRIP_EXPENSE_TYPE_LABELS[t]}
-              </option>
-            ))}
-          </select>
-          <Input
-            type="number"
-            step="0.01"
-            placeholder="Valor"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-          />
-          <Input
-            placeholder="Descrição"
-            className="max-w-md"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-          <Button onClick={handleAdd} disabled={saving}>
-            Registrar
-          </Button>
-        </CardContent>
-      </Card>
-      <TableContainer>
-        <DataTable
-          columns={[
-            {
-              id: 'type',
-              header: 'Tipo',
-              cell: (r) => TRIP_EXPENSE_TYPE_LABELS[r.expenseType],
-            },
-            {
-              id: 'amount',
-              header: 'Valor',
-              cell: (r) =>
-                r.amount.toLocaleString('pt-BR', {
-                  style: 'currency',
-                  currency: r.currency,
-                }),
-            },
-            {id: 'date', header: 'Data', cell: (r) => formatDateBr(r.expenseDate)},
-            {id: 'desc', header: 'Descrição', cell: (r) => r.description ?? '—'},
-          ]}
-          data={expenses}
-          getRowKey={(r) => r.id}
-          emptyTitle="Nenhuma despesa"
-          emptyDescription="Registre pedágios, alimentação e outras despesas."
         />
       </TableContainer>
     </div>

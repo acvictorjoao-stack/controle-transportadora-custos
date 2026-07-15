@@ -18,6 +18,7 @@ import {useConfirm} from '@/contexts/feedback/confirm-context';
 import {useToast} from '@/contexts/feedback/toast-context';
 import {ROUTES} from '@/constants/routes/paths';
 import type {BranchSelectOption} from '@/features/organization/branches/types';
+import {MSG} from '@/lib/feedback/messages';
 
 import {deleteVehicleAction, updateVehicleStatusAction} from '../actions';
 import type {
@@ -87,9 +88,9 @@ function VehiclesList({
 
   async function handleDelete(vehicle: Vehicle) {
     const confirmed = await confirm({
-      title: 'Excluir veículo',
-      description: `Excluir o veículo "${formatPlate(vehicle.plate)}"? Esta ação não pode ser desfeita.`,
-      confirmLabel: 'Excluir',
+      title: MSG.deleteConfirmTitle,
+      description: MSG.deleteConfirmDescription,
+      confirmLabel: MSG.deleteConfirmLabel,
       variant: 'destructive',
     });
     if (!confirmed) return;
@@ -99,10 +100,9 @@ function VehiclesList({
 
     const result = await deleteVehicleAction(vehicle.id);
     if (!result.success) {
-      setActionError(result.error);
-      toast.error(result.error);
+      toast.error(result.error ?? MSG.operationFailed);
     } else {
-      toast.success('Veículo excluído com sucesso');
+      toast.success(MSG.deleted('Veículo'));
       router.refresh();
     }
     setActionLoading(null);
@@ -115,10 +115,11 @@ function VehiclesList({
 
     const result = await updateVehicleStatusAction(vehicle.id, {assetStatus});
     if (!result.success) {
-      setActionError(result.error);
-      toast.error(result.error);
+      toast.error(result.error ?? MSG.operationFailed);
     } else {
-      toast.success(`Veículo marcado como ${VEHICLE_ASSET_STATUS_LABELS[assetStatus]}`);
+      toast.success(
+        MSG.statusChanged('Veículo', VEHICLE_ASSET_STATUS_LABELS[assetStatus]),
+      );
       router.refresh();
     }
     setActionLoading(null);

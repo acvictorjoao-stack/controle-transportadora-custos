@@ -14,6 +14,8 @@ import {
 import {zodFieldErrors} from '@/lib/validators/zod-field-errors';
 
 import {
+  cancelTrip,
+  completeTrip,
   createTrip,
   createTripDocument,
   createTripExpense,
@@ -22,7 +24,10 @@ import {
   getTripById,
   softDeleteTrip,
   softDeleteTripDocument,
+  softDeleteTripExpense,
+  startTrip,
   updateTrip,
+  updateTripExpense,
   updateTripStatus,
   upsertTripChecklist,
 } from '../queries';
@@ -35,10 +40,13 @@ import type {
   TripStop,
 } from '../types';
 import {
+  cancelTripSchema,
   createTripExpenseSchema,
   createTripOccurrenceSchema,
   createTripSchema,
   createTripStopSchema,
+  deleteTripExpenseSchema,
+  updateTripExpenseSchema,
   updateTripSchema,
   updateTripStatusSchema,
   uploadTripFileSchema,
@@ -205,6 +213,85 @@ export async function updateTripStatusAction(
     return {
       success: false,
       error: err instanceof Error ? err.message : 'Erro ao atualizar status.',
+    };
+  }
+}
+
+export async function startTripAction(tripId: string): Promise<ActionResult<Trip>> {
+  const resolved = await resolveTripAccess('trips:update');
+  if (!resolved.success) return resolved;
+
+  try {
+    const supabase = await getServerSupabaseClient();
+    const trip = await startTrip(
+      supabase,
+      resolved.data.companyId,
+      tripId,
+      resolved.data.profileId,
+    );
+    revalidateTripPaths(trip.id);
+    return {success: true, data: trip};
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Erro ao iniciar viagem.',
+    };
+  }
+}
+
+export async function completeTripAction(tripId: string): Promise<ActionResult<Trip>> {
+  const resolved = await resolveTripAccess('trips:update');
+  if (!resolved.success) return resolved;
+
+  try {
+    const supabase = await getServerSupabaseClient();
+    const trip = await completeTrip(
+      supabase,
+      resolved.data.companyId,
+      tripId,
+      resolved.data.profileId,
+    );
+    revalidateTripPaths(trip.id);
+    return {success: true, data: trip};
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Erro ao concluir viagem.',
+    };
+  }
+}
+
+export async function cancelTripAction(
+  tripId: string,
+  input: unknown,
+): Promise<ActionResult<Trip>> {
+  const resolved = await resolveTripAccess('trips:update');
+  if (!resolved.success) return resolved;
+
+  const parsed = cancelTripSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: 'Informe a observação do cancelamento.',
+      fieldErrors: zodFieldErrors(parsed.error.issues),
+    };
+  }
+
+  try {
+    const supabase = await getServerSupabaseClient();
+    const trip = await cancelTrip(
+      supabase,
+      resolved.data.companyId,
+      tripId,
+      parsed.data,
+      resolved.data.profileId,
+    );
+    revalidateTripPaths(trip.id);
+    return {success: true, data: trip};
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Erro ao cancelar viagem.',
     };
   }
 }
@@ -405,6 +492,81 @@ export async function createTripExpenseAction(
     return {
       success: false,
       error: err instanceof Error ? err.message : 'Erro ao registrar despesa.',
+    };
+  }
+}
+
+export async function updateTripExpenseAction(
+  input: unknown,
+): Promise<ActionResult<TripExpense>> {
+  const resolved = await resolveTripAccess('trips:update');
+  if (!resolved.success) return resolved;
+
+  const parsed = updateTripExpenseSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: 'Verifique os campos da despesa.',
+      fieldErrors: zodFieldErrors(parsed.error.issues),
+    };
+  }
+
+  try {
+    const supabase = await getServerSupabaseClient();
+    const trip = await getTripById(
+      supabase,
+      resolved.data.companyId,
+      parsed.data.tripId,
+    );
+    if (!trip) {
+      return {success: false, error: 'Viagem não encontrada.'};
+    }
+
+    const expense = await updateTripExpense(
+      supabase,
+      resolved.data.companyId,
+      parsed.data,
+      resolved.data.profileId,
+    );
+    revalidateTripPaths(parsed.data.tripId);
+    return {success: true, data: expense};
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Erro ao atualizar despesa.',
+    };
+  }
+}
+
+export async function deleteTripExpenseAction(
+  input: unknown,
+): Promise<ActionResult<void>> {
+  const resolved = await resolveTripAccess('trips:delete');
+  if (!resolved.success) return resolved;
+
+  const parsed = deleteTripExpenseSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: 'Despesa inválida.',
+      fieldErrors: zodFieldErrors(parsed.error.issues),
+    };
+  }
+
+  try {
+    const supabase = await getServerSupabaseClient();
+    await softDeleteTripExpense(
+      supabase,
+      resolved.data.companyId,
+      parsed.data.id,
+      resolved.data.profileId,
+    );
+    revalidateTripPaths(parsed.data.tripId);
+    return {success: true, data: undefined};
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Erro ao excluir despesa.',
     };
   }
 }

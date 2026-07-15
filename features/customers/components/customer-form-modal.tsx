@@ -12,6 +12,7 @@ import {Textarea} from '@/components/ui/textarea';
 import {useToast} from '@/contexts/feedback/toast-context';
 import type {BranchSelectOption} from '@/features/organization/branches/types';
 import {digitsOnly, formatTaxId} from '@/features/master/companies/utils/format';
+import {MSG} from '@/lib/feedback/messages';
 
 import {
   createCustomerAction,
@@ -252,7 +253,7 @@ function CustomerCreateFormContent({
       }
     }
 
-    toast.success('Cliente criado com sucesso');
+    toast.success(MSG.created('Cliente'));
     onSaved();
     setSubmitting(false);
     onClose();
@@ -501,7 +502,7 @@ function CustomerEditFormContent({
     }
 
     onSaved();
-    toast.success('Cliente atualizado com sucesso');
+    toast.success(MSG.updated('Cliente'));
     onClose();
   }
 

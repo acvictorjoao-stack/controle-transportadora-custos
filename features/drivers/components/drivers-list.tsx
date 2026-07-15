@@ -18,6 +18,7 @@ import {useConfirm} from '@/contexts/feedback/confirm-context';
 import {useToast} from '@/contexts/feedback/toast-context';
 import {ROUTES} from '@/constants/routes/paths';
 import type {BranchSelectOption} from '@/features/organization/branches/types';
+import {MSG} from '@/lib/feedback/messages';
 
 import {deleteDriverAction, updateDriverStatusAction} from '../actions';
 import type {
@@ -92,9 +93,9 @@ function DriversList({
 
   async function handleDelete(driver: Driver) {
     const confirmed = await confirm({
-      title: 'Excluir motorista',
-      description: `Excluir o motorista "${driver.name}"? Esta ação não pode ser desfeita.`,
-      confirmLabel: 'Excluir',
+      title: MSG.deleteConfirmTitle,
+      description: MSG.deleteConfirmDescription,
+      confirmLabel: MSG.deleteConfirmLabel,
       variant: 'destructive',
     });
     if (!confirmed) return;
@@ -104,10 +105,9 @@ function DriversList({
 
     const result = await deleteDriverAction(driver.id);
     if (!result.success) {
-      setActionError(result.error);
-      toast.error(result.error);
+      toast.error(result.error ?? MSG.operationFailed);
     } else {
-      toast.success('Motorista excluído com sucesso');
+      toast.success(MSG.deleted('Motorista'));
       router.refresh();
     }
     setActionLoading(null);
@@ -120,10 +120,11 @@ function DriversList({
 
     const result = await updateDriverStatusAction(driver.id, {operationalStatus});
     if (!result.success) {
-      setActionError(result.error);
-      toast.error(result.error);
+      toast.error(result.error ?? MSG.operationFailed);
     } else {
-      toast.success(`Motorista marcado como ${DRIVER_OPERATIONAL_STATUS_LABELS[operationalStatus]}`);
+      toast.success(
+        MSG.statusChanged('Motorista', DRIVER_OPERATIONAL_STATUS_LABELS[operationalStatus]),
+      );
       router.refresh();
     }
     setActionLoading(null);

@@ -1,6 +1,7 @@
 import {z} from 'zod';
 
 import {
+  SIMPLE_TRIP_STATUSES,
   TRIP_DOCUMENT_TYPES,
   TRIP_EXPENSE_TYPES,
   TRIP_OCCURRENCE_TYPES,
@@ -12,6 +13,12 @@ const optionalString = z
   .trim()
   .optional()
   .transform((v) => (v?.length ? v : null));
+
+const optionalUppercaseString = z
+  .string()
+  .trim()
+  .optional()
+  .transform((v) => (v?.length ? v.toUpperCase() : null));
 
 const optionalNumber = z
   .union([z.string(), z.number()])
@@ -35,6 +42,7 @@ const optionalDate = z
   .transform((v) => (v?.length ? v : null));
 
 export const tripStatusSchema = z.enum(TRIP_STATUSES);
+export const simpleTripStatusSchema = z.enum(SIMPLE_TRIP_STATUSES);
 export const tripDocumentTypeSchema = z.enum(TRIP_DOCUMENT_TYPES);
 export const tripOccurrenceTypeSchema = z.enum(TRIP_OCCURRENCE_TYPES);
 export const tripExpenseTypeSchema = z.enum(TRIP_EXPENSE_TYPES);
@@ -82,9 +90,9 @@ const tripBaseSchema = z.object({
     .nullable()
     .optional()
     .transform((v) => v ?? null),
-  origin: optionalString,
-  destination: optionalString,
-  route: optionalString,
+  origin: optionalUppercaseString,
+  destination: optionalUppercaseString,
+  route: optionalUppercaseString,
   plannedDistanceKm: optionalNumber,
   plannedDepartureAt: optionalDateTime,
   initialOdometerKm: optionalNumber,
@@ -115,6 +123,13 @@ export const updateTripSchema = tripBaseSchema;
 
 export const updateTripStatusSchema = z.object({
   tripStatus: tripStatusSchema,
+});
+
+export const cancelTripSchema = z.object({
+  cancellationNotes: z
+    .string()
+    .trim()
+    .min(1, 'Informe a observação do cancelamento.'),
 });
 
 export const uploadTripFileSchema = z.object({
@@ -160,8 +175,31 @@ export const createTripExpenseSchema = z.object({
     }),
   currency: z.string().trim().min(1).optional().default('BRL'),
   description: optionalString,
+  notes: optionalString,
   expenseDate: optionalDate,
   receiptUrl: optionalString,
+});
+
+export const updateTripExpenseSchema = z.object({
+  id: z.string().uuid(),
+  tripId: z.string().uuid(),
+  expenseType: tripExpenseTypeSchema,
+  amount: z
+    .union([z.string(), z.number()])
+    .transform((v) => {
+      const num = typeof v === 'number' ? v : Number(String(v).replace(',', '.'));
+      return Number.isFinite(num) && num >= 0 ? num : 0;
+    }),
+  currency: z.string().trim().min(1).optional().default('BRL'),
+  description: optionalString,
+  notes: optionalString,
+  expenseDate: optionalDate,
+  receiptUrl: optionalString,
+});
+
+export const deleteTripExpenseSchema = z.object({
+  id: z.string().uuid(),
+  tripId: z.string().uuid(),
 });
 
 export const createTripStopSchema = z.object({
@@ -185,8 +223,11 @@ export const createTripStopSchema = z.object({
 export type CreateTripInput = z.infer<typeof createTripSchema>;
 export type UpdateTripInput = z.infer<typeof updateTripSchema>;
 export type UpdateTripStatusInput = z.infer<typeof updateTripStatusSchema>;
+export type CancelTripInput = z.infer<typeof cancelTripSchema>;
 export type UploadTripFileInput = z.infer<typeof uploadTripFileSchema>;
 export type UpsertTripChecklistInput = z.infer<typeof upsertTripChecklistSchema>;
 export type CreateTripOccurrenceInput = z.infer<typeof createTripOccurrenceSchema>;
 export type CreateTripExpenseInput = z.infer<typeof createTripExpenseSchema>;
+export type UpdateTripExpenseInput = z.infer<typeof updateTripExpenseSchema>;
+export type DeleteTripExpenseInput = z.infer<typeof deleteTripExpenseSchema>;
 export type CreateTripStopInput = z.infer<typeof createTripStopSchema>;

@@ -10,6 +10,7 @@ import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {Textarea} from '@/components/ui/textarea';
 import {useToast} from '@/contexts/feedback/toast-context';
+import {MSG} from '@/lib/feedback/messages';
 
 import {createRouteAction, updateRouteAction} from '../actions';
 import {ROUTE_TYPES} from '../constants/enums';
@@ -109,16 +110,15 @@ function RouteFormContent({
       : await createRouteAction(formData);
 
     if (!result.success) {
-      setFormError(result.error);
+      setFormError(result.error ?? MSG.operationFailed);
       if (result.fieldErrors) {
         setFieldErrors(result.fieldErrors as FieldErrors);
       }
-      toast.error(result.error);
       setSubmitting(false);
       return;
     }
 
-    toast.success(isEdit ? 'Rota atualizada com sucesso' : 'Rota criada com sucesso');
+    toast.success(isEdit ? MSG.updatedFeminine('Rota') : MSG.createdFeminine('Rota'));
     onSaved(result.data);
     onClose();
     setSubmitting(false);
@@ -141,16 +141,20 @@ function RouteFormContent({
         >
           <Input
             id="route-name"
+            className="uppercase"
             value={formData.name}
-            onChange={(e) => updateField('name', e.target.value)}
+            onChange={(e) => updateField('name', e.target.value.toUpperCase())}
             placeholder="Ex: São Luís → Bacabal"
           />
         </FormField>
         <FormField label="Código" htmlFor="route-code" error={fieldErrors.code}>
           <Input
             id="route-code"
+            className="uppercase"
             value={formData.code ?? ''}
-            onChange={(e) => updateField('code', e.target.value || null)}
+            onChange={(e) =>
+              updateField('code', e.target.value ? e.target.value.toUpperCase() : null)
+            }
             placeholder="Ex: CD116"
           />
         </FormField>
@@ -162,8 +166,9 @@ function RouteFormContent({
         >
           <Input
             id="route-origin"
+            className="uppercase"
             value={formData.origin}
-            onChange={(e) => updateField('origin', e.target.value)}
+            onChange={(e) => updateField('origin', e.target.value.toUpperCase())}
             placeholder="Ex: São Luís"
           />
         </FormField>
@@ -175,8 +180,9 @@ function RouteFormContent({
         >
           <Input
             id="route-destination"
+            className="uppercase"
             value={formData.destination}
-            onChange={(e) => updateField('destination', e.target.value)}
+            onChange={(e) => updateField('destination', e.target.value.toUpperCase())}
             placeholder="Ex: Bacabal"
           />
         </FormField>

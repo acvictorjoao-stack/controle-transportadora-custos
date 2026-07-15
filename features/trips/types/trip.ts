@@ -1,6 +1,7 @@
 import type {EntityStatus} from '@/features/organization/companies/types';
 
 import type {
+  SIMPLE_TRIP_STATUSES,
   TRIP_DOCUMENT_TYPES,
   TRIP_EXPENSE_TYPES,
   TRIP_OCCURRENCE_TYPES,
@@ -9,6 +10,7 @@ import type {
 import type {TripIntegrationSections} from './integrations';
 
 export type TripStatus = (typeof TRIP_STATUSES)[number];
+export type SimpleTripStatus = (typeof SIMPLE_TRIP_STATUSES)[number];
 export type TripDocumentType = (typeof TRIP_DOCUMENT_TYPES)[number];
 export type TripOccurrenceType = (typeof TRIP_OCCURRENCE_TYPES)[number];
 export type TripExpenseType = (typeof TRIP_EXPENSE_TYPES)[number];
@@ -41,6 +43,10 @@ export interface TripRow {
   final_hour_meter: number | null;
   departed_at: string | null;
   arrived_at: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  cancelled_at: string | null;
+  cancellation_notes: string | null;
   weight_kg: number | null;
   volume_m3: number | null;
   cargo_type: string | null;
@@ -116,6 +122,10 @@ export interface Trip {
   finalHourMeter: number | null;
   departedAt: string | null;
   arrivedAt: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  cancelledAt: string | null;
+  cancellationNotes: string | null;
   weightKg: number | null;
   volumeM3: number | null;
   cargoType: string | null;
@@ -252,6 +262,7 @@ export interface TripExpenseRow {
   amount: number;
   currency: string;
   description: string | null;
+  notes: string | null;
   expense_date: string;
   receipt_url: string | null;
   created_at: string;
@@ -265,6 +276,7 @@ export interface TripExpense {
   amount: number;
   currency: string;
   description: string | null;
+  notes: string | null;
   expenseDate: string;
   receiptUrl: string | null;
   createdAt: string;
@@ -382,7 +394,7 @@ export interface TripDetailData extends TripIntegrationSections {
 }
 
 export const TRIP_STATUS_LABELS: Record<TripStatus, string> = {
-  planned: 'Planejada',
+  planned: 'Programada',
   scheduled: 'Agendada',
   loading: 'Carregando',
   in_progress: 'Em andamento',
@@ -391,6 +403,18 @@ export const TRIP_STATUS_LABELS: Record<TripStatus, string> = {
   completed: 'Concluída',
   cancelled: 'Cancelada',
   returned: 'Retornada',
+};
+
+export const TRIP_STATUS_INDICATORS: Record<TripStatus, string> = {
+  planned: '🟡',
+  scheduled: '🟡',
+  loading: '🔵',
+  in_progress: '🔵',
+  delivering: '🔵',
+  waiting: '🟡',
+  completed: '🟢',
+  cancelled: '🔴',
+  returned: '🟢',
 };
 
 export const TRIP_DOCUMENT_TYPE_LABELS: Record<TripDocumentType, string> = {
@@ -419,9 +443,12 @@ export const TRIP_EXPENSE_TYPE_LABELS: Record<TripExpenseType, string> = {
   toll: 'Pedágio',
   food: 'Alimentação',
   lodging: 'Hospedagem',
-  tire_shop: 'Borracharia',
-  maintenance: 'Manutenção',
-  other: 'Outras despesas',
+  parking: 'Estacionamento',
+  ferry: 'Balsa',
+  wash: 'Lavagem',
+  advance: 'Adiantamento',
+  fine: 'Multa',
+  other: 'Outros',
 };
 
 export const TRIP_HISTORY_ACTION_LABELS: Record<string, string> = {
@@ -435,5 +462,10 @@ export const TRIP_HISTORY_ACTION_LABELS: Record<string, string> = {
   occurrence: 'Ocorrência',
   checklist_create: 'Checklist criado',
   checklist_update: 'Checklist atualizado',
-  completed: 'Finalização',
+  expense_create: 'Despesa criada',
+  expense_update: 'Despesa editada',
+  expense_delete: 'Despesa excluída',
+  started: 'Viagem iniciada',
+  completed: 'Viagem concluída',
+  cancelled: 'Viagem cancelada',
 };

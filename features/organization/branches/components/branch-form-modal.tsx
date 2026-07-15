@@ -9,7 +9,12 @@ import {Alert, AlertDescription} from '@/components/ui/alert';
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {useToast} from '@/contexts/feedback/toast-context';
+import {
+  formatPhoneInput,
+  normalizePhoneDigits,
+} from '@/features/customers/utils/customer-format';
 import {formatTaxId} from '@/features/master/companies/utils/format';
+import {MSG} from '@/lib/feedback/messages';
 
 import {createBranchAction, updateBranchAction} from '../actions';
 import type {Branch} from '../types';
@@ -97,7 +102,7 @@ function BranchFormContent({
       : await createBranchAction(formData);
 
     if (!result.success) {
-      setFormError(result.error);
+      setFormError(result.error ?? MSG.operationFailed);
       if (result.fieldErrors) {
         setFieldErrors(result.fieldErrors as FieldErrors);
       }
@@ -106,7 +111,9 @@ function BranchFormContent({
     }
 
     onSaved(result.data);
-    toast.success(isEdit ? 'Filial atualizada com sucesso' : 'Filial criada com sucesso');
+    toast.success(
+      isEdit ? MSG.updatedFeminine('Filial') : MSG.createdFeminine('Filial'),
+    );
     setSubmitting(false);
     onClose();
   }
@@ -123,16 +130,18 @@ function BranchFormContent({
           <FormField label="Código" htmlFor="code" required error={fieldErrors.code}>
             <Input
               id="code"
+              className="uppercase"
               value={formData.code}
-              onChange={(e) => updateField('code', e.target.value)}
+              onChange={(e) => updateField('code', e.target.value.toUpperCase())}
               disabled={branch?.isHeadquarters}
             />
           </FormField>
           <FormField label="Nome" htmlFor="name" required error={fieldErrors.name}>
             <Input
               id="name"
+              className="uppercase"
               value={formData.name}
-              onChange={(e) => updateField('name', e.target.value)}
+              onChange={(e) => updateField('name', e.target.value.toUpperCase())}
             />
           </FormField>
           <FormField label="CNPJ" htmlFor="taxId" error={fieldErrors.taxId}>
@@ -145,22 +154,34 @@ function BranchFormContent({
           <FormField label="Telefone" htmlFor="phone" error={fieldErrors.phone}>
             <Input
               id="phone"
-              value={formData.phone ?? ''}
-              onChange={(e) => updateField('phone', e.target.value || null)}
+              value={formatPhoneInput(formData.phone)}
+              onChange={(e) => updateField('phone', normalizePhoneDigits(e.target.value))}
             />
           </FormField>
           <FormField label="Responsável" htmlFor="responsibleName" error={fieldErrors.responsibleName} className="sm:col-span-2">
             <Input
               id="responsibleName"
+              className="uppercase"
               value={formData.responsibleName ?? ''}
-              onChange={(e) => updateField('responsibleName', e.target.value || null)}
+              onChange={(e) =>
+                updateField(
+                  'responsibleName',
+                  e.target.value ? e.target.value.toUpperCase() : null,
+                )
+              }
             />
           </FormField>
           <FormField label="Endereço" htmlFor="addressStreet" error={fieldErrors.addressStreet} className="sm:col-span-2">
             <Input
               id="addressStreet"
+              className="uppercase"
               value={formData.addressStreet ?? ''}
-              onChange={(e) => updateField('addressStreet', e.target.value || null)}
+              onChange={(e) =>
+                updateField(
+                  'addressStreet',
+                  e.target.value ? e.target.value.toUpperCase() : null,
+                )
+              }
             />
           </FormField>
         </div>
@@ -171,7 +192,7 @@ function BranchFormContent({
           </Button>
           <Button type="submit" disabled={submitting}>
             {submitting ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-            {isEdit ? 'Salvar' : 'Criar filial'}
+            {isEdit ? 'Salvar' : 'Cadastrar'}
           </Button>
         </div>
       </form>

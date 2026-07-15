@@ -6,6 +6,8 @@ import * as React from 'react';
 
 import {Alert, AlertDescription} from '@/components/ui/alert';
 import {Button} from '@/components/ui/button';
+import {useToast} from '@/contexts/feedback/toast-context';
+import {MSG} from '@/lib/feedback/messages';
 import {createClient} from '@/supabase/client';
 
 import {updateCompanyLogoAction} from '../actions';
@@ -22,6 +24,7 @@ export interface LogoUploadProps {
 
 function LogoUpload({companyId, logoUrl, onUploaded}: LogoUploadProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const toast = useToast();
   const [localPreview, setLocalPreview] = React.useState<string | null>(null);
   const preview = localPreview ?? logoUrl;
   const [uploading, setUploading] = React.useState(false);
@@ -66,7 +69,7 @@ function LogoUpload({companyId, logoUrl, onUploaded}: LogoUploadProps) {
         .upload(path, file, {upsert: true, contentType: file.type});
 
       if (uploadError) {
-        throw new Error(uploadError.message);
+        throw new Error('Não foi possível enviar a logo. Tente novamente.');
       }
 
       const {data: urlData} = supabase.storage
@@ -77,13 +80,14 @@ function LogoUpload({companyId, logoUrl, onUploaded}: LogoUploadProps) {
       const result = await updateCompanyLogoAction({logoUrl: publicUrl});
 
       if (!result.success) {
-        throw new Error(result.error);
+        throw new Error(result.error ?? MSG.operationFailed);
       }
 
       setLocalPreview(publicUrl);
       onUploaded(publicUrl);
+      toast.success('Logo atualizada com sucesso.');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao enviar logo.');
+      setError(err instanceof Error ? err.message : MSG.operationFailed);
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = '';
@@ -97,12 +101,13 @@ function LogoUpload({companyId, logoUrl, onUploaded}: LogoUploadProps) {
     try {
       const result = await updateCompanyLogoAction({logoUrl: null});
       if (!result.success) {
-        throw new Error(result.error);
+        throw new Error(result.error ?? MSG.operationFailed);
       }
       setLocalPreview(null);
       onUploaded(null);
+      toast.success('Logo removida com sucesso.');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao remover logo.');
+      setError(err instanceof Error ? err.message : MSG.operationFailed);
     } finally {
       setUploading(false);
     }

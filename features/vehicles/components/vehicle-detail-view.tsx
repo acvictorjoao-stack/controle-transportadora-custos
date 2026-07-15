@@ -12,8 +12,10 @@ import {PageTemplate} from '@/components/layout/page-template';
 import {Badge} from '@/components/ui/badge';
 import {Button} from '@/components/ui/button';
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
+import {useConfirm} from '@/contexts/feedback/confirm-context';
 import {ROUTES} from '@/constants/routes/paths';
 import type {BranchSelectOption} from '@/features/organization/branches/types';
+import {MSG} from '@/lib/feedback/messages';
 
 import {deleteVehicleDocumentAction} from '../actions';
 import type {VehicleDetailData} from '../types';
@@ -52,6 +54,7 @@ function formatDate(value: string) {
 
 function VehicleDetailView({companyId, data, branches}: VehicleDetailViewProps) {
   const router = useRouter();
+  const confirm = useConfirm();
   const [activeTab, setActiveTab] = React.useState<TabId>('dados');
   const [modalOpen, setModalOpen] = React.useState(false);
   const {vehicle} = data;
@@ -61,7 +64,13 @@ function VehicleDetailView({companyId, data, branches}: VehicleDetailViewProps) 
   }
 
   async function handleDeleteDocument(documentId: string) {
-    if (!confirm('Excluir este documento?')) return;
+    const confirmed = await confirm({
+      title: MSG.deleteDocumentTitle,
+      description: MSG.deleteDocumentDescription,
+      confirmLabel: MSG.deleteConfirmLabel,
+      variant: 'destructive',
+    });
+    if (!confirmed) return;
     const result = await deleteVehicleDocumentAction(documentId, vehicle.id);
     if (result.success) handleRefresh();
   }
@@ -173,7 +182,9 @@ function VehicleDetailView({companyId, data, branches}: VehicleDetailViewProps) 
           </CardHeader>
           <CardContent>
             <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {infoRows.map(([label, value]) => (
+              {infoRows
+                .filter(([, value]) => value !== '—' && value !== null && value !== undefined)
+                .map(([label, value]) => (
                 <div key={label}>
                   <dt className="text-xs text-muted-foreground">{label}</dt>
                   <dd className="text-sm font-medium">{value}</dd>

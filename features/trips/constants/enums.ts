@@ -10,6 +10,14 @@ export const TRIP_STATUSES = [
   'returned',
 ] as const;
 
+/** Sprint 25.4 — simplified operational lifecycle */
+export const SIMPLE_TRIP_STATUSES = [
+  'planned',
+  'in_progress',
+  'completed',
+  'cancelled',
+] as const;
+
 export const TRIP_DOCUMENT_TYPES = [
   'cte',
   'mdfe',
@@ -36,7 +44,10 @@ export const TRIP_EXPENSE_TYPES = [
   'toll',
   'food',
   'lodging',
-  'tire_shop',
-  'maintenance',
+  'parking',
+  'ferry',
+  'wash',
+  'advance',
+  'fine',
   'other',
 ] as const;

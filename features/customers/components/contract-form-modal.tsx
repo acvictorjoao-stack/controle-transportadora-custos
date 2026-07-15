@@ -10,6 +10,7 @@ import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {Textarea} from '@/components/ui/textarea';
 import {useToast} from '@/contexts/feedback/toast-context';
+import {MSG} from '@/lib/feedback/messages';
 
 import {createCustomerContractAction, updateCustomerContractAction} from '../actions';
 import {
@@ -180,7 +181,7 @@ function ContractFormContent({
     }
 
     onSaved();
-    toast.success(isEdit ? 'Contrato atualizado com sucesso' : 'Contrato criado com sucesso');
+    toast.success(isEdit ? MSG.updated('Contrato') : MSG.created('Contrato'));
     onClose();
   }
 

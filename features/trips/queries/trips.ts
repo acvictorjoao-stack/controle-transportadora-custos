@@ -34,11 +34,18 @@ import type {
   TripStats,
   TripStop,
 } from '../types';
+import {
+  canCancelTrip,
+  canCompleteTrip,
+  canStartTrip,
+} from '../utils/trip-lifecycle';
 import type {
+  CancelTripInput,
   CreateTripExpenseInput,
   CreateTripInput,
   CreateTripOccurrenceInput,
   CreateTripStopInput,
+  UpdateTripExpenseInput,
   UpdateTripInput,
   UpsertTripChecklistInput,
 } from '../validation';
@@ -132,7 +139,7 @@ function buildTripPayload(
     cargo_type: input.cargoType,
     notes: input.notes,
     responsible: input.responsible,
-    trip_status: input.tripStatus ?? 'planned',
+    trip_status: isCreate ? 'planned' : (input.tripStatus ?? 'planned'),
     updated_by: profileId,
   };
 
@@ -401,6 +408,120 @@ export async function updateTripStatus(
   await triggerTripCompletedIfNeeded(supabase, companyId, trip, profileId);
 
   return trip;
+}
+
+async function getTripForLifecycle(
+  supabase: SupabaseClient,
+  companyId: string,
+  tripId: string,
+): Promise<Trip> {
+  const trip = await getTripById(supabase, companyId, tripId);
+  if (!trip) {
+    throw new Error('Viagem não encontrada.');
+  }
+  return trip;
+}
+
+export async function startTrip(
+  supabase: SupabaseClient,
+  companyId: string,
+  tripId: string,
+  profileId: string,
+): Promise<Trip> {
+  const current = await getTripForLifecycle(supabase, companyId, tripId);
+  if (!canStartTrip(current.tripStatus)) {
+    throw new Error('Só é possível iniciar viagens programadas.');
+  }
+
+  const now = new Date().toISOString();
+  const {data, error} = await supabase
+    .from('trips')
+    .update({
+      trip_status: 'in_progress',
+      started_at: current.startedAt ?? now,
+      departed_at: current.departedAt ?? now,
+      updated_by: profileId,
+    })
+    .eq('id', tripId)
+    .eq('company_id', companyId)
+    .is('deleted_at', null)
+    .select(TRIP_DETAIL_COLUMNS)
+    .single();
+
+  if (error) {
+    throw new Error(mapDatabaseError(error));
+  }
+
+  return mapTripRow(data as unknown as TripRow);
+}
+
+export async function completeTrip(
+  supabase: SupabaseClient,
+  companyId: string,
+  tripId: string,
+  profileId: string,
+): Promise<Trip> {
+  const current = await getTripForLifecycle(supabase, companyId, tripId);
+  if (!canCompleteTrip(current.tripStatus)) {
+    throw new Error('Só é possível concluir viagens em andamento.');
+  }
+
+  const now = new Date().toISOString();
+  const {data, error} = await supabase
+    .from('trips')
+    .update({
+      trip_status: 'completed',
+      completed_at: current.completedAt ?? now,
+      arrived_at: current.arrivedAt ?? now,
+      updated_by: profileId,
+    })
+    .eq('id', tripId)
+    .eq('company_id', companyId)
+    .is('deleted_at', null)
+    .select(TRIP_DETAIL_COLUMNS)
+    .single();
+
+  if (error) {
+    throw new Error(mapDatabaseError(error));
+  }
+
+  const trip = mapTripRow(data as unknown as TripRow);
+  await triggerTripCompletedIfNeeded(supabase, companyId, trip, profileId);
+  return trip;
+}
+
+export async function cancelTrip(
+  supabase: SupabaseClient,
+  companyId: string,
+  tripId: string,
+  input: CancelTripInput,
+  profileId: string,
+): Promise<Trip> {
+  const current = await getTripForLifecycle(supabase, companyId, tripId);
+  if (!canCancelTrip(current.tripStatus)) {
+    throw new Error('Esta viagem não pode ser cancelada.');
+  }
+
+  const now = new Date().toISOString();
+  const {data, error} = await supabase
+    .from('trips')
+    .update({
+      trip_status: 'cancelled',
+      cancelled_at: current.cancelledAt ?? now,
+      cancellation_notes: input.cancellationNotes,
+      updated_by: profileId,
+    })
+    .eq('id', tripId)
+    .eq('company_id', companyId)
+    .is('deleted_at', null)
+    .select(TRIP_DETAIL_COLUMNS)
+    .single();
+
+  if (error) {
+    throw new Error(mapDatabaseError(error));
+  }
+
+  return mapTripRow(data as unknown as TripRow);
 }
 
 export async function getTripStats(
@@ -699,6 +820,7 @@ export async function createTripExpense(
       amount: input.amount,
       currency: input.currency ?? 'BRL',
       description: input.description,
+      notes: input.notes,
       expense_date: input.expenseDate ?? new Date().toISOString().slice(0, 10),
       receipt_url: input.receiptUrl,
       created_by: profileId,
@@ -708,6 +830,54 @@ export async function createTripExpense(
 
   if (error) throw new Error(mapDatabaseError(error));
   return mapTripExpenseRow(data as Parameters<typeof mapTripExpenseRow>[0]);
+}
+
+export async function updateTripExpense(
+  supabase: SupabaseClient,
+  companyId: string,
+  input: UpdateTripExpenseInput,
+  profileId: string,
+): Promise<TripExpense> {
+  const {data, error} = await supabase
+    .from('trip_expenses')
+    .update({
+      expense_type: input.expenseType,
+      amount: input.amount,
+      currency: input.currency ?? 'BRL',
+      description: input.description,
+      notes: input.notes,
+      expense_date: input.expenseDate ?? new Date().toISOString().slice(0, 10),
+      receipt_url: input.receiptUrl,
+      updated_by: profileId,
+    })
+    .eq('id', input.id)
+    .eq('company_id', companyId)
+    .eq('trip_id', input.tripId)
+    .is('deleted_at', null)
+    .select('*')
+    .single();
+
+  if (error) throw new Error(mapDatabaseError(error));
+  return mapTripExpenseRow(data as Parameters<typeof mapTripExpenseRow>[0]);
+}
+
+export async function softDeleteTripExpense(
+  supabase: SupabaseClient,
+  companyId: string,
+  expenseId: string,
+  profileId: string,
+): Promise<void> {
+  const {error} = await supabase
+    .from('trip_expenses')
+    .update({
+      deleted_at: new Date().toISOString(),
+      updated_by: profileId,
+    })
+    .eq('id', expenseId)
+    .eq('company_id', companyId)
+    .is('deleted_at', null);
+
+  if (error) throw new Error(mapDatabaseError(error));
 }
 
 export async function listTripStops(

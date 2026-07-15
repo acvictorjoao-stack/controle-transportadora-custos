@@ -44,7 +44,6 @@ export default async function FiliaisPage({searchParams}: FiliaisPageProps) {
     <BranchesList
       initialData={data}
       initialSearch={search}
-      initialPage={page}
       error={error}
     />
   );
