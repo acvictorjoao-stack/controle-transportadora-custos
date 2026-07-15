@@ -39,6 +39,7 @@ export interface ListFinancialEntriesOptions {
 
 const SORT_COLUMNS: Record<NonNullable<FinancialSortOptions['sortBy']>, string> = {
   entry_date: 'entry_date',
+  due_date: 'due_date',
   amount: 'amount',
   entry_type: 'entry_type',
   entry_status: 'entry_status',
@@ -65,6 +66,8 @@ function buildEntryPayload(
     entry_status: input.entryStatus ?? 'pending',
     description: input.description,
     reference_number: input.referenceNumber,
+    supplier: input.supplier ?? null,
+    client: input.client ?? null,
     amount: input.amount,
     currency: input.currency ?? 'BRL',
     entry_date: input.entryDate,
@@ -236,12 +239,17 @@ export async function listFinancialEntries(
   if (filters.costCenterId) query = query.eq('cost_center_id', filters.costCenterId);
   if (filters.entryType) query = query.eq('entry_type', filters.entryType);
   if (filters.entryStatus) query = query.eq('entry_status', filters.entryStatus);
+  if (filters.sourceModule) query = query.eq('source_module', filters.sourceModule);
+  if (filters.supplier) query = query.ilike('supplier', `%${sanitizeSearchTerm(filters.supplier)}%`);
+  if (filters.client) query = query.ilike('client', `%${sanitizeSearchTerm(filters.client)}%`);
   if (filters.dateFrom) query = query.gte('entry_date', filters.dateFrom);
   if (filters.dateTo) query = query.lte('entry_date', filters.dateTo);
+  if (filters.dueDateFrom) query = query.gte('due_date', filters.dueDateFrom);
+  if (filters.dueDateTo) query = query.lte('due_date', filters.dueDateTo);
 
   if (search) {
     query = query.or(
-      `description.ilike.%${search}%,reference_number.ilike.%${search}%,notes.ilike.%${search}%`,
+      `description.ilike.%${search}%,reference_number.ilike.%${search}%,notes.ilike.%${search}%,supplier.ilike.%${search}%,client.ilike.%${search}%`,
     );
   }
 
@@ -381,13 +389,57 @@ export async function markFinancialEntryPaid(
   companyId: string,
   entryId: string,
   profileId: string,
-  paidAt?: string,
+  options?: {paidAt?: string; paidAmount?: number},
 ): Promise<FinancialEntry> {
+  const payload: Record<string, unknown> = {
+    entry_status: 'paid',
+    paid_at: options?.paidAt ?? new Date().toISOString(),
+    updated_by: profileId,
+  };
+
+  if (options?.paidAmount != null) {
+    payload.paid_amount = options.paidAmount;
+  }
+
+  const {data, error} = await supabase
+    .from('financial_entries')
+    .update(payload)
+    .eq('id', entryId)
+    .eq('company_id', companyId)
+    .is('deleted_at', null)
+    .select(FINANCIAL_DETAIL_COLUMNS)
+    .single();
+
+  if (error) {
+    throw new Error(mapDatabaseError(error));
+  }
+
+  return mapFinancialEntryRow(data as unknown as FinancialEntryRow);
+}
+
+export async function cancelFinancialEntry(
+  supabase: SupabaseClient,
+  companyId: string,
+  entryId: string,
+  profileId: string,
+): Promise<FinancialEntry> {
+  const entry = await getFinancialEntryById(supabase, companyId, entryId);
+  if (!entry) {
+    throw new Error('Lançamento não encontrado.');
+  }
+
+  if (entry.entryStatus === 'cancelled') {
+    throw new Error('Lançamento já cancelado.');
+  }
+
+  if (entry.entryStatus === 'paid') {
+    throw new Error('Não é possível cancelar um lançamento pago.');
+  }
+
   const {data, error} = await supabase
     .from('financial_entries')
     .update({
-      entry_status: 'paid',
-      paid_at: paidAt ?? new Date().toISOString(),
+      entry_status: 'cancelled',
       updated_by: profileId,
     })
     .eq('id', entryId)
@@ -433,6 +485,8 @@ export async function reverseFinancialEntry(
       entryStatus: 'paid',
       description: reason ?? `Estorno do lançamento ${original.referenceNumber ?? original.id}`,
       referenceNumber: original.referenceNumber,
+      supplier: original.supplier,
+      client: original.client,
       amount: original.amount,
       currency: original.currency,
       entryDate: new Date().toISOString().slice(0, 10),

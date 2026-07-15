@@ -156,7 +156,6 @@ export const navigationGroups: NavGroup[] = [
             href: ROUTES.contasAPagar,
             icon: CreditCard,
             permission: 'financeiro_pagar:read',
-            badge: 'Em breve',
           },
           {
             id: 'contas-a-receber',
@@ -165,7 +164,6 @@ export const navigationGroups: NavGroup[] = [
             href: ROUTES.contasAReceber,
             icon: Receipt,
             permission: 'financeiro_receber:read',
-            badge: 'Em breve',
           },
         ],
       },

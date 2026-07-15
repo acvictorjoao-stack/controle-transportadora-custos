@@ -38,6 +38,8 @@ const financialBaseSchema = z.object({
   entryStatus: z.enum(FINANCIAL_ENTRY_STATUSES).optional().default('pending'),
   description: optionalString,
   referenceNumber: optionalString,
+  supplier: optionalString,
+  client: optionalString,
   amount: requiredAmount,
   currency: z.string().trim().min(1).optional().default('BRL'),
   entryDate: z.string().trim().min(1, 'Informe a data do lançamento.'),
@@ -51,6 +53,7 @@ export const updateFinancialEntrySchema = financialBaseSchema;
 
 export const markFinancialEntryPaidSchema = z.object({
   paidAt: z.string().trim().min(1).optional(),
+  paidAmount: requiredAmount.optional(),
 });
 
 export const reverseFinancialEntrySchema = z.object({
@@ -69,4 +72,5 @@ export const uploadFinancialFileSchema = z.object({
 
 export type CreateFinancialEntryInput = z.infer<typeof createFinancialEntrySchema>;
 export type UpdateFinancialEntryInput = z.infer<typeof updateFinancialEntrySchema>;
+export type MarkFinancialEntryPaidInput = z.infer<typeof markFinancialEntryPaidSchema>;
 export type UploadFinancialFileInput = z.infer<typeof uploadFinancialFileSchema>;

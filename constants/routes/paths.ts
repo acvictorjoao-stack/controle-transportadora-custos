@@ -33,7 +33,9 @@ export const ROUTES = {
   financeiroDetail: (id: string) => `/financeiro/${id}`,
   fluxoDeCaixa: '/financeiro/fluxo-de-caixa',
   contasAPagar: '/financeiro/contas-a-pagar',
+  contasAPagarDetail: (id: string) => `/financeiro/contas-a-pagar/${id}`,
   contasAReceber: '/financeiro/contas-a-receber',
+  contasAReceberDetail: (id: string) => `/financeiro/contas-a-receber/${id}`,
 
   // Manutenção
   manutencoes: '/manutencoes',

@@ -30,11 +30,14 @@ export interface FinancialEntryRow {
   entry_status: FinancialEntryStatus;
   description: string | null;
   reference_number: string | null;
+  supplier: string | null;
+  client: string | null;
   amount: number;
   currency: string;
   entry_date: string;
   due_date: string | null;
   paid_at: string | null;
+  paid_amount: number | null;
   reversed_entry_id: string | null;
   source_module: string | null;
   is_system_generated: boolean;
@@ -82,11 +85,14 @@ export interface FinancialEntry {
   entryStatus: FinancialEntryStatus;
   description: string | null;
   referenceNumber: string | null;
+  supplier: string | null;
+  client: string | null;
   amount: number;
   currency: string;
   entryDate: string;
   dueDate: string | null;
   paidAt: string | null;
+  paidAmount: number | null;
   reversedEntryId: string | null;
   sourceModule: string | null;
   isSystemGenerated: boolean;
@@ -172,10 +178,15 @@ export interface FinancialListFilters {
   entryStatus?: FinancialEntryStatus;
   dateFrom?: string;
   dateTo?: string;
+  dueDateFrom?: string;
+  dueDateTo?: string;
+  supplier?: string;
+  client?: string;
+  sourceModule?: string;
 }
 
 export interface FinancialSortOptions {
-  sortBy?: 'entry_date' | 'amount' | 'entry_type' | 'entry_status' | 'created_at';
+  sortBy?: 'entry_date' | 'due_date' | 'amount' | 'entry_type' | 'entry_status' | 'created_at';
   sortOrder?: 'asc' | 'desc';
 }
 
@@ -239,6 +250,52 @@ export const FINANCIAL_ENTRY_STATUS_LABELS: Record<FinancialEntryStatus, string>
   cancelled: 'Cancelado',
   reversed: 'Estornado',
   overdue: 'Vencido',
+};
+
+/** Labels específicas de Contas a Pagar (Sprint 26.1) */
+export const ACCOUNTS_PAYABLE_STATUS_LABELS: Record<
+  'pending' | 'paid' | 'cancelled' | 'overdue',
+  string
+> = {
+  pending: 'Em aberto',
+  overdue: 'Em aberto',
+  paid: 'Pago',
+  cancelled: 'Cancelado',
+};
+
+export const ACCOUNTS_PAYABLE_HISTORY_ACTION_LABELS: Record<string, string> = {
+  create: 'Conta criada',
+  update: 'Conta editada',
+  correction: 'Conta editada',
+  payment: 'Conta paga',
+  cancellation: 'Conta cancelada',
+  soft_delete: 'Conta excluída',
+  status_change: 'Alteração de status',
+  reversal: 'Estorno',
+  document_upload: 'Upload de documento',
+};
+
+/** Labels específicas de Contas a Receber (Sprint 26.2) */
+export const ACCOUNTS_RECEIVABLE_STATUS_LABELS: Record<
+  'pending' | 'paid' | 'cancelled' | 'overdue',
+  string
+> = {
+  pending: 'Em aberto',
+  overdue: 'Em aberto',
+  paid: 'Recebido',
+  cancelled: 'Cancelado',
+};
+
+export const ACCOUNTS_RECEIVABLE_HISTORY_ACTION_LABELS: Record<string, string> = {
+  create: 'Conta criada',
+  update: 'Conta editada',
+  correction: 'Conta editada',
+  payment: 'Conta recebida',
+  cancellation: 'Conta cancelada',
+  soft_delete: 'Conta excluída',
+  status_change: 'Alteração de status',
+  reversal: 'Estorno',
+  document_upload: 'Upload de documento',
 };
 
 export const FINANCIAL_DOCUMENT_TYPE_LABELS: Record<FinancialDocumentType, string> = {

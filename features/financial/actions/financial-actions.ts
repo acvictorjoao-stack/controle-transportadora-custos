@@ -17,6 +17,7 @@ import {
   createFinancialDocument,
   createFinancialEntry,
   getFinancialEntryById,
+  cancelFinancialEntry,
   markFinancialEntryPaid,
   reverseFinancialEntry,
   softDeleteFinancialDocument,
@@ -40,9 +41,11 @@ type FinancialPermission =
 
 function revalidateFinancialPaths(entryId?: string) {
   revalidatePath(ROUTES.financeiro);
+  revalidatePath(ROUTES.contasAPagar);
   revalidatePath(ROUTES.dashboard);
   if (entryId) {
     revalidatePath(ROUTES.financeiroDetail(entryId));
+    revalidatePath(ROUTES.contasAPagarDetail(entryId));
   }
 }
 
@@ -157,7 +160,10 @@ export async function markFinancialEntryPaidAction(
       resolved.data.companyId,
       entryId,
       resolved.data.profileId,
-      parsed.data.paidAt,
+      {
+        paidAt: parsed.data.paidAt,
+        paidAmount: parsed.data.paidAmount,
+      },
     );
     revalidateFinancialPaths(entryId);
     return {success: true, data};
@@ -165,6 +171,30 @@ export async function markFinancialEntryPaidAction(
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Erro ao registrar pagamento.',
+    };
+  }
+}
+
+export async function cancelFinancialEntryAction(
+  entryId: string,
+): Promise<ActionResult<FinancialEntry>> {
+  const resolved = await resolveFinancialAccess('financeiro:update');
+  if (!resolved.success) return resolved;
+
+  try {
+    const supabase = await getServerSupabaseClient();
+    const data = await cancelFinancialEntry(
+      supabase,
+      resolved.data.companyId,
+      entryId,
+      resolved.data.profileId,
+    );
+    revalidateFinancialPaths(entryId);
+    return {success: true, data};
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Erro ao cancelar lançamento.',
     };
   }
 }
