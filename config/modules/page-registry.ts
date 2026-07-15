@@ -10,6 +10,7 @@ export type ModulePageId =
   | 'motoristas'
   | 'viagens'
   | 'financeiro'
+  | 'financeiro-dashboard'
   | 'fluxo-de-caixa'
   | 'contas-a-pagar'
   | 'contas-a-receber'
@@ -86,6 +87,12 @@ export const modulePageRegistry: Record<ModulePageId, ModulePageMeta> = {
     title: 'Financeiro',
     description: 'Gestão financeira consolidada da operação.',
     href: ROUTES.financeiro,
+  },
+  'financeiro-dashboard': {
+    id: 'financeiro-dashboard',
+    title: 'Dashboard Financeiro',
+    description: 'Visão geral de pagamentos, recebimentos e saldo.',
+    href: ROUTES.financeiroDashboard,
   },
   'fluxo-de-caixa': {
     id: 'fluxo-de-caixa',

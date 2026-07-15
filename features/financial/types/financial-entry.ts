@@ -175,7 +175,9 @@ export interface FinancialListFilters {
   categoryId?: string;
   costCenterId?: string;
   entryType?: FinancialEntryType;
+  entryTypes?: FinancialEntryType[];
   entryStatus?: FinancialEntryStatus;
+  entryStatuses?: FinancialEntryStatus[];
   dateFrom?: string;
   dateTo?: string;
   dueDateFrom?: string;
@@ -183,6 +185,7 @@ export interface FinancialListFilters {
   supplier?: string;
   client?: string;
   sourceModule?: string;
+  sourceModules?: string[];
 }
 
 export interface FinancialSortOptions {

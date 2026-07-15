@@ -141,15 +141,6 @@ export const navigationGroups: NavGroup[] = [
         permission: 'financeiro:read',
         children: [
           {
-            id: 'fluxo-de-caixa',
-            title: 'Fluxo de Caixa',
-            description: 'Entradas e saídas',
-            href: ROUTES.fluxoDeCaixa,
-            icon: Wallet,
-            permission: 'financeiro_fluxo:read',
-            badge: 'Em breve',
-          },
-          {
             id: 'contas-a-pagar',
             title: 'Contas a Pagar',
             description: 'Obrigações financeiras',
@@ -164,6 +155,22 @@ export const navigationGroups: NavGroup[] = [
             href: ROUTES.contasAReceber,
             icon: Receipt,
             permission: 'financeiro_receber:read',
+          },
+          {
+            id: 'fluxo-de-caixa',
+            title: 'Fluxo de Caixa',
+            description: 'Entradas e saídas',
+            href: ROUTES.fluxoDeCaixa,
+            icon: Wallet,
+            permission: 'financeiro_fluxo:read',
+          },
+          {
+            id: 'financeiro-dashboard',
+            title: 'Dashboard Financeiro',
+            description: 'Visão geral financeira',
+            href: ROUTES.financeiroDashboard,
+            icon: LayoutDashboard,
+            permission: 'financeiro:read',
           },
         ],
       },

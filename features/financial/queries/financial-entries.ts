@@ -237,9 +237,21 @@ export async function listFinancialEntries(
   if (filters.tripId) query = query.eq('trip_id', filters.tripId);
   if (filters.categoryId) query = query.eq('category_id', filters.categoryId);
   if (filters.costCenterId) query = query.eq('cost_center_id', filters.costCenterId);
-  if (filters.entryType) query = query.eq('entry_type', filters.entryType);
-  if (filters.entryStatus) query = query.eq('entry_status', filters.entryStatus);
-  if (filters.sourceModule) query = query.eq('source_module', filters.sourceModule);
+  if (filters.entryTypes?.length) {
+    query = query.in('entry_type', filters.entryTypes);
+  } else if (filters.entryType) {
+    query = query.eq('entry_type', filters.entryType);
+  }
+  if (filters.entryStatuses?.length) {
+    query = query.in('entry_status', filters.entryStatuses);
+  } else if (filters.entryStatus) {
+    query = query.eq('entry_status', filters.entryStatus);
+  }
+  if (filters.sourceModules?.length) {
+    query = query.in('source_module', filters.sourceModules);
+  } else if (filters.sourceModule) {
+    query = query.eq('source_module', filters.sourceModule);
+  }
   if (filters.supplier) query = query.ilike('supplier', `%${sanitizeSearchTerm(filters.supplier)}%`);
   if (filters.client) query = query.ilike('client', `%${sanitizeSearchTerm(filters.client)}%`);
   if (filters.dateFrom) query = query.gte('entry_date', filters.dateFrom);
