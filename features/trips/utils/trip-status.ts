@@ -36,4 +36,22 @@ export function formatDurationHours(hours: number): string {
   return `${hours.toFixed(1)} h`;
 }
 
+/** Converte ISO (UTC) → valor de input datetime-local no fuso local. */
+export function toDatetimeLocalValue(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+/** Converte valor de datetime-local (parede local) → ISO UTC para persistência. */
+export function fromDatetimeLocalValue(local: string): string | null {
+  if (!local.trim()) return null;
+  const date = new Date(local);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString();
+}
+
 export {TRIP_STATUS_LABELS};

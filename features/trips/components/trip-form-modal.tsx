@@ -23,6 +23,10 @@ import type {Trip} from '../types';
 import {TRIP_STATUS_LABELS} from '../types';
 import type {CreateTripInput} from '../validation';
 import {TRIP_NATIVE_SELECT_CLASS} from '../utils/form-styles';
+import {
+  fromDatetimeLocalValue,
+  toDatetimeLocalValue,
+} from '../utils/trip-status';
 
 export interface TripFormModalProps {
   open: boolean;
@@ -314,16 +318,9 @@ function TripFormContent({
           <Input
             id="trip-planned-departure"
             type="datetime-local"
-            value={
-              formData.plannedDepartureAt
-                ? formData.plannedDepartureAt.slice(0, 16)
-                : ''
-            }
+            value={toDatetimeLocalValue(formData.plannedDepartureAt)}
             onChange={(e) =>
-              updateField(
-                'plannedDepartureAt',
-                e.target.value ? new Date(e.target.value).toISOString() : null,
-              )
+              updateField('plannedDepartureAt', fromDatetimeLocalValue(e.target.value))
             }
             disabled={!selectedRoute && !formData.routeId}
           />
@@ -480,12 +477,9 @@ function TripFormContent({
           <Input
             id="trip-departed"
             type="datetime-local"
-            value={formData.departedAt ? formData.departedAt.slice(0, 16) : ''}
+            value={toDatetimeLocalValue(formData.departedAt)}
             onChange={(e) =>
-              updateField(
-                'departedAt',
-                e.target.value ? new Date(e.target.value).toISOString() : null,
-              )
+              updateField('departedAt', fromDatetimeLocalValue(e.target.value))
             }
           />
         </FormField>
@@ -493,12 +487,9 @@ function TripFormContent({
           <Input
             id="trip-arrived"
             type="datetime-local"
-            value={formData.arrivedAt ? formData.arrivedAt.slice(0, 16) : ''}
+            value={toDatetimeLocalValue(formData.arrivedAt)}
             onChange={(e) =>
-              updateField(
-                'arrivedAt',
-                e.target.value ? new Date(e.target.value).toISOString() : null,
-              )
+              updateField('arrivedAt', fromDatetimeLocalValue(e.target.value))
             }
           />
         </FormField>
