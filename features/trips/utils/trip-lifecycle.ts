@@ -24,5 +24,5 @@ export function canCancelTrip(status: TripStatus): boolean {
 }
 
 export function getTripFreightValue(trip: Pick<Trip, 'contractedFreightValue' | 'actualFreightValue'>): number {
-  return trip.contractedFreightValue ?? trip.actualFreightValue ?? 0;
+  return trip.actualFreightValue ?? trip.contractedFreightValue ?? 0;
 }

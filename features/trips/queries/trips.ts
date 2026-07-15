@@ -71,24 +71,6 @@ function sanitizeSearchTerm(value: string): string {
   return value.replace(/[%(),]/g, '').trim();
 }
 
-async function validateCustomerContract(
-  supabase: SupabaseClient,
-  companyId: string,
-  customerId: string | null | undefined,
-  customerContractId: string | null | undefined,
-): Promise<void> {
-  if (!customerContractId) return;
-
-  const {getContractById} = await import('@/features/customers/queries/customers');
-  const contract = await getContractById(supabase, companyId, customerContractId);
-  if (!contract) {
-    throw new Error('Contrato não encontrado.');
-  }
-  if (customerId && contract.customerId !== customerId) {
-    throw new Error('Contrato não pertence ao cliente selecionado.');
-  }
-}
-
 async function triggerTripCompletedIfNeeded(
   supabase: SupabaseClient,
   companyId: string,
@@ -110,16 +92,15 @@ function buildTripPayload(
   profileId: string,
   isCreate: boolean,
 ): Record<string, unknown> {
+  // Campos V1 omitidos no payload (contrato, valor contratado, horímetro, cubagem)
+  // para preservar valores antigos no banco em updates.
   const payload: Record<string, unknown> = {
     branch_id: input.branchId,
     driver_id: input.driverId,
     vehicle_id: input.vehicleId,
     client_name: input.clientName,
-    contract_reference: input.contractReference,
     customer_id: input.customerId,
-    customer_contract_id: input.customerContractId,
     freight_table: input.freightTable,
-    contracted_freight_value: input.contractedFreightValue,
     actual_freight_value: input.actualFreightValue,
     freight_margin: input.freightMargin,
     origin: input.origin,
@@ -130,12 +111,9 @@ function buildTripPayload(
     planned_departure_at: input.plannedDepartureAt,
     initial_odometer_km: input.initialOdometerKm,
     final_odometer_km: input.finalOdometerKm,
-    initial_hour_meter: input.initialHourMeter,
-    final_hour_meter: input.finalHourMeter,
     departed_at: input.departedAt,
     arrived_at: input.arrivedAt,
     weight_kg: input.weightKg,
-    volume_m3: input.volumeM3,
     cargo_type: input.cargoType,
     notes: input.notes,
     responsible: input.responsible,
@@ -313,8 +291,6 @@ export async function createTrip(
   input: CreateTripInput,
   profileId: string,
 ): Promise<Trip> {
-  await validateCustomerContract(supabase, companyId, input.customerId, input.customerContractId);
-
   const tripNumber = await generateTripNumber(supabase, companyId);
   const payload = buildTripPayload(input, profileId, true);
 
@@ -340,8 +316,6 @@ export async function updateTrip(
   input: UpdateTripInput,
   profileId: string,
 ): Promise<Trip> {
-  await validateCustomerContract(supabase, companyId, input.customerId, input.customerContractId);
-
   const payload = buildTripPayload(input, profileId, false);
 
   const {data, error} = await supabase

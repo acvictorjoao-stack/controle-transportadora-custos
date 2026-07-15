@@ -108,7 +108,6 @@ function TripDetailView({
     ['Veículo', trip.vehiclePlate ?? '—'],
     ['Filial', trip.branchName ?? '—'],
     ['Cliente', trip.customerName ?? trip.clientName ?? '—'],
-    ['Contrato', trip.contractReference ?? '—'],
     ['Rota', getTripRouteLabel(trip)],
     ['Origem', trip.origin ?? '—'],
     ['Destino', trip.destination ?? '—'],
@@ -117,12 +116,9 @@ function TripDetailView({
     ['KM inicial', trip.initialOdometerKm?.toLocaleString('pt-BR') ?? '—'],
     ['KM final', trip.finalOdometerKm?.toLocaleString('pt-BR') ?? '—'],
     ['Distância realizada', trip.distanceKm !== null ? `${trip.distanceKm.toLocaleString('pt-BR')} km` : '—'],
-    ['Horímetro inicial', trip.initialHourMeter?.toLocaleString('pt-BR') ?? '—'],
-    ['Horímetro final', trip.finalHourMeter?.toLocaleString('pt-BR') ?? '—'],
     ['Saída real', formatDateTimeBr(trip.departedAt)],
     ['Chegada real', formatDateTimeBr(trip.arrivedAt)],
     ['Peso', trip.weightKg !== null ? `${trip.weightKg.toLocaleString('pt-BR')} kg` : '—'],
-    ['Cubagem', trip.volumeM3 !== null ? `${trip.volumeM3} m³` : '—'],
     ['Tipo da carga', trip.cargoType ?? '—'],
     ['Responsável', trip.responsible ?? '—'],
   ];
@@ -136,7 +132,7 @@ function TripDetailView({
   ];
 
   const expensesTotal = data.expenses.reduce((sum, expense) => sum + expense.amount, 0);
-  const freightValue = trip.contractedFreightValue ?? trip.actualFreightValue ?? 0;
+  const freightValue = trip.actualFreightValue ?? trip.contractedFreightValue ?? 0;
   const operationalResult = freightValue - expensesTotal;
 
   function formatMoney(value: number) {

@@ -151,13 +151,6 @@ function TripFilters({
         className={TRIP_NATIVE_SELECT_CLASS}
       />
       <input
-        type="text"
-        placeholder="Contrato"
-        value={filters.contractReference ?? ''}
-        onChange={(e) => updateFilter('contractReference', e.target.value || undefined)}
-        className={TRIP_NATIVE_SELECT_CLASS}
-      />
-      <input
         type="date"
         value={filters.dateFrom ?? ''}
         onChange={(e) => updateFilter('dateFrom', e.target.value || undefined)}

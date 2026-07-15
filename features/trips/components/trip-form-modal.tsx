@@ -10,7 +10,7 @@ import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {Textarea} from '@/components/ui/textarea';
 import {useToast} from '@/contexts/feedback/toast-context';
-import type {Customer, CustomerContract} from '@/features/customers/types';
+import type {Customer} from '@/features/customers/types';
 import type {DriverSelectOption} from '@/features/drivers/types';
 import type {BranchSelectOption} from '@/features/organization/branches/types';
 import type {RouteSelectOption} from '@/features/routes/types';
@@ -19,7 +19,6 @@ import type {VehicleSelectOption} from '@/features/vehicles/types';
 import {MSG} from '@/lib/feedback/messages';
 
 import {createTripAction, updateTripAction} from '../actions';
-import {resolveContractFreightAction} from '@/features/customers/actions';
 import type {Trip} from '../types';
 import {TRIP_STATUS_LABELS} from '../types';
 import type {CreateTripInput} from '../validation';
@@ -34,7 +33,6 @@ export interface TripFormModalProps {
   vehicles: VehicleSelectOption[];
   customers: Customer[];
   routes: RouteSelectOption[];
-  contracts?: CustomerContract[];
   onSaved: (trip: Trip) => void;
 }
 
@@ -49,7 +47,6 @@ function TripFormModal({
   vehicles,
   customers,
   routes,
-  contracts: initialContracts = [],
   onSaved,
 }: TripFormModalProps) {
   const isEdit = Boolean(trip);
@@ -74,7 +71,6 @@ function TripFormModal({
         vehicles={vehicles}
         customers={customers}
         routes={routes}
-        initialContracts={initialContracts}
         onClose={onClose}
         onSaved={onSaved}
       />
@@ -90,7 +86,6 @@ function TripFormContent({
   vehicles,
   customers,
   routes,
-  initialContracts,
   onClose,
   onSaved,
 }: {
@@ -101,21 +96,16 @@ function TripFormContent({
   vehicles: VehicleSelectOption[];
   customers: Customer[];
   routes: RouteSelectOption[];
-  initialContracts: CustomerContract[];
   onClose: () => void;
   onSaved: (trip: Trip) => void;
 }) {
-  const [contracts, setContracts] = React.useState<CustomerContract[]>(initialContracts);
   const [formData, setFormData] = React.useState<CreateTripInput>(() => ({
     branchId: trip?.branchId ?? null,
     driverId: trip?.driverId ?? null,
     vehicleId: trip?.vehicleId ?? null,
     clientName: trip?.clientName ?? null,
-    contractReference: trip?.contractReference ?? null,
     customerId: trip?.customerId ?? null,
-    customerContractId: trip?.customerContractId ?? null,
     freightTable: trip?.freightTable ?? null,
-    contractedFreightValue: trip?.contractedFreightValue ?? null,
     actualFreightValue: trip?.actualFreightValue ?? null,
     freightMargin: trip?.freightMargin ?? null,
     routeId: trip?.routeId ?? null,
@@ -126,12 +116,9 @@ function TripFormContent({
     plannedDepartureAt: trip?.plannedDepartureAt ?? null,
     initialOdometerKm: trip?.initialOdometerKm ?? null,
     finalOdometerKm: trip?.finalOdometerKm ?? null,
-    initialHourMeter: trip?.initialHourMeter ?? null,
-    finalHourMeter: trip?.finalHourMeter ?? null,
     departedAt: trip?.departedAt ?? null,
     arrivedAt: trip?.arrivedAt ?? null,
     weightKg: trip?.weightKg ?? null,
-    volumeM3: trip?.volumeM3 ?? null,
     cargoType: trip?.cargoType ?? null,
     notes: trip?.notes ?? null,
     responsible: trip?.responsible ?? null,
@@ -141,7 +128,6 @@ function TripFormContent({
   const [formError, setFormError] = React.useState<string | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
   const toast = useToast();
-  const visibleContracts = formData.customerId ? contracts : [];
 
   const routeOptions = React.useMemo(() => {
     if (!trip?.routeId) return routes;
@@ -162,60 +148,13 @@ function TripFormContent({
   const selectedRoute =
     routeOptions.find((route) => route.id === formData.routeId) ?? null;
 
-  React.useEffect(() => {
-    if (!formData.customerId) return;
-
-    let cancelled = false;
-    (async () => {
-      const {listActiveContractsForSelect} = await import('@/features/customers/queries');
-      const {createClient} = await import('@/supabase/client');
-      const supabase = createClient();
-      const companyId = customers[0]?.companyId;
-      if (!companyId) return;
-      const rows = await listActiveContractsForSelect(supabase, companyId, formData.customerId!);
-      if (!cancelled) setContracts(rows);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [formData.customerId, customers]);
-
-  async function handleCustomerChange(customerId: string | null) {
+  function handleCustomerChange(customerId: string | null) {
     const customer = customers.find((c) => c.id === customerId);
-    setContracts([]);
     setFormData((prev) => ({
       ...prev,
       customerId,
-      customerContractId: null,
       clientName: customer?.displayName ?? null,
-      contractReference: null,
     }));
-  }
-
-  async function handleContractChange(contractId: string | null) {
-    const contract = visibleContracts.find((c) => c.id === contractId);
-    updateField('customerContractId', contractId);
-    updateField('contractReference', contract?.contractNumber ?? null);
-    updateField('freightTable', contract?.freightTable ?? null);
-
-    if (!contractId) return;
-
-    const result = await resolveContractFreightAction(
-      contractId,
-      formData.origin,
-      formData.destination,
-    );
-    if (result.success && result.data) {
-      const d = result.data;
-      setFormData((prev) => ({
-        ...prev,
-        customerContractId: contractId,
-        contractReference: contract?.contractNumber ?? null,
-        freightTable: d.freightTable,
-        contractedFreightValue: d.freightValue,
-        notes: d.notes ?? prev.notes,
-      }));
-    }
   }
 
   function handleRouteChange(routeId: string | null) {
@@ -473,26 +412,6 @@ function TripFormContent({
           </select>
         </FormField>
         <FormField
-          label="Contrato"
-          htmlFor="trip-contract-select"
-          error={fieldErrors.customerContractId}
-        >
-          <select
-            id="trip-contract-select"
-            value={formData.customerContractId ?? ''}
-            onChange={(e) => handleContractChange(e.target.value || null)}
-            className={TRIP_NATIVE_SELECT_CLASS}
-            disabled={!formData.customerId}
-          >
-            <option value="">Selecione</option>
-            {visibleContracts.map((contract) => (
-              <option key={contract.id} value={contract.id}>
-                {contract.contractNumber}
-              </option>
-            ))}
-          </select>
-        </FormField>
-        <FormField
           label="Nome do cliente (livre)"
           htmlFor="trip-client"
           error={fieldErrors.clientName}
@@ -504,42 +423,18 @@ function TripFormContent({
           />
         </FormField>
         <FormField
-          label="Ref. contrato"
-          htmlFor="trip-contract"
-          error={fieldErrors.contractReference}
+          label="Valor do frete"
+          htmlFor="trip-freight-value"
+          error={fieldErrors.actualFreightValue}
         >
           <Input
-            id="trip-contract"
-            value={formData.contractReference ?? ''}
-            onChange={(e) =>
-              updateField('contractReference', e.target.value || null)
-            }
-          />
-        </FormField>
-        <FormField
-          label="Tabela de frete"
-          htmlFor="trip-freight-table"
-          error={fieldErrors.freightTable}
-        >
-          <Input
-            id="trip-freight-table"
-            value={formData.freightTable ?? ''}
-            onChange={(e) => updateField('freightTable', e.target.value || null)}
-          />
-        </FormField>
-        <FormField
-          label="Valor contratado"
-          htmlFor="trip-contracted-value"
-          error={fieldErrors.contractedFreightValue}
-        >
-          <Input
-            id="trip-contracted-value"
+            id="trip-freight-value"
             type="number"
             step="0.01"
-            value={formData.contractedFreightValue ?? ''}
+            value={formData.actualFreightValue ?? ''}
             onChange={(e) =>
               updateField(
-                'contractedFreightValue',
+                'actualFreightValue',
                 e.target.value ? Number(e.target.value) : null,
               )
             }
@@ -576,42 +471,6 @@ function TripFormContent({
             onChange={(e) =>
               updateField(
                 'finalOdometerKm',
-                e.target.value ? Number(e.target.value) : null,
-              )
-            }
-          />
-        </FormField>
-        <FormField
-          label="Horímetro inicial"
-          htmlFor="trip-hour-initial"
-          error={fieldErrors.initialHourMeter}
-        >
-          <Input
-            id="trip-hour-initial"
-            type="number"
-            step="0.01"
-            value={formData.initialHourMeter ?? ''}
-            onChange={(e) =>
-              updateField(
-                'initialHourMeter',
-                e.target.value ? Number(e.target.value) : null,
-              )
-            }
-          />
-        </FormField>
-        <FormField
-          label="Horímetro final"
-          htmlFor="trip-hour-final"
-          error={fieldErrors.finalHourMeter}
-        >
-          <Input
-            id="trip-hour-final"
-            type="number"
-            step="0.01"
-            value={formData.finalHourMeter ?? ''}
-            onChange={(e) =>
-              updateField(
-                'finalHourMeter',
                 e.target.value ? Number(e.target.value) : null,
               )
             }
@@ -654,17 +513,6 @@ function TripFormContent({
             }
           />
         </FormField>
-        <FormField label="Cubagem (m³)" htmlFor="trip-volume" error={fieldErrors.volumeM3}>
-          <Input
-            id="trip-volume"
-            type="number"
-            step="0.0001"
-            value={formData.volumeM3 ?? ''}
-            onChange={(e) =>
-              updateField('volumeM3', e.target.value ? Number(e.target.value) : null)
-            }
-          />
-        </FormField>
         <FormField
           label="Tipo da carga"
           htmlFor="trip-cargo-type"
@@ -685,6 +533,17 @@ function TripFormContent({
             id="trip-responsible"
             value={formData.responsible ?? ''}
             onChange={(e) => updateField('responsible', e.target.value || null)}
+          />
+        </FormField>
+        <FormField
+          label="Tabela de frete"
+          htmlFor="trip-freight-table"
+          error={fieldErrors.freightTable}
+        >
+          <Input
+            id="trip-freight-table"
+            value={formData.freightTable ?? ''}
+            onChange={(e) => updateField('freightTable', e.target.value || null)}
           />
         </FormField>
         <FormField

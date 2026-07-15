@@ -23,7 +23,6 @@ export function buildTripsListUrl({
   if (filters.driverId) params.set('driver', filters.driverId);
   if (filters.vehicleId) params.set('vehicle', filters.vehicleId);
   if (filters.clientName) params.set('client', filters.clientName);
-  if (filters.contractReference) params.set('contract', filters.contractReference);
   if (filters.branchId) params.set('branch', filters.branchId);
   if (filters.routeId) params.set('route', filters.routeId);
   if (filters.origin) params.set('origin', filters.origin);

@@ -67,21 +67,13 @@ const tripBaseSchema = z.object({
     .optional()
     .transform((v) => v ?? null),
   clientName: optionalString,
-  contractReference: optionalString,
   customerId: z
     .string()
     .uuid('Cliente inválido.')
     .nullable()
     .optional()
     .transform((v) => v ?? null),
-  customerContractId: z
-    .string()
-    .uuid('Contrato inválido.')
-    .nullable()
-    .optional()
-    .transform((v) => v ?? null),
   freightTable: optionalString,
-  contractedFreightValue: optionalNumber,
   actualFreightValue: optionalNumber,
   freightMargin: optionalNumber,
   routeId: z
@@ -97,12 +89,9 @@ const tripBaseSchema = z.object({
   plannedDepartureAt: optionalDateTime,
   initialOdometerKm: optionalNumber,
   finalOdometerKm: optionalNumber,
-  initialHourMeter: optionalNumber,
-  finalHourMeter: optionalNumber,
   departedAt: optionalDateTime,
   arrivedAt: optionalDateTime,
   weightKg: optionalNumber,
-  volumeM3: optionalNumber,
   cargoType: optionalString,
   notes: optionalString,
   responsible: optionalString,

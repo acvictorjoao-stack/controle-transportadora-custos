@@ -31,7 +31,6 @@ interface ViagensPageProps {
     driver?: string;
     vehicle?: string;
     client?: string;
-    contract?: string;
     branch?: string;
     route?: string;
     origin?: string;
@@ -65,7 +64,6 @@ export default async function ViagensPage({searchParams}: ViagensPageProps) {
     driverId: params.driver,
     vehicleId: params.vehicle,
     clientName: params.client,
-    contractReference: params.contract,
     branchId: params.branch,
     routeId: params.route,
     origin: params.origin,
