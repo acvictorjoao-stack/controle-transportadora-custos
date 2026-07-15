@@ -76,9 +76,17 @@ const tripBaseSchema = z.object({
   contractedFreightValue: optionalNumber,
   actualFreightValue: optionalNumber,
   freightMargin: optionalNumber,
+  routeId: z
+    .string()
+    .uuid('Selecione a rota.')
+    .nullable()
+    .optional()
+    .transform((v) => v ?? null),
   origin: optionalString,
   destination: optionalString,
   route: optionalString,
+  plannedDistanceKm: optionalNumber,
+  plannedDepartureAt: optionalDateTime,
   initialOdometerKm: optionalNumber,
   finalOdometerKm: optionalNumber,
   initialHourMeter: optionalNumber,
@@ -93,7 +101,15 @@ const tripBaseSchema = z.object({
   tripStatus: tripStatusSchema.optional().default('planned'),
 });
 
-export const createTripSchema = tripBaseSchema;
+export const createTripSchema = tripBaseSchema.superRefine((data, ctx) => {
+  if (!data.routeId) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['routeId'],
+      message: 'Selecione a rota.',
+    });
+  }
+});
 
 export const updateTripSchema = tripBaseSchema;
 

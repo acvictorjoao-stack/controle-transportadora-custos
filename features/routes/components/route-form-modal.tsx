@@ -20,10 +20,6 @@ import {
 } from '../types';
 import type {CreateRouteInput} from '../validation';
 import {ROUTE_NATIVE_SELECT_CLASS} from '../utils/form-styles';
-import {
-  combineDurationToMinutes,
-  splitDurationMinutes,
-} from '../utils/route-format';
 
 export interface RouteFormModalProps {
   open: boolean;
@@ -72,9 +68,6 @@ function RouteFormContent({
   onClose: () => void;
   onSaved: (route: Route) => void;
 }) {
-  const leadSplit = splitDurationMinutes(route?.leadTimeMinutes ?? null);
-  const unloadSplit = splitDurationMinutes(route?.unloadTimeMinutes ?? null);
-
   const [formData, setFormData] = React.useState<CreateRouteInput>(() => ({
     name: route?.name ?? '',
     code: route?.code ?? null,
@@ -82,15 +75,9 @@ function RouteFormContent({
     destination: route?.destination ?? '',
     routeType: route?.routeType ?? 'delivery',
     plannedDistanceKm: route?.plannedDistanceKm ?? null,
-    leadTimeMinutes: route?.leadTimeMinutes ?? null,
-    unloadTimeMinutes: route?.unloadTimeMinutes ?? null,
     notes: route?.notes ?? null,
     operationalStatus: route?.operationalStatus ?? 'active',
   }));
-  const [leadHours, setLeadHours] = React.useState(leadSplit.hours);
-  const [leadMinutes, setLeadMinutes] = React.useState(leadSplit.minutes);
-  const [unloadHours, setUnloadHours] = React.useState(unloadSplit.hours);
-  const [unloadMinutes, setUnloadMinutes] = React.useState(unloadSplit.minutes);
   const [fieldErrors, setFieldErrors] = React.useState<FieldErrors>({});
   const [formError, setFormError] = React.useState<string | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
@@ -117,15 +104,9 @@ function RouteFormContent({
     setFormError(null);
     setFieldErrors({});
 
-    const payload: CreateRouteInput = {
-      ...formData,
-      leadTimeMinutes: combineDurationToMinutes(leadHours, leadMinutes),
-      unloadTimeMinutes: combineDurationToMinutes(unloadHours, unloadMinutes),
-    };
-
     const result = isEdit && route
-      ? await updateRouteAction(route.id, payload)
-      : await createRouteAction(payload);
+      ? await updateRouteAction(route.id, formData)
+      : await createRouteAction(formData);
 
     if (!result.success) {
       setFormError(result.error);
@@ -244,7 +225,7 @@ function RouteFormContent({
           </select>
         </FormField>
         <FormField
-          label="Distância prevista (km)"
+          label="Distância (km)"
           htmlFor="route-distance"
           error={fieldErrors.plannedDistanceKm}
         >
@@ -262,57 +243,6 @@ function RouteFormContent({
             }
             placeholder="Ex: 250"
           />
-        </FormField>
-        <div />
-        <FormField
-          label="Lead Time previsto"
-          htmlFor="route-lead-hours"
-          error={fieldErrors.leadTimeMinutes}
-        >
-          <div className="flex gap-2">
-            <Input
-              id="route-lead-hours"
-              type="number"
-              min={0}
-              value={leadHours}
-              onChange={(e) => setLeadHours(e.target.value)}
-              placeholder="Horas"
-            />
-            <Input
-              id="route-lead-minutes"
-              type="number"
-              min={0}
-              max={59}
-              value={leadMinutes}
-              onChange={(e) => setLeadMinutes(e.target.value)}
-              placeholder="Minutos"
-            />
-          </div>
-        </FormField>
-        <FormField
-          label="Tempo médio de descarga"
-          htmlFor="route-unload-hours"
-          error={fieldErrors.unloadTimeMinutes}
-        >
-          <div className="flex gap-2">
-            <Input
-              id="route-unload-hours"
-              type="number"
-              min={0}
-              value={unloadHours}
-              onChange={(e) => setUnloadHours(e.target.value)}
-              placeholder="Horas"
-            />
-            <Input
-              id="route-unload-minutes"
-              type="number"
-              min={0}
-              max={59}
-              value={unloadMinutes}
-              onChange={(e) => setUnloadMinutes(e.target.value)}
-              placeholder="Minutos"
-            />
-          </div>
         </FormField>
       </div>
 

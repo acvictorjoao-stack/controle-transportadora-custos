@@ -20,8 +20,6 @@ export function mapRouteRow(row: RouteRow): Route {
       row.planned_distance_km === null || row.planned_distance_km === undefined
         ? null
         : Number(row.planned_distance_km),
-    leadTimeMinutes: row.lead_time_minutes,
-    unloadTimeMinutes: row.unload_time_minutes,
     notes: row.notes,
     operationalStatus: row.operational_status,
     externalId: row.external_id ?? null,

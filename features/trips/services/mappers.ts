@@ -85,6 +85,14 @@ export function mapTripRow(row: TripRow): Trip {
     origin: row.origin,
     destination: row.destination,
     route: row.route,
+    routeId: row.route_id ?? null,
+    routeName: mapJoinName(row.routes),
+    routeCode: mapJoinField(row.routes, 'code'),
+    plannedDistanceKm:
+      row.planned_distance_km !== null && row.planned_distance_km !== undefined
+        ? Number(row.planned_distance_km)
+        : null,
+    plannedDepartureAt: row.planned_departure_at ?? null,
     initialOdometerKm: initialOdometer,
     finalOdometerKm: finalOdometer,
     initialHourMeter:

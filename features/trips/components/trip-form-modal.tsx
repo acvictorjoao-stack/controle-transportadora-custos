@@ -10,9 +10,11 @@ import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {Textarea} from '@/components/ui/textarea';
 import {useToast} from '@/contexts/feedback/toast-context';
-import type {BranchSelectOption} from '@/features/organization/branches/types';
 import type {Customer, CustomerContract} from '@/features/customers/types';
 import type {DriverSelectOption} from '@/features/drivers/types';
+import type {BranchSelectOption} from '@/features/organization/branches/types';
+import type {RouteSelectOption} from '@/features/routes/types';
+import {formatDistanceKm} from '@/features/routes/utils/route-format';
 import type {VehicleSelectOption} from '@/features/vehicles/types';
 
 import {createTripAction, updateTripAction} from '../actions';
@@ -31,6 +33,7 @@ export interface TripFormModalProps {
   drivers: DriverSelectOption[];
   vehicles: VehicleSelectOption[];
   customers: Customer[];
+  routes: RouteSelectOption[];
   contracts?: CustomerContract[];
   onSaved: (trip: Trip) => void;
 }
@@ -45,6 +48,7 @@ function TripFormModal({
   drivers,
   vehicles,
   customers,
+  routes,
   contracts: initialContracts = [],
   onSaved,
 }: TripFormModalProps) {
@@ -69,6 +73,7 @@ function TripFormModal({
         drivers={drivers}
         vehicles={vehicles}
         customers={customers}
+        routes={routes}
         initialContracts={initialContracts}
         onClose={onClose}
         onSaved={onSaved}
@@ -84,6 +89,7 @@ function TripFormContent({
   drivers,
   vehicles,
   customers,
+  routes,
   initialContracts,
   onClose,
   onSaved,
@@ -94,6 +100,7 @@ function TripFormContent({
   drivers: DriverSelectOption[];
   vehicles: VehicleSelectOption[];
   customers: Customer[];
+  routes: RouteSelectOption[];
   initialContracts: CustomerContract[];
   onClose: () => void;
   onSaved: (trip: Trip) => void;
@@ -111,9 +118,12 @@ function TripFormContent({
     contractedFreightValue: trip?.contractedFreightValue ?? null,
     actualFreightValue: trip?.actualFreightValue ?? null,
     freightMargin: trip?.freightMargin ?? null,
+    routeId: trip?.routeId ?? null,
     origin: trip?.origin ?? null,
     destination: trip?.destination ?? null,
     route: trip?.route ?? null,
+    plannedDistanceKm: trip?.plannedDistanceKm ?? null,
+    plannedDepartureAt: trip?.plannedDepartureAt ?? null,
     initialOdometerKm: trip?.initialOdometerKm ?? null,
     finalOdometerKm: trip?.finalOdometerKm ?? null,
     initialHourMeter: trip?.initialHourMeter ?? null,
@@ -133,6 +143,25 @@ function TripFormContent({
   const toast = useToast();
   const visibleContracts = formData.customerId ? contracts : [];
 
+  const routeOptions = React.useMemo(() => {
+    if (!trip?.routeId) return routes;
+    if (routes.some((route) => route.id === trip.routeId)) return routes;
+    return [
+      {
+        id: trip.routeId,
+        name: trip.routeName ?? trip.route ?? 'Rota vinculada',
+        code: trip.routeCode,
+        origin: trip.origin ?? '',
+        destination: trip.destination ?? '',
+        plannedDistanceKm: trip.plannedDistanceKm,
+      },
+      ...routes,
+    ];
+  }, [routes, trip]);
+
+  const selectedRoute =
+    routeOptions.find((route) => route.id === formData.routeId) ?? null;
+
   React.useEffect(() => {
     if (!formData.customerId) return;
 
@@ -146,7 +175,9 @@ function TripFormContent({
       const rows = await listActiveContractsForSelect(supabase, companyId, formData.customerId!);
       if (!cancelled) setContracts(rows);
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [formData.customerId, customers]);
 
   async function handleCustomerChange(customerId: string | null) {
@@ -181,11 +212,40 @@ function TripFormContent({
         customerContractId: contractId,
         contractReference: contract?.contractNumber ?? null,
         freightTable: d.freightTable,
-        origin: d.origin ?? prev.origin,
-        destination: d.destination ?? prev.destination,
         contractedFreightValue: d.freightValue,
         notes: d.notes ?? prev.notes,
       }));
+    }
+  }
+
+  function handleRouteChange(routeId: string | null) {
+    const route = routeOptions.find((item) => item.id === routeId) ?? null;
+    if (!route) {
+      setFormData((prev) => ({
+        ...prev,
+        routeId: null,
+        origin: null,
+        destination: null,
+        route: null,
+        plannedDistanceKm: null,
+      }));
+      return;
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      routeId: route.id,
+      origin: route.origin,
+      destination: route.destination,
+      route: route.name,
+      plannedDistanceKm: route.plannedDistanceKm,
+    }));
+    if (fieldErrors.routeId) {
+      setFieldErrors((prev) => {
+        const next = {...prev};
+        delete next.routeId;
+        return next;
+      });
     }
   }
 
@@ -209,9 +269,14 @@ function TripFormContent({
     setFormError(null);
     setFieldErrors({});
 
-    const result = isEdit && trip
-      ? await updateTripAction(trip.id, formData)
-      : await createTripAction(formData);
+    const payload: CreateTripInput = {
+      ...formData,
+    };
+
+    const result =
+      isEdit && trip
+        ? await updateTripAction(trip.id, payload)
+        : await createTripAction(payload);
 
     if (!result.success) {
       setFormError(result.error);
@@ -237,6 +302,93 @@ function TripFormContent({
       )}
 
       <div className="grid gap-4 sm:grid-cols-2">
+        <FormField
+          label="Rota"
+          htmlFor="trip-route-id"
+          required={!isEdit || Boolean(trip?.routeId)}
+          error={fieldErrors.routeId}
+          className="sm:col-span-2"
+        >
+          <select
+            id="trip-route-id"
+            value={formData.routeId ?? ''}
+            onChange={(e) => handleRouteChange(e.target.value || null)}
+            className={TRIP_NATIVE_SELECT_CLASS}
+          >
+            <option value="">
+              {isEdit && !trip?.routeId ? 'Sem rota cadastrada' : 'Selecione a rota'}
+            </option>
+            {routeOptions.map((route) => (
+              <option key={route.id} value={route.id}>
+                {route.code ? `${route.code} — ${route.name}` : route.name}
+              </option>
+            ))}
+          </select>
+        </FormField>
+
+        <FormField label="Origem" htmlFor="trip-origin" error={fieldErrors.origin}>
+          <Input
+            id="trip-origin"
+            value={formData.origin ?? ''}
+            readOnly
+            disabled
+            placeholder="Preenchido pela rota"
+          />
+        </FormField>
+        <FormField
+          label="Destino"
+          htmlFor="trip-destination"
+          error={fieldErrors.destination}
+        >
+          <Input
+            id="trip-destination"
+            value={formData.destination ?? ''}
+            readOnly
+            disabled
+            placeholder="Preenchido pela rota"
+          />
+        </FormField>
+
+        <FormField
+          label="Distância"
+          htmlFor="trip-planned-distance"
+          error={fieldErrors.plannedDistanceKm}
+        >
+          <Input
+            id="trip-planned-distance"
+            value={
+              formData.plannedDistanceKm !== null && formData.plannedDistanceKm !== undefined
+                ? formatDistanceKm(formData.plannedDistanceKm)
+                : ''
+            }
+            readOnly
+            disabled
+            placeholder="—"
+          />
+        </FormField>
+        <FormField
+          label="Data da viagem"
+          htmlFor="trip-planned-departure"
+          error={fieldErrors.plannedDepartureAt}
+        >
+          <Input
+            id="trip-planned-departure"
+            type="datetime-local"
+            value={
+              formData.plannedDepartureAt
+                ? formData.plannedDepartureAt.slice(0, 16)
+                : ''
+            }
+            onChange={(e) =>
+              updateField(
+                'plannedDepartureAt',
+                e.target.value ? new Date(e.target.value).toISOString() : null,
+              )
+            }
+            disabled={!selectedRoute && !formData.routeId}
+          />
+        </FormField>
+
         <FormField label="Status" htmlFor="trip-status" error={fieldErrors.tripStatus}>
           <select
             id="trip-status"
@@ -313,7 +465,11 @@ function TripFormContent({
             ))}
           </select>
         </FormField>
-        <FormField label="Contrato" htmlFor="trip-contract-select" error={fieldErrors.customerContractId}>
+        <FormField
+          label="Contrato"
+          htmlFor="trip-contract-select"
+          error={fieldErrors.customerContractId}
+        >
           <select
             id="trip-contract-select"
             value={formData.customerContractId ?? ''}
@@ -329,14 +485,22 @@ function TripFormContent({
             ))}
           </select>
         </FormField>
-        <FormField label="Nome do cliente (livre)" htmlFor="trip-client" error={fieldErrors.clientName}>
+        <FormField
+          label="Nome do cliente (livre)"
+          htmlFor="trip-client"
+          error={fieldErrors.clientName}
+        >
           <Input
             id="trip-client"
             value={formData.clientName ?? ''}
             onChange={(e) => updateField('clientName', e.target.value || null)}
           />
         </FormField>
-        <FormField label="Ref. contrato" htmlFor="trip-contract" error={fieldErrors.contractReference}>
+        <FormField
+          label="Ref. contrato"
+          htmlFor="trip-contract"
+          error={fieldErrors.contractReference}
+        >
           <Input
             id="trip-contract"
             value={formData.contractReference ?? ''}
@@ -345,96 +509,112 @@ function TripFormContent({
             }
           />
         </FormField>
-        <FormField label="Tabela de frete" htmlFor="trip-freight-table" error={fieldErrors.freightTable}>
+        <FormField
+          label="Tabela de frete"
+          htmlFor="trip-freight-table"
+          error={fieldErrors.freightTable}
+        >
           <Input
             id="trip-freight-table"
             value={formData.freightTable ?? ''}
             onChange={(e) => updateField('freightTable', e.target.value || null)}
           />
         </FormField>
-        <FormField label="Valor contratado" htmlFor="trip-contracted-value" error={fieldErrors.contractedFreightValue}>
+        <FormField
+          label="Valor contratado"
+          htmlFor="trip-contracted-value"
+          error={fieldErrors.contractedFreightValue}
+        >
           <Input
             id="trip-contracted-value"
             type="number"
             step="0.01"
             value={formData.contractedFreightValue ?? ''}
-            onChange={(e) => updateField('contractedFreightValue', e.target.value ? Number(e.target.value) : null)}
+            onChange={(e) =>
+              updateField(
+                'contractedFreightValue',
+                e.target.value ? Number(e.target.value) : null,
+              )
+            }
           />
         </FormField>
-        <FormField label="Origem" htmlFor="trip-origin" error={fieldErrors.origin}>
-          <Input
-            id="trip-origin"
-            value={formData.origin ?? ''}
-            onChange={(e) => updateField('origin', e.target.value || null)}
-          />
-        </FormField>
-        <FormField label="Destino" htmlFor="trip-destination" error={fieldErrors.destination}>
-          <Input
-            id="trip-destination"
-            value={formData.destination ?? ''}
-            onChange={(e) => updateField('destination', e.target.value || null)}
-          />
-        </FormField>
-        <FormField label="Rota" htmlFor="trip-route" error={fieldErrors.route} className="sm:col-span-2">
-          <Input
-            id="trip-route"
-            value={formData.route ?? ''}
-            onChange={(e) => updateField('route', e.target.value || null)}
-          />
-        </FormField>
-        <FormField label="KM inicial" htmlFor="trip-km-initial" error={fieldErrors.initialOdometerKm}>
+        <FormField
+          label="KM inicial"
+          htmlFor="trip-km-initial"
+          error={fieldErrors.initialOdometerKm}
+        >
           <Input
             id="trip-km-initial"
             type="number"
             step="0.01"
             value={formData.initialOdometerKm ?? ''}
             onChange={(e) =>
-              updateField('initialOdometerKm', e.target.value ? Number(e.target.value) : null)
+              updateField(
+                'initialOdometerKm',
+                e.target.value ? Number(e.target.value) : null,
+              )
             }
           />
         </FormField>
-        <FormField label="KM final" htmlFor="trip-km-final" error={fieldErrors.finalOdometerKm}>
+        <FormField
+          label="KM final"
+          htmlFor="trip-km-final"
+          error={fieldErrors.finalOdometerKm}
+        >
           <Input
             id="trip-km-final"
             type="number"
             step="0.01"
             value={formData.finalOdometerKm ?? ''}
             onChange={(e) =>
-              updateField('finalOdometerKm', e.target.value ? Number(e.target.value) : null)
+              updateField(
+                'finalOdometerKm',
+                e.target.value ? Number(e.target.value) : null,
+              )
             }
           />
         </FormField>
-        <FormField label="Horímetro inicial" htmlFor="trip-hour-initial" error={fieldErrors.initialHourMeter}>
+        <FormField
+          label="Horímetro inicial"
+          htmlFor="trip-hour-initial"
+          error={fieldErrors.initialHourMeter}
+        >
           <Input
             id="trip-hour-initial"
             type="number"
             step="0.01"
             value={formData.initialHourMeter ?? ''}
             onChange={(e) =>
-              updateField('initialHourMeter', e.target.value ? Number(e.target.value) : null)
+              updateField(
+                'initialHourMeter',
+                e.target.value ? Number(e.target.value) : null,
+              )
             }
           />
         </FormField>
-        <FormField label="Horímetro final" htmlFor="trip-hour-final" error={fieldErrors.finalHourMeter}>
+        <FormField
+          label="Horímetro final"
+          htmlFor="trip-hour-final"
+          error={fieldErrors.finalHourMeter}
+        >
           <Input
             id="trip-hour-final"
             type="number"
             step="0.01"
             value={formData.finalHourMeter ?? ''}
             onChange={(e) =>
-              updateField('finalHourMeter', e.target.value ? Number(e.target.value) : null)
+              updateField(
+                'finalHourMeter',
+                e.target.value ? Number(e.target.value) : null,
+              )
             }
           />
         </FormField>
-        <FormField label="Saída" htmlFor="trip-departed" error={fieldErrors.departedAt}>
+        <FormField label="Saída real" htmlFor="trip-departed" error={fieldErrors.departedAt}>
           <Input
             id="trip-departed"
             type="datetime-local"
-            value={
-              formData.departedAt
-                ? formData.departedAt.slice(0, 16)
-                : ''
-            }
+            value={formData.departedAt ? formData.departedAt.slice(0, 16) : ''}
             onChange={(e) =>
               updateField(
                 'departedAt',
@@ -443,13 +623,11 @@ function TripFormContent({
             }
           />
         </FormField>
-        <FormField label="Chegada" htmlFor="trip-arrived" error={fieldErrors.arrivedAt}>
+        <FormField label="Chegada real" htmlFor="trip-arrived" error={fieldErrors.arrivedAt}>
           <Input
             id="trip-arrived"
             type="datetime-local"
-            value={
-              formData.arrivedAt ? formData.arrivedAt.slice(0, 16) : ''
-            }
+            value={formData.arrivedAt ? formData.arrivedAt.slice(0, 16) : ''}
             onChange={(e) =>
               updateField(
                 'arrivedAt',
@@ -464,7 +642,9 @@ function TripFormContent({
             type="number"
             step="0.01"
             value={formData.weightKg ?? ''}
-            onChange={(e) => updateField('weightKg', e.target.value ? Number(e.target.value) : null)}
+            onChange={(e) =>
+              updateField('weightKg', e.target.value ? Number(e.target.value) : null)
+            }
           />
         </FormField>
         <FormField label="Cubagem (m³)" htmlFor="trip-volume" error={fieldErrors.volumeM3}>
@@ -473,24 +653,39 @@ function TripFormContent({
             type="number"
             step="0.0001"
             value={formData.volumeM3 ?? ''}
-            onChange={(e) => updateField('volumeM3', e.target.value ? Number(e.target.value) : null)}
+            onChange={(e) =>
+              updateField('volumeM3', e.target.value ? Number(e.target.value) : null)
+            }
           />
         </FormField>
-        <FormField label="Tipo da carga" htmlFor="trip-cargo-type" error={fieldErrors.cargoType}>
+        <FormField
+          label="Tipo da carga"
+          htmlFor="trip-cargo-type"
+          error={fieldErrors.cargoType}
+        >
           <Input
             id="trip-cargo-type"
             value={formData.cargoType ?? ''}
             onChange={(e) => updateField('cargoType', e.target.value || null)}
           />
         </FormField>
-        <FormField label="Responsável" htmlFor="trip-responsible" error={fieldErrors.responsible}>
+        <FormField
+          label="Responsável"
+          htmlFor="trip-responsible"
+          error={fieldErrors.responsible}
+        >
           <Input
             id="trip-responsible"
             value={formData.responsible ?? ''}
             onChange={(e) => updateField('responsible', e.target.value || null)}
           />
         </FormField>
-        <FormField label="Observações" htmlFor="trip-notes" error={fieldErrors.notes} className="sm:col-span-2">
+        <FormField
+          label="Observações"
+          htmlFor="trip-notes"
+          error={fieldErrors.notes}
+          className="sm:col-span-2"
+        >
           <Textarea
             id="trip-notes"
             value={formData.notes ?? ''}

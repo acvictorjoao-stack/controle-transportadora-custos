@@ -17,6 +17,8 @@ import {ROUTES} from '@/constants/routes/paths';
 import type {Customer} from '@/features/customers/types';
 import type {BranchSelectOption} from '@/features/organization/branches/types';
 import type {DriverSelectOption} from '@/features/drivers/types';
+import type {RouteSelectOption} from '@/features/routes/types';
+import {formatDistanceKm} from '@/features/routes/utils/route-format';
 import type {VehicleSelectOption} from '@/features/vehicles/types';
 
 import {
@@ -36,6 +38,7 @@ import {
   TRIP_STATUS_LABELS,
 } from '../types';
 import {formatDateBr, formatDateTimeBr, getTripStatusVariant} from '../utils/trip-status';
+import {getTripRouteLabel} from '../utils/route-planning';
 import {TRIP_NATIVE_SELECT_CLASS} from '../utils/form-styles';
 import {TripFileUpload} from './trip-file-upload';
 import {TripFormModal} from './trip-form-modal';
@@ -47,6 +50,7 @@ export interface TripDetailViewProps {
   drivers: DriverSelectOption[];
   vehicles: VehicleSelectOption[];
   customers: Customer[];
+  routes: RouteSelectOption[];
 }
 
 const TABS = [
@@ -72,6 +76,7 @@ function TripDetailView({
   drivers,
   vehicles,
   customers,
+  routes,
 }: TripDetailViewProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = React.useState<TabId>('resumo');
@@ -96,20 +101,30 @@ function TripDetailView({
     ['Filial', trip.branchName ?? '—'],
     ['Cliente', trip.customerName ?? trip.clientName ?? '—'],
     ['Contrato', trip.contractReference ?? '—'],
+    ['Rota', getTripRouteLabel(trip)],
     ['Origem', trip.origin ?? '—'],
     ['Destino', trip.destination ?? '—'],
-    ['Rota', trip.route ?? '—'],
+    ['Distância prevista', formatDistanceKm(trip.plannedDistanceKm)],
+    ['Data da viagem', formatDateTimeBr(trip.plannedDepartureAt)],
     ['KM inicial', trip.initialOdometerKm?.toLocaleString('pt-BR') ?? '—'],
     ['KM final', trip.finalOdometerKm?.toLocaleString('pt-BR') ?? '—'],
-    ['Distância', trip.distanceKm !== null ? `${trip.distanceKm.toLocaleString('pt-BR')} km` : '—'],
+    ['Distância realizada', trip.distanceKm !== null ? `${trip.distanceKm.toLocaleString('pt-BR')} km` : '—'],
     ['Horímetro inicial', trip.initialHourMeter?.toLocaleString('pt-BR') ?? '—'],
     ['Horímetro final', trip.finalHourMeter?.toLocaleString('pt-BR') ?? '—'],
-    ['Saída', formatDateTimeBr(trip.departedAt)],
-    ['Chegada', formatDateTimeBr(trip.arrivedAt)],
+    ['Saída real', formatDateTimeBr(trip.departedAt)],
+    ['Chegada real', formatDateTimeBr(trip.arrivedAt)],
     ['Peso', trip.weightKg !== null ? `${trip.weightKg.toLocaleString('pt-BR')} kg` : '—'],
     ['Cubagem', trip.volumeM3 !== null ? `${trip.volumeM3} m³` : '—'],
     ['Tipo da carga', trip.cargoType ?? '—'],
     ['Responsável', trip.responsible ?? '—'],
+  ];
+
+  const planningRows = [
+    ['Rota', getTripRouteLabel(trip)],
+    ['Origem', trip.origin ?? '—'],
+    ['Destino', trip.destination ?? '—'],
+    ['Distância prevista', formatDistanceKm(trip.plannedDistanceKm)],
+    ['Data da viagem', formatDateTimeBr(trip.plannedDepartureAt)],
   ];
 
   return (
@@ -157,39 +172,57 @@ function TripDetailView({
       </div>
 
       {activeTab === 'resumo' && (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Motorista</CardTitle>
+              </CardHeader>
+              <CardContent className="text-lg font-semibold">
+                {trip.driverName ?? '—'}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Veículo</CardTitle>
+              </CardHeader>
+              <CardContent className="text-lg font-semibold">
+                {trip.vehiclePlate ?? '—'}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Distância</CardTitle>
+              </CardHeader>
+              <CardContent className="text-lg font-semibold">
+                {trip.distanceKm !== null
+                  ? `${trip.distanceKm.toLocaleString('pt-BR')} km`
+                  : '—'}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Ocorrências</CardTitle>
+              </CardHeader>
+              <CardContent className="text-lg font-semibold">
+                {data.occurrences.length}
+              </CardContent>
+            </Card>
+          </div>
+
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Motorista</CardTitle>
+            <CardHeader>
+              <CardTitle className="text-base">Planejamento</CardTitle>
             </CardHeader>
-            <CardContent className="text-lg font-semibold">
-              {trip.driverName ?? '—'}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Veículo</CardTitle>
-            </CardHeader>
-            <CardContent className="text-lg font-semibold">
-              {trip.vehiclePlate ?? '—'}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Distância</CardTitle>
-            </CardHeader>
-            <CardContent className="text-lg font-semibold">
-              {trip.distanceKm !== null
-                ? `${trip.distanceKm.toLocaleString('pt-BR')} km`
-                : '—'}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Ocorrências</CardTitle>
-            </CardHeader>
-            <CardContent className="text-lg font-semibold">
-              {data.occurrences.length}
+            <CardContent>
+              <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {planningRows.map(([label, value]) => (
+                  <div key={label}>
+                    <dt className="text-xs text-muted-foreground">{label}</dt>
+                    <dd className="text-sm font-medium">{value}</dd>
+                  </div>
+                ))}
+              </dl>
             </CardContent>
           </Card>
         </div>
@@ -426,6 +459,7 @@ function TripDetailView({
         drivers={drivers}
         vehicles={vehicles}
         customers={customers}
+        routes={routes}
         onSaved={handleRefresh}
       />
     </PageTemplate>

@@ -21,15 +21,6 @@ const optionalNonNegativeNumber = z
   })
   .refine((v) => v === null || v >= 0, 'Valor inválido.');
 
-const optionalNonNegativeInt = z
-  .union([z.number(), z.string(), z.null(), z.undefined()])
-  .transform((v) => {
-    if (v === null || v === undefined || v === '') return null;
-    const n = typeof v === 'number' ? v : Number(String(v));
-    return Number.isFinite(n) ? Math.round(n) : null;
-  })
-  .refine((v) => v === null || v >= 0, 'Valor inválido.');
-
 export const routeOperationalStatusSchema = z.enum(ROUTE_OPERATIONAL_STATUSES);
 
 export const routeTypeSchema = z.enum(ROUTE_TYPES);
@@ -41,8 +32,6 @@ const routeBaseSchema = z.object({
   destination: z.string().trim().min(1, 'Informe o destino.'),
   routeType: routeTypeSchema,
   plannedDistanceKm: optionalNonNegativeNumber,
-  leadTimeMinutes: optionalNonNegativeInt,
-  unloadTimeMinutes: optionalNonNegativeInt,
   notes: optionalTrimmedString,
   operationalStatus: routeOperationalStatusSchema.optional().default('active'),
 });

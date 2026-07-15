@@ -21,8 +21,6 @@ export interface RouteRow {
   destination: string;
   route_type: RouteType;
   planned_distance_km: number | null;
-  lead_time_minutes: number | null;
-  unload_time_minutes: number | null;
   notes: string | null;
   operational_status: RouteOperationalStatus;
   external_id: string | null;
@@ -45,8 +43,6 @@ export interface Route {
   destination: string;
   routeType: RouteType;
   plannedDistanceKm: number | null;
-  leadTimeMinutes: number | null;
-  unloadTimeMinutes: number | null;
   notes: string | null;
   operationalStatus: RouteOperationalStatus;
   externalId: string | null;
@@ -57,7 +53,15 @@ export interface Route {
   updatedAt: string;
 }
 
-export type RouteSelectOption = Pick<Route, 'id' | 'name' | 'code' | 'origin' | 'destination'>;
+export type RouteSelectOption = Pick<
+  Route,
+  | 'id'
+  | 'name'
+  | 'code'
+  | 'origin'
+  | 'destination'
+  | 'plannedDistanceKm'
+>;
 
 export interface RouteHistoryRow {
   id: string;
@@ -131,7 +135,6 @@ export interface RouteSortOptions {
     | 'destination'
     | 'route_type'
     | 'planned_distance_km'
-    | 'lead_time_minutes'
     | 'operational_status'
     | 'created_at';
   sortOrder?: 'asc' | 'desc';

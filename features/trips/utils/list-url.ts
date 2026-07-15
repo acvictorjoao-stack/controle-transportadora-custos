@@ -25,6 +25,9 @@ export function buildTripsListUrl({
   if (filters.clientName) params.set('client', filters.clientName);
   if (filters.contractReference) params.set('contract', filters.contractReference);
   if (filters.branchId) params.set('branch', filters.branchId);
+  if (filters.routeId) params.set('route', filters.routeId);
+  if (filters.origin) params.set('origin', filters.origin);
+  if (filters.destination) params.set('destination', filters.destination);
   if (filters.dateFrom) params.set('dateFrom', filters.dateFrom);
   if (filters.dateTo) params.set('dateTo', filters.dateTo);
   if (sort.sortBy && sort.sortBy !== 'departed_at') params.set('sortBy', sort.sortBy);

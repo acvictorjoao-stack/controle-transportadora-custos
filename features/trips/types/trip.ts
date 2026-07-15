@@ -32,6 +32,9 @@ export interface TripRow {
   origin: string | null;
   destination: string | null;
   route: string | null;
+  route_id: string | null;
+  planned_distance_km: number | null;
+  planned_departure_at: string | null;
   initial_odometer_km: number | null;
   final_odometer_km: number | null;
   initial_hour_meter: number | null;
@@ -58,6 +61,24 @@ export interface TripRow {
     | {id: string; plate: string; fleet_number: string | null; brand?: string | null; model?: string | null}[]
     | null;
   customers?: {id: string; legal_name: string; trade_name: string | null} | {id: string; legal_name: string; trade_name: string | null}[] | null;
+  routes?:
+    | {
+        id: string;
+        name: string;
+        code: string | null;
+        origin: string;
+        destination: string;
+        planned_distance_km: number | null;
+      }
+    | {
+        id: string;
+        name: string;
+        code: string | null;
+        origin: string;
+        destination: string;
+        planned_distance_km: number | null;
+      }[]
+    | null;
 }
 
 export interface Trip {
@@ -84,6 +105,11 @@ export interface Trip {
   origin: string | null;
   destination: string | null;
   route: string | null;
+  routeId: string | null;
+  routeName: string | null;
+  routeCode: string | null;
+  plannedDistanceKm: number | null;
+  plannedDepartureAt: string | null;
   initialOdometerKm: number | null;
   finalOdometerKm: number | null;
   initialHourMeter: number | null;
@@ -311,6 +337,9 @@ export interface TripListFilters {
   clientName?: string;
   contractReference?: string;
   branchId?: string;
+  routeId?: string;
+  origin?: string;
+  destination?: string;
   dateFrom?: string;
   dateTo?: string;
 }

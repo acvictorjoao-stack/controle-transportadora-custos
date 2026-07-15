@@ -118,6 +118,9 @@ function buildTripPayload(
     origin: input.origin,
     destination: input.destination,
     route: input.route,
+    route_id: input.routeId,
+    planned_distance_km: input.plannedDistanceKm,
+    planned_departure_at: input.plannedDepartureAt,
     initial_odometer_km: input.initialOdometerKm,
     final_odometer_km: input.finalOdometerKm,
     initial_hour_meter: input.initialHourMeter,
@@ -173,6 +176,15 @@ export async function listTrips(
   if (filters.branchId) {
     query = query.eq('branch_id', filters.branchId);
   }
+  if (filters.routeId) {
+    query = query.eq('route_id', filters.routeId);
+  }
+  if (filters.origin) {
+    query = query.eq('origin', filters.origin);
+  }
+  if (filters.destination) {
+    query = query.eq('destination', filters.destination);
+  }
   if (filters.clientName) {
     query = query.ilike('client_name', `%${filters.clientName.trim()}%`);
   }
@@ -187,9 +199,27 @@ export async function listTrips(
   }
 
   if (search) {
-    query = query.or(
-      `trip_number.ilike.%${search}%,client_name.ilike.%${search}%,origin.ilike.%${search}%,destination.ilike.%${search}%,contract_reference.ilike.%${search}%`,
-    );
+    const {data: matchingRoutes} = await supabase
+      .from('routes')
+      .select('id')
+      .eq('company_id', options.companyId)
+      .is('deleted_at', null)
+      .ilike('name', `%${search}%`)
+      .limit(50);
+
+    const routeIds = (matchingRoutes ?? []).map((row) => row.id);
+    const orFilters = [
+      `trip_number.ilike.%${search}%`,
+      `client_name.ilike.%${search}%`,
+      `origin.ilike.%${search}%`,
+      `destination.ilike.%${search}%`,
+      `contract_reference.ilike.%${search}%`,
+      `route.ilike.%${search}%`,
+    ];
+    if (routeIds.length > 0) {
+      orFilters.push(`route_id.in.(${routeIds.join(',')})`);
+    }
+    query = query.or(orFilters.join(','));
   }
 
   const {data, error, count} = await query

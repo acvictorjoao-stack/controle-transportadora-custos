@@ -20,6 +20,7 @@ import {ROUTES} from '@/constants/routes/paths';
 import type {Customer} from '@/features/customers/types';
 import type {BranchSelectOption} from '@/features/organization/branches/types';
 import type {DriverSelectOption} from '@/features/drivers/types';
+import type {RouteFilterOptions, RouteSelectOption} from '@/features/routes/types';
 import type {VehicleSelectOption} from '@/features/vehicles/types';
 
 import {deleteTripAction, updateTripStatusAction} from '../actions';
@@ -33,6 +34,7 @@ import type {
 import {TRIP_STATUS_LABELS} from '../types';
 import {formatDateTimeBr, getTripStatusVariant} from '../utils/trip-status';
 import {buildTripsListUrl} from '../utils/list-url';
+import {getTripRouteLabel} from '../utils/route-planning';
 import {TripFilters} from './trip-filters';
 import {TripFormModal} from './trip-form-modal';
 
@@ -45,6 +47,8 @@ export interface TripsListProps {
   drivers: DriverSelectOption[];
   vehicles: VehicleSelectOption[];
   customers: Customer[];
+  routes: RouteSelectOption[];
+  routeFilterOptions: RouteFilterOptions;
   error: string | null;
 }
 
@@ -57,6 +61,8 @@ function TripsList({
   drivers,
   vehicles,
   customers,
+  routes,
+  routeFilterOptions,
   error: initialError,
 }: TripsListProps) {
   const router = useRouter();
@@ -175,6 +181,11 @@ function TripsList({
       cell: (row: Trip) => row.customerName ?? row.clientName ?? '—',
     },
     {
+      id: 'routeName',
+      header: 'Rota',
+      cell: (row: Trip) => getTripRouteLabel(row),
+    },
+    {
       id: 'route',
       header: 'Origem → Destino',
       cell: (row: Trip) =>
@@ -246,13 +257,15 @@ function TripsList({
             <SearchInput
               value={search}
               onValueChange={setSearch}
-              placeholder="Buscar por número, cliente, origem ou destino..."
+              placeholder="Buscar por número, cliente, rota, origem ou destino..."
               className="w-full max-w-md"
             />
             <TripFilters
               branches={branches}
               drivers={drivers}
               vehicles={vehicles}
+              routes={routes}
+              routeFilterOptions={routeFilterOptions}
               initialFilters={initialFilters}
               initialSort={initialSort}
             />
@@ -294,6 +307,7 @@ function TripsList({
         drivers={drivers}
         vehicles={vehicles}
         customers={customers}
+        routes={routes}
         onSaved={handleSaved}
       />
     </PageTemplate>

@@ -34,7 +34,6 @@ import {
 import {buildRoutesListUrl} from '../utils/list-url';
 import {
   formatDistanceKm,
-  formatDurationMinutes,
   getRouteOperationalStatusVariant,
 } from '../utils/route-format';
 import {RouteFilters} from './route-filters';
@@ -188,11 +187,6 @@ function RoutesList({
       cell: (row: Route) => formatDistanceKm(row.plannedDistanceKm),
     },
     {
-      id: 'leadTime',
-      header: 'Lead Time',
-      cell: (row: Route) => formatDurationMinutes(row.leadTimeMinutes),
-    },
-    {
       id: 'operationalStatus',
       header: 'Status',
       cell: (row: Route) => (
@@ -247,7 +241,7 @@ function RoutesList({
   return (
     <PageTemplate
       title="Rotas"
-      description="Cadastro de rotas operacionais para lead time, SLA e indicadores"
+      description="Cadastro de rotas operacionais (origem, destino e distância)"
       actions={
         <Button size="sm" onClick={openCreate}>
           <Plus className="size-4" />

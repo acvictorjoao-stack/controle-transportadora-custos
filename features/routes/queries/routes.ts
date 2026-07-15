@@ -35,7 +35,6 @@ const SORT_COLUMNS: Record<NonNullable<RouteSortOptions['sortBy']>, string> = {
   destination: 'destination',
   route_type: 'route_type',
   planned_distance_km: 'planned_distance_km',
-  lead_time_minutes: 'lead_time_minutes',
   operational_status: 'operational_status',
   created_at: 'created_at',
 };
@@ -56,8 +55,6 @@ function buildRoutePayload(
     destination: input.destination,
     route_type: input.routeType,
     planned_distance_km: input.plannedDistanceKm,
-    lead_time_minutes: input.leadTimeMinutes,
-    unload_time_minutes: input.unloadTimeMinutes,
     notes: input.notes,
     operational_status: input.operationalStatus ?? 'active',
     updated_by: profileId,
@@ -163,15 +160,23 @@ export async function listRoutesForSelect(
   supabase: SupabaseClient,
   companyId: string,
   limit = 100,
+  options?: {includeInactive?: boolean},
 ): Promise<RouteSelectOption[]> {
-  const {data, error} = await supabase
+  let query = supabase
     .from('routes')
-    .select('id, name, code, origin, destination')
+    .select(
+      'id, name, code, origin, destination, planned_distance_km',
+    )
     .eq('company_id', companyId)
     .is('deleted_at', null)
-    .eq('operational_status', 'active')
     .order('name')
     .limit(limit);
+
+  if (!options?.includeInactive) {
+    query = query.eq('operational_status', 'active');
+  }
+
+  const {data, error} = await query;
 
   if (error) {
     throw new Error(mapDatabaseError(error));
@@ -183,6 +188,10 @@ export async function listRoutesForSelect(
     code: row.code,
     origin: row.origin,
     destination: row.destination,
+    plannedDistanceKm:
+      row.planned_distance_km === null || row.planned_distance_km === undefined
+        ? null
+        : Number(row.planned_distance_km),
   }));
 }
 

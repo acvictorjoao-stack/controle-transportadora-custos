@@ -5,6 +5,7 @@ import * as React from 'react';
 
 import type {BranchSelectOption} from '@/features/organization/branches/types';
 import type {DriverSelectOption} from '@/features/drivers/types';
+import type {RouteFilterOptions, RouteSelectOption} from '@/features/routes/types';
 import type {VehicleSelectOption} from '@/features/vehicles/types';
 
 import {TRIP_STATUSES} from '../constants/enums';
@@ -17,6 +18,8 @@ export interface TripFiltersProps {
   branches: BranchSelectOption[];
   drivers: DriverSelectOption[];
   vehicles: VehicleSelectOption[];
+  routes: RouteSelectOption[];
+  routeFilterOptions: RouteFilterOptions;
   initialFilters: TripListFilters;
   initialSort: TripSortOptions;
 }
@@ -25,6 +28,8 @@ function TripFilters({
   branches,
   drivers,
   vehicles,
+  routes,
+  routeFilterOptions,
   initialFilters,
   initialSort,
 }: TripFiltersProps) {
@@ -63,6 +68,42 @@ function TripFilters({
         {TRIP_STATUSES.map((status) => (
           <option key={status} value={status}>
             {TRIP_STATUS_LABELS[status]}
+          </option>
+        ))}
+      </select>
+      <select
+        value={filters.routeId ?? ''}
+        onChange={(e) => updateFilter('routeId', e.target.value || undefined)}
+        className={TRIP_NATIVE_SELECT_CLASS}
+      >
+        <option value="">Rota</option>
+        {routes.map((route) => (
+          <option key={route.id} value={route.id}>
+            {route.code ? `${route.code} — ${route.name}` : route.name}
+          </option>
+        ))}
+      </select>
+      <select
+        value={filters.origin ?? ''}
+        onChange={(e) => updateFilter('origin', e.target.value || undefined)}
+        className={TRIP_NATIVE_SELECT_CLASS}
+      >
+        <option value="">Origem</option>
+        {routeFilterOptions.origins.map((origin) => (
+          <option key={origin} value={origin}>
+            {origin}
+          </option>
+        ))}
+      </select>
+      <select
+        value={filters.destination ?? ''}
+        onChange={(e) => updateFilter('destination', e.target.value || undefined)}
+        className={TRIP_NATIVE_SELECT_CLASS}
+      >
+        <option value="">Destino</option>
+        {routeFilterOptions.destinations.map((destination) => (
+          <option key={destination} value={destination}>
+            {destination}
           </option>
         ))}
       </select>

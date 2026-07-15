@@ -129,7 +129,6 @@ function RouteFilters({
           <option value="destination">Destino</option>
           <option value="route_type">Tipo</option>
           <option value="planned_distance_km">Distância</option>
-          <option value="lead_time_minutes">Lead Time</option>
           <option value="operational_status">Status</option>
           <option value="created_at">Cadastro</option>
         </select>
