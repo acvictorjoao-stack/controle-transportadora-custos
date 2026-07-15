@@ -13,6 +13,7 @@ const segmentLabels: Record<string, string> = {
   contratos: 'Contratos',
   veiculos: 'Veículos',
   motoristas: 'Motoristas',
+  rotas: 'Rotas',
   viagens: 'Viagens',
   financeiro: 'Financeiro',
   'fluxo-de-caixa': 'Fluxo de Caixa',

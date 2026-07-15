@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   MapPin,
   Receipt,
+  Route,
   Settings,
   Truck,
   Users,
@@ -99,6 +100,14 @@ export const navigationGroups: NavGroup[] = [
         href: ROUTES.motoristas,
         icon: Car,
         permission: 'drivers:read',
+      },
+      {
+        id: 'rotas',
+        title: 'Rotas',
+        description: 'Rotas operacionais',
+        href: ROUTES.rotas,
+        icon: Route,
+        permission: 'routes:read',
       },
       {
         id: 'viagens',

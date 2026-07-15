@@ -21,6 +21,8 @@ export const ROUTES = {
   veiculoDetail: (id: string) => `/veiculos/${id}`,
   motoristas: '/motoristas',
   motoristaDetail: (id: string) => `/motoristas/${id}`,
+  rotas: '/rotas',
+  rotaDetail: (id: string) => `/rotas/${id}`,
   viagens: '/viagens',
   viagemDetail: (id: string) => `/viagens/${id}`,
   abastecimentos: '/abastecimentos',

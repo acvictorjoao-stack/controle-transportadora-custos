@@ -1,5 +1,5 @@
 /**
- * Reflects migrations 001–060 (Sprint 23.1.1)
+ * Reflects migrations 001–076 (Sprint 25.1)
  */
 
 export type Json =
@@ -2503,6 +2503,159 @@ export type Database = {
         };
         Relationships: [];
       };
+      routes: {
+        Row: {
+          id: string;
+          company_id: string;
+          name: string;
+          code: string | null;
+          origin: string;
+          destination: string;
+          route_type: 'delivery' | 'pickup' | 'transfer' | 'distribution' | 'other';
+          planned_distance_km: number | null;
+          lead_time_minutes: number | null;
+          unload_time_minutes: number | null;
+          notes: string | null;
+          operational_status: 'active' | 'inactive';
+          metadata: Json;
+          status: 'active' | 'inactive' | 'blocked' | 'archived';
+          external_id: string | null;
+          integration_source: string | null;
+          created_at: string;
+          updated_at: string;
+          deleted_at: string | null;
+          created_by: string | null;
+          updated_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          name: string;
+          code?: string | null;
+          origin: string;
+          destination: string;
+          route_type?: 'delivery' | 'pickup' | 'transfer' | 'distribution' | 'other';
+          planned_distance_km?: number | null;
+          lead_time_minutes?: number | null;
+          unload_time_minutes?: number | null;
+          notes?: string | null;
+          operational_status?: 'active' | 'inactive';
+          metadata?: Json;
+          status?: 'active' | 'inactive' | 'blocked' | 'archived';
+          external_id?: string | null;
+          integration_source?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          deleted_at?: string | null;
+          created_by?: string | null;
+          updated_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          name?: string;
+          code?: string | null;
+          origin?: string;
+          destination?: string;
+          route_type?: 'delivery' | 'pickup' | 'transfer' | 'distribution' | 'other';
+          planned_distance_km?: number | null;
+          lead_time_minutes?: number | null;
+          unload_time_minutes?: number | null;
+          notes?: string | null;
+          operational_status?: 'active' | 'inactive';
+          metadata?: Json;
+          status?: 'active' | 'inactive' | 'blocked' | 'archived';
+          external_id?: string | null;
+          integration_source?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          deleted_at?: string | null;
+          created_by?: string | null;
+          updated_by?: string | null;
+        };
+        Relationships: [];
+      };
+      route_history: {
+        Row: {
+          id: string;
+          company_id: string;
+          route_id: string;
+          action: string;
+          changes: Json;
+          previous_operational_status: 'active' | 'inactive' | null;
+          new_operational_status: 'active' | 'inactive' | null;
+          created_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          route_id: string;
+          action: string;
+          changes?: Json;
+          previous_operational_status?: 'active' | 'inactive' | null;
+          new_operational_status?: 'active' | 'inactive' | null;
+          created_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          route_id?: string;
+          action?: string;
+          changes?: Json;
+          previous_operational_status?: 'active' | 'inactive' | null;
+          new_operational_status?: 'active' | 'inactive' | null;
+          created_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [];
+      };
+      route_documents: {
+        Row: {
+          id: string;
+          company_id: string;
+          route_id: string;
+          name: string;
+          file_url: string;
+          storage_path: string | null;
+          document_type: 'document' | 'map' | 'other';
+          mime_type: string | null;
+          file_size: number | null;
+          created_at: string;
+          deleted_at: string | null;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          route_id: string;
+          name: string;
+          file_url: string;
+          storage_path?: string | null;
+          document_type?: 'document' | 'map' | 'other';
+          mime_type?: string | null;
+          file_size?: number | null;
+          created_at?: string;
+          deleted_at?: string | null;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          company_id?: string;
+          route_id?: string;
+          name?: string;
+          file_url?: string;
+          storage_path?: string | null;
+          document_type?: 'document' | 'map' | 'other';
+          mime_type?: string | null;
+          file_size?: number | null;
+          created_at?: string;
+          deleted_at?: string | null;
+          created_by?: string | null;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -2646,6 +2799,9 @@ export type Database = {
       tire_movement_type: 'install' | 'remove' | 'position_change' | 'rotation';
       tire_document_type: 'invoice' | 'warranty' | 'photo' | 'report' | 'other';
       tire_wear_level: 'good' | 'warning' | 'critical';
+      route_operational_status: 'active' | 'inactive';
+      route_type: 'delivery' | 'pickup' | 'transfer' | 'distribution' | 'other';
+      route_document_type: 'document' | 'map' | 'other';
     };
     CompositeTypes: Record<string, never>;
   };

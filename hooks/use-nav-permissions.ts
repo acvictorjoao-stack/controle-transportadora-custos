@@ -10,6 +10,7 @@ const PERMISSION_ALIASES: Record<string, string[]> = {
     'branches:read',
     'vehicles:read',
     'drivers:read',
+    'routes:read',
     'trips:read',
     'fuel:read',
     'maintenance:read',
@@ -26,6 +27,7 @@ const PERMISSION_ALIASES: Record<string, string[]> = {
   'operacoes:read': [
     'vehicles:read',
     'drivers:read',
+    'routes:read',
     'trips:read',
     'fuel:read',
   ],
