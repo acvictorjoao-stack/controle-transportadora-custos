@@ -187,7 +187,7 @@ function FinancialDetailView({
       actions={
         <div className="flex gap-2">
           <Link
-            href={ROUTES.financeiro}
+            href={ROUTES.financeiroDashboard}
             className="inline-flex h-8 items-center gap-2 rounded-md border border-border bg-background px-3 text-xs font-medium shadow-xs hover:bg-accent"
           >
             <ArrowLeft className="size-4" />

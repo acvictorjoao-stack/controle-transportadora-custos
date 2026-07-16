@@ -86,7 +86,7 @@ export const modulePageRegistry: Record<ModulePageId, ModulePageMeta> = {
     id: 'financeiro',
     title: 'Financeiro',
     description: 'Gestão financeira consolidada da operação.',
-    href: ROUTES.financeiro,
+    href: ROUTES.financeiroDashboard,
   },
   'financeiro-dashboard': {
     id: 'financeiro-dashboard',
