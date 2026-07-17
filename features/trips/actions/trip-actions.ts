@@ -41,6 +41,7 @@ import type {
 } from '../types';
 import {
   cancelTripSchema,
+  completeTripSchema,
   createTripExpenseSchema,
   createTripOccurrenceSchema,
   createTripSchema,
@@ -239,9 +240,21 @@ export async function startTripAction(tripId: string): Promise<ActionResult<Trip
   }
 }
 
-export async function completeTripAction(tripId: string): Promise<ActionResult<Trip>> {
+export async function completeTripAction(
+  tripId: string,
+  input: unknown,
+): Promise<ActionResult<Trip>> {
   const resolved = await resolveTripAccess('trips:update');
   if (!resolved.success) return resolved;
+
+  const parsed = completeTripSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: 'Informe um KM final válido.',
+      fieldErrors: zodFieldErrors(parsed.error.issues),
+    };
+  }
 
   try {
     const supabase = await getServerSupabaseClient();
@@ -249,6 +262,7 @@ export async function completeTripAction(tripId: string): Promise<ActionResult<T
       supabase,
       resolved.data.companyId,
       tripId,
+      parsed.data,
       resolved.data.profileId,
     );
     revalidateTripPaths(trip.id);

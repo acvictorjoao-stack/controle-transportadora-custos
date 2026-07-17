@@ -91,7 +91,18 @@ export interface Vehicle {
   updatedAt: string;
 }
 
-export type VehicleSelectOption = Pick<Vehicle, 'id' | 'plate' | 'model'>;
+export type VehicleSelectOption = Pick<
+  Vehicle,
+  | 'id'
+  | 'plate'
+  | 'model'
+  | 'vehicleType'
+  | 'bodyType'
+  | 'brand'
+  | 'loadCapacityKg'
+  | 'currentOdometerKm'
+  | 'assetStatus'
+>;
 
 export interface VehicleHistoryRow {
   id: string;

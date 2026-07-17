@@ -160,7 +160,9 @@ export async function listVehiclesForSelect(
 ): Promise<VehicleSelectOption[]> {
   const {data, error} = await supabase
     .from('vehicles')
-    .select('id, plate, model')
+    .select(
+      'id, plate, model, vehicle_type, body_type, brand, load_capacity_kg, current_odometer_km, asset_status',
+    )
     .eq('company_id', companyId)
     .is('deleted_at', null)
     .order('plate')
@@ -174,6 +176,12 @@ export async function listVehiclesForSelect(
     id: row.id,
     plate: row.plate,
     model: row.model,
+    vehicleType: row.vehicle_type,
+    bodyType: row.body_type,
+    brand: row.brand,
+    loadCapacityKg: row.load_capacity_kg,
+    currentOdometerKm: Number(row.current_odometer_km),
+    assetStatus: row.asset_status,
   }));
 }
 

@@ -3,10 +3,12 @@
 import {Loader2} from 'lucide-react';
 import * as React from 'react';
 
+import {FormField} from '@/components/master/shared/form-field';
 import {Modal} from '@/components/master/shared/modal';
 import {Alert, AlertDescription} from '@/components/ui/alert';
 import {Button} from '@/components/ui/button';
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
+import {Input} from '@/components/ui/input';
 import {Textarea} from '@/components/ui/textarea';
 import {useToast} from '@/contexts/feedback/toast-context';
 import {MSG} from '@/lib/feedback/messages';
@@ -36,6 +38,12 @@ function TripLifecycleCard({trip, onChanged}: TripLifecycleCardProps) {
     null,
   );
   const [cancelOpen, setCancelOpen] = React.useState(false);
+  const [completeOpen, setCompleteOpen] = React.useState(false);
+  const [finalOdometerKm, setFinalOdometerKm] = React.useState(
+    trip.finalOdometerKm?.toString() ?? '',
+  );
+  const [completeError, setCompleteError] = React.useState<string | null>(null);
+  const [finalOdometerError, setFinalOdometerError] = React.useState<string | null>(null);
   const [cancellationNotes, setCancellationNotes] = React.useState('');
   const [cancelError, setCancelError] = React.useState<string | null>(null);
 
@@ -56,12 +64,26 @@ function TripLifecycleCard({trip, onChanged}: TripLifecycleCardProps) {
   }
 
   async function handleComplete() {
+    const finalKm = Number(finalOdometerKm.replace(',', '.'));
+    if (!finalOdometerKm.trim() || !Number.isFinite(finalKm) || finalKm < 0) {
+      setFinalOdometerError('Informe o KM final da viagem.');
+      return;
+    }
+    if (trip.initialOdometerKm !== null && finalKm < trip.initialOdometerKm) {
+      setFinalOdometerError('O KM final deve ser maior ou igual ao KM inicial.');
+      return;
+    }
+
     setLoading('complete');
-    const result = await completeTripAction(trip.id);
+    setCompleteError(null);
+    setFinalOdometerError(null);
+    const result = await completeTripAction(trip.id, {finalOdometerKm: finalKm});
     if (!result.success) {
-      toast.error(result.error ?? MSG.operationFailed);
+      setCompleteError(result.error ?? 'Não foi possível concluir a viagem.');
+      setFinalOdometerError(result.fieldErrors?.finalOdometerKm ?? null);
     } else {
       toast.success('Viagem concluída com sucesso.');
+      setCompleteOpen(false);
       onChanged();
     }
     setLoading(null);
@@ -141,8 +163,15 @@ function TripLifecycleCard({trip, onChanged}: TripLifecycleCardProps) {
                 </Button>
               )}
               {showComplete && (
-                <Button size="sm" onClick={handleComplete} disabled={loading !== null}>
-                  {loading === 'complete' && <Loader2 className="size-4 animate-spin" />}
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setCompleteError(null);
+                    setFinalOdometerError(null);
+                    setCompleteOpen(true);
+                  }}
+                  disabled={loading !== null}
+                >
                   Concluir
                 </Button>
               )}
@@ -163,6 +192,70 @@ function TripLifecycleCard({trip, onChanged}: TripLifecycleCardProps) {
           )}
         </CardContent>
       </Card>
+
+      <Modal
+        open={completeOpen}
+        onClose={() => {
+          if (loading === 'complete') return;
+          setCompleteOpen(false);
+        }}
+        title="Concluir viagem"
+        description="Informe o hodômetro final para encerrar a viagem."
+        size="md"
+      >
+        <div className="space-y-4">
+          {completeError && (
+            <Alert variant="destructive">
+              <AlertDescription>{completeError}</AlertDescription>
+            </Alert>
+          )}
+          <FormField
+            label="KM final"
+            htmlFor="complete-trip-final-odometer"
+            required
+            error={finalOdometerError ?? undefined}
+            hint={
+              trip.initialOdometerKm !== null
+                ? `KM inicial: ${trip.initialOdometerKm.toLocaleString('pt-BR')} km`
+                : undefined
+            }
+          >
+            <Input
+              id="complete-trip-final-odometer"
+              type="number"
+              min={trip.initialOdometerKm ?? 0}
+              step="0.01"
+              value={finalOdometerKm}
+              onChange={(event) => {
+                setFinalOdometerKm(event.target.value);
+                setFinalOdometerError(null);
+              }}
+              disabled={loading === 'complete'}
+              autoFocus
+            />
+          </FormField>
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setCompleteOpen(false)}
+              disabled={loading === 'complete'}
+            >
+              Voltar
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleComplete}
+              disabled={loading === 'complete'}
+            >
+              {loading === 'complete' && <Loader2 className="size-4 animate-spin" />}
+              Confirmar conclusão
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal
         open={cancelOpen}

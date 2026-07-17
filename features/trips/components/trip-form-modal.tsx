@@ -6,16 +6,23 @@ import * as React from 'react';
 import {FormField} from '@/components/master/shared/form-field';
 import {Modal} from '@/components/master/shared/modal';
 import {Alert, AlertDescription} from '@/components/ui/alert';
+import {Badge} from '@/components/ui/badge';
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {Textarea} from '@/components/ui/textarea';
 import {useToast} from '@/contexts/feedback/toast-context';
+import {
+  formatCurrencyInput,
+  maskCurrencyInput,
+  parseCurrencyInput,
+} from '@/features/accounts-payable/utils/currency';
 import type {Customer} from '@/features/customers/types';
 import type {DriverSelectOption} from '@/features/drivers/types';
 import type {BranchSelectOption} from '@/features/organization/branches/types';
 import type {RouteSelectOption} from '@/features/routes/types';
 import {formatDistanceKm} from '@/features/routes/utils/route-format';
 import type {VehicleSelectOption} from '@/features/vehicles/types';
+import {VEHICLE_ASSET_STATUS_LABELS} from '@/features/vehicles/types';
 import {MSG} from '@/lib/feedback/messages';
 
 import {createTripAction, updateTripAction} from '../actions';
@@ -42,6 +49,36 @@ export interface TripFormModalProps {
 }
 
 type FieldErrors = Partial<Record<keyof CreateTripInput, string>>;
+
+function maskWeightInput(raw: string): string {
+  const digits = raw.replace(/\D/g, '');
+  if (!digits) return '';
+  return Number(digits).toLocaleString('pt-BR');
+}
+
+function parseWeightInput(value: string): number | null {
+  const digits = value.replace(/\D/g, '');
+  return digits ? Number(digits) : null;
+}
+
+function FormSection({title}: {title: string}) {
+  return (
+    <div className="mt-2 border-b border-border pb-1 sm:col-span-2">
+      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        {title}
+      </h3>
+    </div>
+  );
+}
+
+function SummaryItem({label, value}: {label: string; value: React.ReactNode}) {
+  return (
+    <div className="flex items-baseline justify-between gap-2">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="text-right text-sm font-medium">{value}</span>
+    </div>
+  );
+}
 
 function TripFormModal({
   open,
@@ -117,7 +154,8 @@ function TripFormContent({
     destination: trip?.destination ?? null,
     route: trip?.route ?? null,
     plannedDistanceKm: trip?.plannedDistanceKm ?? null,
-    plannedDepartureAt: trip?.plannedDepartureAt ?? null,
+    // Sprint 26.5 — nova viagem já abre com data/hora atuais
+    plannedDepartureAt: trip ? trip.plannedDepartureAt : new Date().toISOString(),
     initialOdometerKm: trip?.initialOdometerKm ?? null,
     finalOdometerKm: trip?.finalOdometerKm ?? null,
     departedAt: trip?.departedAt ?? null,
@@ -128,6 +166,12 @@ function TripFormContent({
     responsible: trip?.responsible ?? null,
     tripStatus: trip?.tripStatus ?? 'planned',
   }));
+  const [freightDisplay, setFreightDisplay] = React.useState(() =>
+    formatCurrencyInput(trip?.actualFreightValue ?? null),
+  );
+  const [weightDisplay, setWeightDisplay] = React.useState(() =>
+    trip?.weightKg != null ? Math.round(trip.weightKg).toLocaleString('pt-BR') : '',
+  );
   const [fieldErrors, setFieldErrors] = React.useState<FieldErrors>({});
   const [formError, setFormError] = React.useState<string | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
@@ -149,15 +193,17 @@ function TripFormContent({
     ];
   }, [routes, trip]);
 
-  const selectedRoute =
-    routeOptions.find((route) => route.id === formData.routeId) ?? null;
+  const selectedVehicle =
+    vehicles.find((vehicle) => vehicle.id === formData.vehicleId) ?? null;
+  const selectedDriver =
+    drivers.find((driver) => driver.id === formData.driverId) ?? null;
 
   function handleCustomerChange(customerId: string | null) {
     const customer = customers.find((c) => c.id === customerId);
     setFormData((prev) => ({
       ...prev,
       customerId,
-      clientName: customer?.displayName ?? null,
+      clientName: customer?.displayName ?? prev.clientName,
     }));
   }
 
@@ -208,10 +254,21 @@ function TripFormContent({
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
-    setSubmitting(true);
     setFormError(null);
     setFieldErrors({});
 
+    if (
+      formData.initialOdometerKm !== null &&
+      formData.finalOdometerKm !== null &&
+      formData.finalOdometerKm < formData.initialOdometerKm
+    ) {
+      setFieldErrors({
+        finalOdometerKm: 'O KM final deve ser maior ou igual ao KM inicial.',
+      });
+      return;
+    }
+
+    setSubmitting(true);
     const payload: CreateTripInput = {
       ...formData,
       tripStatus: isEdit ? formData.tripStatus : 'planned',
@@ -246,6 +303,59 @@ function TripFormContent({
       )}
 
       <div className="grid gap-4 sm:grid-cols-2">
+        <FormSection title="Operação" />
+
+        <FormField label="Número da viagem" htmlFor="trip-number">
+          <Input
+            id="trip-number"
+            value={trip?.tripNumber ?? 'Gerado automaticamente'}
+            readOnly
+            disabled
+          />
+        </FormField>
+        <FormField
+          label="Data da viagem"
+          htmlFor="trip-planned-departure"
+          error={fieldErrors.plannedDepartureAt}
+        >
+          <Input
+            id="trip-planned-departure"
+            type="datetime-local"
+            value={toDatetimeLocalValue(formData.plannedDepartureAt)}
+            onChange={(e) =>
+              updateField('plannedDepartureAt', fromDatetimeLocalValue(e.target.value))
+            }
+          />
+        </FormField>
+
+        <FormField label="Cliente" htmlFor="trip-customer" error={fieldErrors.customerId}>
+          <select
+            id="trip-customer"
+            value={formData.customerId ?? ''}
+            onChange={(e) => handleCustomerChange(e.target.value || null)}
+            className={TRIP_NATIVE_SELECT_CLASS}
+          >
+            <option value="">Selecione</option>
+            {customers.map((customer) => (
+              <option key={customer.id} value={customer.id}>
+                {customer.displayName}
+              </option>
+            ))}
+          </select>
+        </FormField>
+        <FormField
+          label="Nome do cliente (livre)"
+          htmlFor="trip-client"
+          error={fieldErrors.clientName}
+        >
+          <Input
+            id="trip-client"
+            value={formData.clientName ?? ''}
+            onChange={(e) => updateField('clientName', e.target.value || null)}
+            placeholder="Preenchido ao selecionar o cliente"
+          />
+        </FormField>
+
         <FormField
           label="Rota"
           htmlFor="trip-route-id"
@@ -292,7 +402,6 @@ function TripFormContent({
             placeholder="Preenchido pela rota"
           />
         </FormField>
-
         <FormField
           label="Distância"
           htmlFor="trip-planned-distance"
@@ -307,47 +416,9 @@ function TripFormContent({
             }
             readOnly
             disabled
-            placeholder="—"
+            placeholder="Preenchida pela rota"
           />
         </FormField>
-        <FormField
-          label="Data da viagem"
-          htmlFor="trip-planned-departure"
-          error={fieldErrors.plannedDepartureAt}
-        >
-          <Input
-            id="trip-planned-departure"
-            type="datetime-local"
-            value={toDatetimeLocalValue(formData.plannedDepartureAt)}
-            onChange={(e) =>
-              updateField('plannedDepartureAt', fromDatetimeLocalValue(e.target.value))
-            }
-            disabled={!selectedRoute && !formData.routeId}
-          />
-        </FormField>
-
-        {isEdit ? (
-          <FormField label="Status" htmlFor="trip-status">
-            <Input
-              id="trip-status"
-              value={TRIP_STATUS_LABELS[formData.tripStatus ?? 'planned']}
-              disabled
-              readOnly
-            />
-            <p className="mt-1 text-xs text-muted-foreground">
-              Use Iniciar, Concluir ou Cancelar na tela de detalhes.
-            </p>
-          </FormField>
-        ) : (
-          <FormField label="Status" htmlFor="trip-status">
-            <Input
-              id="trip-status"
-              value={TRIP_STATUS_LABELS.planned}
-              disabled
-              readOnly
-            />
-          </FormField>
-        )}
         <FormField label="Filial" htmlFor="trip-branch" error={fieldErrors.branchId}>
           <select
             id="trip-branch"
@@ -359,6 +430,24 @@ function TripFormContent({
             {branches.map((branch) => (
               <option key={branch.id} value={branch.id}>
                 {branch.name}
+              </option>
+            ))}
+          </select>
+        </FormField>
+
+        <FormSection title="Recursos" />
+
+        <FormField label="Veículo" htmlFor="trip-vehicle" error={fieldErrors.vehicleId}>
+          <select
+            id="trip-vehicle"
+            value={formData.vehicleId ?? ''}
+            onChange={(e) => updateField('vehicleId', e.target.value || null)}
+            className={TRIP_NATIVE_SELECT_CLASS}
+          >
+            <option value="">Selecione</option>
+            {vehicles.map((vehicle) => (
+              <option key={vehicle.id} value={vehicle.id}>
+                {vehicle.plate}
               </option>
             ))}
           </select>
@@ -378,73 +467,150 @@ function TripFormContent({
             ))}
           </select>
         </FormField>
-        <FormField label="Veículo" htmlFor="trip-vehicle" error={fieldErrors.vehicleId}>
+
+        {selectedVehicle && (
+          <div className="rounded-lg border border-primary/30 bg-primary/5 p-4">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Resumo do veículo
+            </p>
+            <div className="space-y-1.5">
+              <SummaryItem label="Placa" value={selectedVehicle.plate} />
+              <SummaryItem label="Tipo" value={selectedVehicle.vehicleType || '—'} />
+              <SummaryItem label="Implemento" value={selectedVehicle.bodyType ?? '—'} />
+              <SummaryItem
+                label="Marca / Modelo"
+                value={
+                  [selectedVehicle.brand, selectedVehicle.model]
+                    .filter(Boolean)
+                    .join(' / ') || '—'
+                }
+              />
+              <SummaryItem
+                label="Capacidade de carga"
+                value={
+                  selectedVehicle.loadCapacityKg != null
+                    ? `${Math.round(selectedVehicle.loadCapacityKg).toLocaleString('pt-BR')} kg`
+                    : '—'
+                }
+              />
+              <SummaryItem
+                label="Situação"
+                value={
+                  <Badge
+                    variant={
+                      selectedVehicle.assetStatus === 'active' ? 'default' : 'secondary'
+                    }
+                  >
+                    {VEHICLE_ASSET_STATUS_LABELS[selectedVehicle.assetStatus]}
+                  </Badge>
+                }
+              />
+            </div>
+          </div>
+        )}
+
+        {selectedDriver && (
+          <div className="rounded-lg border border-primary/30 bg-primary/5 p-4">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Resumo do motorista
+            </p>
+            <div className="space-y-1.5">
+              <SummaryItem label="Nome" value={selectedDriver.name} />
+              <SummaryItem label="Telefone" value={selectedDriver.phone ?? '—'} />
+              <SummaryItem label="CNH" value={selectedDriver.cnhNumber || '—'} />
+              <SummaryItem label="Categoria" value={selectedDriver.licenseCategory} />
+              <SummaryItem label="Filial" value={selectedDriver.branchName ?? '—'} />
+            </div>
+          </div>
+        )}
+
+        <FormSection title="Transporte" />
+
+        <FormField label="Peso" htmlFor="trip-weight" error={fieldErrors.weightKg}>
+          <div className="relative">
+            <Input
+              id="trip-weight"
+              inputMode="numeric"
+              value={weightDisplay}
+              onChange={(e) => {
+                const masked = maskWeightInput(e.target.value);
+                setWeightDisplay(masked);
+                updateField('weightKg', parseWeightInput(masked));
+              }}
+              className="pr-10"
+              placeholder="0"
+            />
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+              kg
+            </span>
+          </div>
+        </FormField>
+        <FormField
+          label="Tipo da carga"
+          htmlFor="trip-cargo-type"
+          error={fieldErrors.cargoType}
+        >
           <select
-            id="trip-vehicle"
-            value={formData.vehicleId ?? ''}
-            onChange={(e) => updateField('vehicleId', e.target.value || null)}
+            id="trip-cargo-type"
+            value={formData.cargoType ?? ''}
+            onChange={(e) => updateField('cargoType', e.target.value || null)}
             className={TRIP_NATIVE_SELECT_CLASS}
           >
             <option value="">Selecione</option>
-            {vehicles.map((vehicle) => (
-              <option key={vehicle.id} value={vehicle.id}>
-                {vehicle.plate}
+            {formData.cargoType &&
+              !TRIP_CARGO_TYPES.includes(
+                formData.cargoType as (typeof TRIP_CARGO_TYPES)[number],
+              ) && <option value={formData.cargoType}>{formData.cargoType}</option>}
+            {TRIP_CARGO_TYPES.map((cargoType) => (
+              <option key={cargoType} value={cargoType}>
+                {cargoType}
               </option>
             ))}
           </select>
-        </FormField>
-        <FormField label="Cliente" htmlFor="trip-customer" error={fieldErrors.customerId}>
-          <select
-            id="trip-customer"
-            value={formData.customerId ?? ''}
-            onChange={(e) => handleCustomerChange(e.target.value || null)}
-            className={TRIP_NATIVE_SELECT_CLASS}
-          >
-            <option value="">Selecione ou informe abaixo</option>
-            {customers.map((customer) => (
-              <option key={customer.id} value={customer.id}>
-                {customer.displayName}
-              </option>
-            ))}
-          </select>
-        </FormField>
-        <FormField
-          label="Nome do cliente (livre)"
-          htmlFor="trip-client"
-          error={fieldErrors.clientName}
-        >
-          <Input
-            id="trip-client"
-            value={formData.clientName ?? ''}
-            onChange={(e) => updateField('clientName', e.target.value || null)}
-          />
         </FormField>
         <FormField
           label="Valor do frete"
           htmlFor="trip-freight-value"
           error={fieldErrors.actualFreightValue}
         >
-          <Input
-            id="trip-freight-value"
-            type="number"
-            step="0.01"
-            value={formData.actualFreightValue ?? ''}
-            onChange={(e) =>
-              updateField(
-                'actualFreightValue',
-                e.target.value ? Number(e.target.value) : null,
-              )
-            }
-          />
+          <div className="relative">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+              R$
+            </span>
+            <Input
+              id="trip-freight-value"
+              inputMode="numeric"
+              value={freightDisplay}
+              onChange={(e) => {
+                const masked = maskCurrencyInput(e.target.value);
+                setFreightDisplay(masked);
+                updateField(
+                  'actualFreightValue',
+                  masked ? parseCurrencyInput(masked) : null,
+                );
+              }}
+              className="pl-9"
+              placeholder="0,00"
+            />
+          </div>
         </FormField>
+
+        <FormSection title="Execução" />
+
         <FormField
           label="KM inicial"
           htmlFor="trip-km-initial"
           error={fieldErrors.initialOdometerKm}
+          hint={
+            selectedVehicle
+              ? `Hodômetro atual do veículo: ${selectedVehicle.currentOdometerKm.toLocaleString('pt-BR')} km`
+              : undefined
+          }
         >
           <Input
             id="trip-km-initial"
             type="number"
+            min="0"
             step="0.01"
             value={formData.initialOdometerKm ?? ''}
             onChange={(e) =>
@@ -463,6 +629,7 @@ function TripFormContent({
           <Input
             id="trip-km-final"
             type="number"
+            min={formData.initialOdometerKm ?? 0}
             step="0.01"
             value={formData.finalOdometerKm ?? ''}
             onChange={(e) =>
@@ -493,40 +660,6 @@ function TripFormContent({
             }
           />
         </FormField>
-        <FormField label="Peso (kg)" htmlFor="trip-weight" error={fieldErrors.weightKg}>
-          <Input
-            id="trip-weight"
-            type="number"
-            step="0.01"
-            value={formData.weightKg ?? ''}
-            onChange={(e) =>
-              updateField('weightKg', e.target.value ? Number(e.target.value) : null)
-            }
-          />
-        </FormField>
-        <FormField
-          label="Tipo da carga"
-          htmlFor="trip-cargo-type"
-          error={fieldErrors.cargoType}
-        >
-          <select
-            id="trip-cargo-type"
-            value={formData.cargoType ?? ''}
-            onChange={(e) => updateField('cargoType', e.target.value || null)}
-            className={TRIP_NATIVE_SELECT_CLASS}
-          >
-            <option value="">Selecione</option>
-            {formData.cargoType &&
-              !TRIP_CARGO_TYPES.includes(
-                formData.cargoType as (typeof TRIP_CARGO_TYPES)[number],
-              ) && <option value={formData.cargoType}>{formData.cargoType}</option>}
-            {TRIP_CARGO_TYPES.map((cargoType) => (
-              <option key={cargoType} value={cargoType}>
-                {cargoType}
-              </option>
-            ))}
-          </select>
-        </FormField>
         <FormField
           label="Responsável"
           htmlFor="trip-responsible"
@@ -538,6 +671,20 @@ function TripFormContent({
             onChange={(e) => updateField('responsible', e.target.value || null)}
           />
         </FormField>
+        {isEdit && (
+          <FormField label="Status" htmlFor="trip-status">
+            <Input
+              id="trip-status"
+              value={TRIP_STATUS_LABELS[formData.tripStatus ?? 'planned']}
+              disabled
+              readOnly
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Use Iniciar, Concluir ou Cancelar na tela de detalhes.
+            </p>
+          </FormField>
+        )}
+
         <FormField
           label="Observações"
           htmlFor="trip-notes"
@@ -549,6 +696,7 @@ function TripFormContent({
             value={formData.notes ?? ''}
             onChange={(e) => updateField('notes', e.target.value || null)}
             rows={3}
+            placeholder="Opcional"
           />
         </FormField>
       </div>

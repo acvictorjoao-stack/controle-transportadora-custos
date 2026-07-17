@@ -170,7 +170,7 @@ export async function listDriversForSelect(
 ): Promise<DriverSelectOption[]> {
   const {data, error} = await supabase
     .from('drivers')
-    .select('id, name')
+    .select('id, name, phone, cnh_number, license_category, branches:branch_id (id, name)')
     .eq('company_id', companyId)
     .is('deleted_at', null)
     .order('name')
@@ -180,10 +180,17 @@ export async function listDriversForSelect(
     throw new Error(mapDatabaseError(error));
   }
 
-  return (data ?? []).map((row) => ({
-    id: row.id,
-    name: row.name,
-  }));
+  return (data ?? []).map((row) => {
+    const branch = Array.isArray(row.branches) ? row.branches[0] : row.branches;
+    return {
+      id: row.id,
+      name: row.name,
+      phone: row.phone,
+      cnhNumber: row.cnh_number,
+      licenseCategory: row.license_category,
+      branchName: branch?.name ?? null,
+    };
+  });
 }
 
 export async function getDriverById(

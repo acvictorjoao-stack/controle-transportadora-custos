@@ -93,7 +93,10 @@ export interface Driver {
   updatedAt: string;
 }
 
-export type DriverSelectOption = Pick<Driver, 'id' | 'name'>;
+export type DriverSelectOption = Pick<
+  Driver,
+  'id' | 'name' | 'phone' | 'cnhNumber' | 'licenseCategory' | 'branchName'
+>;
 
 export interface DriverHistoryRow {
   id: string;

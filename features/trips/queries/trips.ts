@@ -41,6 +41,7 @@ import {
 } from '../utils/trip-lifecycle';
 import type {
   CancelTripInput,
+  CompleteTripInput,
   CreateTripExpenseInput,
   CreateTripInput,
   CreateTripOccurrenceInput,
@@ -284,12 +285,257 @@ async function generateTripNumber(
   return String(data);
 }
 
+/** Status que ocupam veículo/motorista (Sprint 26.5). */
+const TRIP_BUSY_STATUSES = ['planned', 'in_progress'] as const;
+const ODOMETER_REFERENCE_STATUSES = ['completed', 'in_progress', 'delivering'] as const;
+
+interface OdometerTripRow {
+  id: string;
+  trip_status: Trip['tripStatus'];
+  initial_odometer_km: number | null;
+  final_odometer_km: number | null;
+  planned_departure_at: string | null;
+  departed_at: string | null;
+  started_at: string | null;
+  created_at: string;
+}
+
+function formatOdometer(value: number): string {
+  return value.toLocaleString('pt-BR', {maximumFractionDigits: 2});
+}
+
+function tripChronology(row: OdometerTripRow): string {
+  return row.departed_at ?? row.started_at ?? row.planned_departure_at ?? row.created_at;
+}
+
+function knownOdometer(row: OdometerTripRow): number | null {
+  return row.trip_status === 'completed'
+    ? row.final_odometer_km
+    : row.initial_odometer_km;
+}
+
+async function getVehicleOdometerContext(
+  supabase: SupabaseClient,
+  companyId: string,
+  vehicleId: string,
+  excludeTripId?: string,
+): Promise<{
+  initialOdometerKm: number;
+  currentOdometerKm: number;
+  trips: OdometerTripRow[];
+}> {
+  const [vehicleResult, tripsResult] = await Promise.all([
+    supabase
+      .from('vehicles')
+      .select('initial_odometer_km, current_odometer_km')
+      .eq('id', vehicleId)
+      .eq('company_id', companyId)
+      .is('deleted_at', null)
+      .maybeSingle(),
+    (() => {
+      let query = supabase
+        .from('trips')
+        .select(
+          'id, trip_status, initial_odometer_km, final_odometer_km, planned_departure_at, departed_at, started_at, created_at',
+        )
+        .eq('company_id', companyId)
+        .eq('vehicle_id', vehicleId)
+        .is('deleted_at', null)
+        .in('trip_status', [...ODOMETER_REFERENCE_STATUSES]);
+      if (excludeTripId) query = query.neq('id', excludeTripId);
+      return query;
+    })(),
+  ]);
+
+  if (vehicleResult.error || !vehicleResult.data) {
+    throw new Error(
+      vehicleResult.error ? mapDatabaseError(vehicleResult.error) : 'Veículo não encontrado.',
+    );
+  }
+  if (tripsResult.error) {
+    throw new Error(mapDatabaseError(tripsResult.error));
+  }
+
+  return {
+    initialOdometerKm: Number(vehicleResult.data.initial_odometer_km),
+    currentOdometerKm: Number(vehicleResult.data.current_odometer_km),
+    trips: (tripsResult.data ?? []) as OdometerTripRow[],
+  };
+}
+
+async function assertTripOdometers(
+  supabase: SupabaseClient,
+  companyId: string,
+  input: Pick<
+    CreateTripInput,
+    'vehicleId' | 'initialOdometerKm' | 'finalOdometerKm' | 'plannedDepartureAt'
+  >,
+  current?: Trip,
+): Promise<void> {
+  const {initialOdometerKm, finalOdometerKm, vehicleId} = input;
+
+  if (
+    initialOdometerKm !== null &&
+    finalOdometerKm !== null &&
+    finalOdometerKm < initialOdometerKm
+  ) {
+    throw new Error('O KM final deve ser maior ou igual ao KM inicial.');
+  }
+
+  const isSameVehicleEdit = Boolean(current && current.vehicleId === vehicleId);
+  if (
+    isSameVehicleEdit &&
+    current &&
+    current.initialOdometerKm !== null &&
+    (initialOdometerKm === null || initialOdometerKm < current.initialOdometerKm)
+  ) {
+    throw new Error('O KM inicial não pode ser reduzido ao editar uma viagem.');
+  }
+  if (
+    isSameVehicleEdit &&
+    current &&
+    current.finalOdometerKm !== null &&
+    (finalOdometerKm === null || finalOdometerKm < current.finalOdometerKm)
+  ) {
+    throw new Error('O KM final não pode ser reduzido ao editar uma viagem.');
+  }
+
+  if (!vehicleId || initialOdometerKm === null) return;
+
+  const context = await getVehicleOdometerContext(
+    supabase,
+    companyId,
+    vehicleId,
+    current?.id,
+  );
+  if (!isSameVehicleEdit) {
+    const reference = Math.max(
+      context.currentOdometerKm,
+      ...context.trips.map(knownOdometer).filter((value): value is number => value !== null),
+    );
+    if (initialOdometerKm < reference) {
+      throw new Error(
+        `O KM inicial não pode ser inferior ao último hodômetro registrado para este veículo (${formatOdometer(reference)} km).`,
+      );
+    }
+    return;
+  }
+
+  if (!current) return;
+  const targetDate =
+    input.plannedDepartureAt ??
+    current.departedAt ??
+    current.startedAt ??
+    current.plannedDepartureAt ??
+    current.createdAt;
+  const previousReadings = context.trips
+    .filter((row) => tripChronology(row) <= targetDate)
+    .map(knownOdometer)
+    .filter((value): value is number => value !== null);
+  const previousReference = Math.max(context.initialOdometerKm, ...previousReadings);
+
+  if (initialOdometerKm < previousReference) {
+    throw new Error(
+      `O KM inicial não pode ser inferior ao último hodômetro registrado para este veículo (${formatOdometer(previousReference)} km).`,
+    );
+  }
+
+  if (finalOdometerKm !== null) {
+    const nextInitials = context.trips
+      .filter((row) => tripChronology(row) > targetDate)
+      .map((row) => row.initial_odometer_km)
+      .filter((value): value is number => value !== null);
+    if (nextInitials.length > 0) {
+      const nextInitial = Math.min(...nextInitials);
+      if (finalOdometerKm > nextInitial) {
+        throw new Error(
+          `O KM final não pode ultrapassar o KM inicial da próxima viagem (${formatOdometer(nextInitial)} km).`,
+        );
+      }
+    }
+  }
+}
+
+async function assertCompletionOdometer(
+  supabase: SupabaseClient,
+  companyId: string,
+  trip: Trip,
+  finalOdometerKm: number,
+): Promise<void> {
+  if (trip.initialOdometerKm !== null && finalOdometerKm < trip.initialOdometerKm) {
+    throw new Error('O KM final deve ser maior ou igual ao KM inicial.');
+  }
+  if (!trip.vehicleId) return;
+
+  const context = await getVehicleOdometerContext(
+    supabase,
+    companyId,
+    trip.vehicleId,
+    trip.id,
+  );
+  const reference = Math.max(
+    trip.initialOdometerKm ?? 0,
+    context.currentOdometerKm,
+    ...context.trips.map(knownOdometer).filter((value): value is number => value !== null),
+  );
+  if (finalOdometerKm < reference) {
+    throw new Error(
+      `O KM final não pode ser inferior ao último hodômetro registrado para este veículo (${formatOdometer(reference)} km).`,
+    );
+  }
+}
+
+async function assertTripResourcesAvailable(
+  supabase: SupabaseClient,
+  companyId: string,
+  options: {
+    vehicleId: string | null;
+    driverId: string | null;
+    excludeTripId?: string;
+  },
+): Promise<void> {
+  async function hasBusyTrip(column: 'vehicle_id' | 'driver_id', value: string) {
+    let query = supabase
+      .from('trips')
+      .select('id')
+      .eq('company_id', companyId)
+      .is('deleted_at', null)
+      .eq(column, value)
+      .in('trip_status', [...TRIP_BUSY_STATUSES])
+      .limit(1);
+
+    if (options.excludeTripId) {
+      query = query.neq('id', options.excludeTripId);
+    }
+
+    const {data, error} = await query;
+    if (error) {
+      throw new Error(mapDatabaseError(error));
+    }
+    return (data ?? []).length > 0;
+  }
+
+  if (options.vehicleId && (await hasBusyTrip('vehicle_id', options.vehicleId))) {
+    throw new Error('Este veículo já possui uma viagem programada ou em andamento.');
+  }
+
+  if (options.driverId && (await hasBusyTrip('driver_id', options.driverId))) {
+    throw new Error('Este motorista já possui uma viagem programada ou em andamento.');
+  }
+}
+
 export async function createTrip(
   supabase: SupabaseClient,
   companyId: string,
   input: CreateTripInput,
   profileId: string,
 ): Promise<Trip> {
+  await assertTripOdometers(supabase, companyId, input);
+  await assertTripResourcesAvailable(supabase, companyId, {
+    vehicleId: input.vehicleId,
+    driverId: input.driverId,
+  });
+
   const tripNumber = await generateTripNumber(supabase, companyId);
   const payload = buildTripPayload(input, profileId, true);
 
@@ -315,7 +561,20 @@ export async function updateTrip(
   input: UpdateTripInput,
   profileId: string,
 ): Promise<Trip> {
+  const current = await getTripForLifecycle(supabase, companyId, tripId);
+  await assertTripOdometers(supabase, companyId, input, current);
+
+  const nextStatus = current.tripStatus;
+  if ((TRIP_BUSY_STATUSES as readonly string[]).includes(nextStatus)) {
+    await assertTripResourcesAvailable(supabase, companyId, {
+      vehicleId: input.vehicleId,
+      driverId: input.driverId,
+      excludeTripId: tripId,
+    });
+  }
+
   const payload = buildTripPayload(input, profileId, false);
+  payload.trip_status = current.tripStatus;
 
   const {data, error} = await supabase
     .from('trips')
@@ -363,6 +622,10 @@ export async function updateTripStatus(
   tripStatus: Trip['tripStatus'],
   profileId: string,
 ): Promise<Trip> {
+  if (tripStatus === 'completed') {
+    throw new Error('Use a ação Concluir para informar e validar o KM final.');
+  }
+
   const {data, error} = await supabase
     .from('trips')
     .update({trip_status: tripStatus, updated_by: profileId})
@@ -432,12 +695,14 @@ export async function completeTrip(
   supabase: SupabaseClient,
   companyId: string,
   tripId: string,
+  input: CompleteTripInput,
   profileId: string,
 ): Promise<Trip> {
   const current = await getTripForLifecycle(supabase, companyId, tripId);
   if (!canCompleteTrip(current.tripStatus)) {
     throw new Error('Só é possível concluir viagens em andamento.');
   }
+  await assertCompletionOdometer(supabase, companyId, current, input.finalOdometerKm);
 
   const now = new Date().toISOString();
   const {data, error} = await supabase
@@ -446,6 +711,7 @@ export async function completeTrip(
       trip_status: 'completed',
       completed_at: current.completedAt ?? now,
       arrived_at: current.arrivedAt ?? now,
+      final_odometer_km: input.finalOdometerKm,
       updated_by: profileId,
     })
     .eq('id', tripId)
@@ -459,6 +725,22 @@ export async function completeTrip(
   }
 
   const trip = mapTripRow(data as unknown as TripRow);
+  if (trip.vehicleId) {
+    const {error: vehicleError} = await supabase
+      .from('vehicles')
+      .update({
+        current_odometer_km: input.finalOdometerKm,
+        updated_by: profileId,
+      })
+      .eq('id', trip.vehicleId)
+      .eq('company_id', companyId)
+      .is('deleted_at', null);
+    if (vehicleError) {
+      throw new Error(
+        `A viagem foi concluída, mas não foi possível atualizar o hodômetro do veículo: ${mapDatabaseError(vehicleError)}`,
+      );
+    }
+  }
   await triggerTripCompletedIfNeeded(supabase, companyId, trip, profileId);
   return trip;
 }

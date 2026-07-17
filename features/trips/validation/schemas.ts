@@ -30,6 +30,24 @@ const optionalNumber = z
     return Number.isFinite(num) ? num : null;
   });
 
+const optionalOdometer = z
+  .union([z.string(), z.number()])
+  .nullish()
+  .transform((v, ctx) => {
+    if (v === undefined || v === null || (typeof v === 'string' && !v.trim())) {
+      return null;
+    }
+    const num = typeof v === 'number' ? v : Number(String(v).replace(',', '.'));
+    if (!Number.isFinite(num) || num < 0) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Informe uma quilometragem válida.',
+      });
+      return z.NEVER;
+    }
+    return num;
+  });
+
 const optionalDateTime = z
   .string()
   .trim()
@@ -87,8 +105,8 @@ const tripBaseSchema = z.object({
   route: optionalUppercaseString,
   plannedDistanceKm: optionalNumber,
   plannedDepartureAt: optionalDateTime,
-  initialOdometerKm: optionalNumber,
-  finalOdometerKm: optionalNumber,
+  initialOdometerKm: optionalOdometer,
+  finalOdometerKm: optionalOdometer,
   departedAt: optionalDateTime,
   arrivedAt: optionalDateTime,
   weightKg: optionalNumber,
@@ -98,6 +116,23 @@ const tripBaseSchema = z.object({
   tripStatus: tripStatusSchema.optional().default('planned'),
 });
 
+function validateOdometerRange(
+  data: {initialOdometerKm: number | null; finalOdometerKm: number | null},
+  ctx: z.RefinementCtx,
+) {
+  if (
+    data.initialOdometerKm !== null &&
+    data.finalOdometerKm !== null &&
+    data.finalOdometerKm < data.initialOdometerKm
+  ) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['finalOdometerKm'],
+      message: 'O KM final deve ser maior ou igual ao KM inicial.',
+    });
+  }
+}
+
 export const createTripSchema = tripBaseSchema.superRefine((data, ctx) => {
   if (!data.routeId) {
     ctx.addIssue({
@@ -106,9 +141,10 @@ export const createTripSchema = tripBaseSchema.superRefine((data, ctx) => {
       message: 'Selecione a rota.',
     });
   }
+  validateOdometerRange(data, ctx);
 });
 
-export const updateTripSchema = tripBaseSchema;
+export const updateTripSchema = tripBaseSchema.superRefine(validateOdometerRange);
 
 export const updateTripStatusSchema = z.object({
   tripStatus: tripStatusSchema,
@@ -119,6 +155,29 @@ export const cancelTripSchema = z.object({
     .string()
     .trim()
     .min(1, 'Informe a observação do cancelamento.'),
+});
+
+export const completeTripSchema = z.object({
+  finalOdometerKm: z
+    .union([z.string(), z.number()])
+    .transform((v, ctx) => {
+      if (typeof v === 'string' && !v.trim()) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Informe o KM final da viagem.',
+        });
+        return z.NEVER;
+      }
+      const num = typeof v === 'number' ? v : Number(String(v).replace(',', '.'));
+      if (!Number.isFinite(num) || num < 0) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Informe o KM final da viagem.',
+        });
+        return z.NEVER;
+      }
+      return num;
+    }),
 });
 
 export const uploadTripFileSchema = z.object({
@@ -213,6 +272,7 @@ export type CreateTripInput = z.infer<typeof createTripSchema>;
 export type UpdateTripInput = z.infer<typeof updateTripSchema>;
 export type UpdateTripStatusInput = z.infer<typeof updateTripStatusSchema>;
 export type CancelTripInput = z.infer<typeof cancelTripSchema>;
+export type CompleteTripInput = z.infer<typeof completeTripSchema>;
 export type UploadTripFileInput = z.infer<typeof uploadTripFileSchema>;
 export type UpsertTripChecklistInput = z.infer<typeof upsertTripChecklistSchema>;
 export type CreateTripOccurrenceInput = z.infer<typeof createTripOccurrenceSchema>;
