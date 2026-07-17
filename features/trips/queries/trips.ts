@@ -100,7 +100,6 @@ function buildTripPayload(
     vehicle_id: input.vehicleId,
     client_name: input.clientName,
     customer_id: input.customerId,
-    freight_table: input.freightTable,
     actual_freight_value: input.actualFreightValue,
     freight_margin: input.freightMargin,
     origin: input.origin,

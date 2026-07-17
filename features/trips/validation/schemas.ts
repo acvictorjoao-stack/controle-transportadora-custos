@@ -8,21 +8,22 @@ import {
   TRIP_STATUSES,
 } from '../constants/enums';
 
+// Campos opcionais aceitam null (formulários enviam null para vazio).
 const optionalString = z
   .string()
   .trim()
-  .optional()
+  .nullish()
   .transform((v) => (v?.length ? v : null));
 
 const optionalUppercaseString = z
   .string()
   .trim()
-  .optional()
+  .nullish()
   .transform((v) => (v?.length ? v.toUpperCase() : null));
 
 const optionalNumber = z
   .union([z.string(), z.number()])
-  .optional()
+  .nullish()
   .transform((v) => {
     if (v === undefined || v === null || v === '') return null;
     const num = typeof v === 'number' ? v : Number(String(v).replace(',', '.'));
@@ -32,13 +33,13 @@ const optionalNumber = z
 const optionalDateTime = z
   .string()
   .trim()
-  .optional()
+  .nullish()
   .transform((v) => (v?.length ? v : null));
 
 const optionalDate = z
   .string()
   .trim()
-  .optional()
+  .nullish()
   .transform((v) => (v?.length ? v : null));
 
 export const tripStatusSchema = z.enum(TRIP_STATUSES);
@@ -73,7 +74,6 @@ const tripBaseSchema = z.object({
     .nullable()
     .optional()
     .transform((v) => v ?? null),
-  freightTable: optionalString,
   actualFreightValue: optionalNumber,
   freightMargin: optionalNumber,
   routeId: z
@@ -92,7 +92,7 @@ const tripBaseSchema = z.object({
   departedAt: optionalDateTime,
   arrivedAt: optionalDateTime,
   weightKg: optionalNumber,
-  cargoType: optionalString,
+  cargoType: optionalUppercaseString,
   notes: optionalString,
   responsible: optionalString,
   tripStatus: tripStatusSchema.optional().default('planned'),

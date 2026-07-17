@@ -19,6 +19,7 @@ import type {VehicleSelectOption} from '@/features/vehicles/types';
 import {MSG} from '@/lib/feedback/messages';
 
 import {createTripAction, updateTripAction} from '../actions';
+import {TRIP_CARGO_TYPES} from '../constants/enums';
 import type {Trip} from '../types';
 import {TRIP_STATUS_LABELS} from '../types';
 import type {CreateTripInput} from '../validation';
@@ -109,7 +110,6 @@ function TripFormContent({
     vehicleId: trip?.vehicleId ?? null,
     clientName: trip?.clientName ?? null,
     customerId: trip?.customerId ?? null,
-    freightTable: trip?.freightTable ?? null,
     actualFreightValue: trip?.actualFreightValue ?? null,
     freightMargin: trip?.freightMargin ?? null,
     routeId: trip?.routeId ?? null,
@@ -123,7 +123,7 @@ function TripFormContent({
     departedAt: trip?.departedAt ?? null,
     arrivedAt: trip?.arrivedAt ?? null,
     weightKg: trip?.weightKg ?? null,
-    cargoType: trip?.cargoType ?? null,
+    cargoType: trip?.cargoType ? trip.cargoType.toUpperCase() : null,
     notes: trip?.notes ?? null,
     responsible: trip?.responsible ?? null,
     tripStatus: trip?.tripStatus ?? 'planned',
@@ -509,11 +509,23 @@ function TripFormContent({
           htmlFor="trip-cargo-type"
           error={fieldErrors.cargoType}
         >
-          <Input
+          <select
             id="trip-cargo-type"
             value={formData.cargoType ?? ''}
             onChange={(e) => updateField('cargoType', e.target.value || null)}
-          />
+            className={TRIP_NATIVE_SELECT_CLASS}
+          >
+            <option value="">Selecione</option>
+            {formData.cargoType &&
+              !TRIP_CARGO_TYPES.includes(
+                formData.cargoType as (typeof TRIP_CARGO_TYPES)[number],
+              ) && <option value={formData.cargoType}>{formData.cargoType}</option>}
+            {TRIP_CARGO_TYPES.map((cargoType) => (
+              <option key={cargoType} value={cargoType}>
+                {cargoType}
+              </option>
+            ))}
+          </select>
         </FormField>
         <FormField
           label="Responsável"
@@ -524,17 +536,6 @@ function TripFormContent({
             id="trip-responsible"
             value={formData.responsible ?? ''}
             onChange={(e) => updateField('responsible', e.target.value || null)}
-          />
-        </FormField>
-        <FormField
-          label="Tabela de frete"
-          htmlFor="trip-freight-table"
-          error={fieldErrors.freightTable}
-        >
-          <Input
-            id="trip-freight-table"
-            value={formData.freightTable ?? ''}
-            onChange={(e) => updateField('freightTable', e.target.value || null)}
           />
         </FormField>
         <FormField

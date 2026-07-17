@@ -18,6 +18,9 @@ export const SIMPLE_TRIP_STATUSES = [
   'cancelled',
 ] as const;
 
+/** RC 26.4.2 — opções padronizadas de tipo de carga (V1) */
+export const TRIP_CARGO_TYPES = ['SECA', 'FRIA', 'HORTIFRUTI'] as const;
+
 export const TRIP_DOCUMENT_TYPES = [
   'cte',
   'mdfe',
