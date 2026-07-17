@@ -20,7 +20,6 @@ import {ROUTES} from '@/constants/routes/paths';
 import type {BranchSelectOption} from '@/features/organization/branches/types';
 import type {DriverSelectOption} from '@/features/drivers/types';
 import type {VehicleSelectOption} from '@/features/vehicles/types';
-import type {TripSelectOption} from '@/features/trips/types';
 
 import {deleteFuelRecordAction} from '../actions';
 import type {
@@ -48,7 +47,6 @@ export interface FuelListProps {
   branches: BranchSelectOption[];
   drivers: DriverSelectOption[];
   vehicles: VehicleSelectOption[];
-  trips: TripSelectOption[];
   error: string | null;
 }
 
@@ -60,7 +58,6 @@ function FuelList({
   branches,
   drivers,
   vehicles,
-  trips,
   error: initialError,
 }: FuelListProps) {
   const router = useRouter();
@@ -277,7 +274,6 @@ function FuelList({
         branches={branches}
         drivers={drivers}
         vehicles={vehicles}
-        trips={trips}
         onSaved={handleSaved}
       />
     </PageTemplate>

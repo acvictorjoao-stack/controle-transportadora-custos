@@ -13,7 +13,6 @@ import {useToast} from '@/contexts/feedback/toast-context';
 import type {BranchSelectOption} from '@/features/organization/branches/types';
 import type {DriverSelectOption} from '@/features/drivers/types';
 import type {VehicleSelectOption} from '@/features/vehicles/types';
-import type {TripSelectOption} from '@/features/trips/types';
 
 import {createFuelRecordAction, updateFuelRecordAction} from '../actions';
 import {FUEL_TYPES} from '../constants/enums';
@@ -29,7 +28,6 @@ export interface FuelFormModalProps {
   branches: BranchSelectOption[];
   drivers: DriverSelectOption[];
   vehicles: VehicleSelectOption[];
-  trips?: TripSelectOption[];
   onSaved: (record: FuelRecord) => void;
 }
 
@@ -50,7 +48,6 @@ function FuelFormModal({
   branches,
   drivers,
   vehicles,
-  trips = [],
   onSaved,
 }: FuelFormModalProps) {
   const isEdit = Boolean(record);
@@ -73,7 +70,6 @@ function FuelFormModal({
         branches={branches}
         drivers={drivers}
         vehicles={vehicles}
-        trips={trips}
         onClose={onClose}
         onSaved={onSaved}
       />
@@ -87,7 +83,6 @@ function FuelFormContent({
   branches,
   drivers,
   vehicles,
-  trips,
   onClose,
   onSaved,
 }: {
@@ -96,14 +91,12 @@ function FuelFormContent({
   branches: BranchSelectOption[];
   drivers: DriverSelectOption[];
   vehicles: VehicleSelectOption[];
-  trips: TripSelectOption[];
   onClose: () => void;
   onSaved: (record: FuelRecord) => void;
 }) {
   const [formData, setFormData] = React.useState<CreateFuelRecordInput>(() => ({
     vehicleId: record?.vehicleId ?? vehicles[0]?.id ?? '',
     driverId: record?.driverId ?? drivers[0]?.id ?? '',
-    tripId: record?.tripId ?? null,
     branchId: record?.branchId ?? null,
     stationName: record?.stationName ?? null,
     stationBrand: record?.stationBrand ?? null,
@@ -117,7 +110,6 @@ function FuelFormContent({
     pricePerLiter: record?.pricePerLiter ?? 0,
     totalAmount: record?.totalAmount ?? 0,
     odometerKm: record?.odometerKm ?? null,
-    hourMeter: record?.hourMeter ?? null,
     notes: record?.notes ?? null,
     responsible: record?.responsible ?? null,
   }));
@@ -217,21 +209,6 @@ function FuelFormContent({
             {drivers.map((driver) => (
               <option key={driver.id} value={driver.id}>
                 {driver.name}
-              </option>
-            ))}
-          </select>
-        </FormField>
-        <FormField label="Viagem (opcional)" htmlFor="fuel-trip" error={fieldErrors.tripId}>
-          <select
-            id="fuel-trip"
-            value={formData.tripId ?? ''}
-            onChange={(e) => updateField('tripId', e.target.value || null)}
-            className={FUEL_NATIVE_SELECT_CLASS}
-          >
-            <option value="">Sem viagem</option>
-            {trips.map((trip) => (
-              <option key={trip.id} value={trip.id}>
-                {trip.tripNumber}
               </option>
             ))}
           </select>
@@ -345,18 +322,6 @@ function FuelFormContent({
             value={formData.odometerKm ?? ''}
             onChange={(e) =>
               updateField('odometerKm', e.target.value ? Number(e.target.value) : null)
-            }
-          />
-        </FormField>
-        <FormField label="Horímetro" htmlFor="fuel-hour" error={fieldErrors.hourMeter}>
-          <Input
-            id="fuel-hour"
-            type="number"
-            step="0.01"
-            min="0"
-            value={formData.hourMeter ?? ''}
-            onChange={(e) =>
-              updateField('hourMeter', e.target.value ? Number(e.target.value) : null)
             }
           />
         </FormField>

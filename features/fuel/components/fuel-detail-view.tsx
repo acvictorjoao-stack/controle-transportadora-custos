@@ -15,7 +15,6 @@ import {ROUTES} from '@/constants/routes/paths';
 import type {BranchSelectOption} from '@/features/organization/branches/types';
 import type {DriverSelectOption} from '@/features/drivers/types';
 import type {VehicleSelectOption} from '@/features/vehicles/types';
-import type {TripSelectOption} from '@/features/trips/types';
 import {TRIP_STATUS_LABELS} from '@/features/trips/types';
 
 import {deleteFuelDocumentAction} from '../actions';
@@ -42,7 +41,6 @@ export interface FuelDetailViewProps {
   branches: BranchSelectOption[];
   drivers: DriverSelectOption[];
   vehicles: VehicleSelectOption[];
-  trips: TripSelectOption[];
 }
 
 const TABS = [
@@ -65,7 +63,6 @@ function FuelDetailView({
   branches,
   drivers,
   vehicles,
-  trips,
 }: FuelDetailViewProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = React.useState<TabId>('resumo');
@@ -508,7 +505,6 @@ function FuelDetailView({
         branches={branches}
         drivers={drivers}
         vehicles={vehicles}
-        trips={trips}
         onSaved={handleRefresh}
       />
     </PageTemplate>

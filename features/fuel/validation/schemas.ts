@@ -39,12 +39,6 @@ export const fuelTypeSchema = z.enum(FUEL_TYPES);
 const fuelBaseSchema = z.object({
   vehicleId: z.string().uuid('Veículo inválido.'),
   driverId: z.string().uuid('Motorista inválido.'),
-  tripId: z
-    .string()
-    .uuid('Viagem inválida.')
-    .nullable()
-    .optional()
-    .transform((v) => v ?? null),
   branchId: z
     .string()
     .uuid('Filial inválida.')
@@ -61,7 +55,6 @@ const fuelBaseSchema = z.object({
   pricePerLiter: nonNegativeNumber.refine((v) => v !== null, 'Informe o valor por litro.'),
   totalAmount: nonNegativeNumber.refine((v) => v !== null, 'Informe o valor total.'),
   odometerKm: optionalNumber,
-  hourMeter: optionalNumber,
   notes: optionalString,
   responsible: optionalString,
 });

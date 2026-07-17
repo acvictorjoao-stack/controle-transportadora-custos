@@ -18,10 +18,6 @@ import {listBranchesForSelect} from '@/features/organization/branches/queries';
 
 import type {BranchSelectOption} from '@/features/organization/branches/types';
 
-import {listTripsForSelect} from '@/features/trips/queries';
-
-import type {TripSelectOption} from '@/features/trips/types';
-
 import {listVehiclesForSelect} from '@/features/vehicles/queries';
 
 import type {VehicleSelectOption} from '@/features/vehicles/types';
@@ -84,13 +80,11 @@ export default async function AbastecimentoDetailPage({params}: AbastecimentoDet
 
   let vehicles: VehicleSelectOption[];
 
-  let trips: TripSelectOption[];
-
 
 
   try {
 
-    [data, branches, drivers, vehicles, trips] = await Promise.all([
+    [data, branches, drivers, vehicles] = await Promise.all([
 
       getFuelDetail(supabase, companyId, id),
 
@@ -99,8 +93,6 @@ export default async function AbastecimentoDetailPage({params}: AbastecimentoDet
       listDriversForSelect(supabase, companyId),
 
       listVehiclesForSelect(supabase, companyId),
-
-      listTripsForSelect(supabase, companyId),
 
     ]);
 
@@ -133,8 +125,6 @@ export default async function AbastecimentoDetailPage({params}: AbastecimentoDet
       drivers={drivers}
 
       vehicles={vehicles}
-
-      trips={trips}
 
     />
 

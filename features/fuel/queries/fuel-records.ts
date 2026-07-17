@@ -157,7 +157,6 @@ function buildFuelPayload(
   const payload: Record<string, unknown> = {
     vehicle_id: input.vehicleId,
     driver_id: input.driverId,
-    trip_id: input.tripId,
     branch_id: input.branchId,
     station_name: input.stationName,
     station_brand: input.stationBrand,
@@ -169,7 +168,6 @@ function buildFuelPayload(
     price_per_liter: input.pricePerLiter,
     total_amount: input.totalAmount,
     odometer_km: input.odometerKm,
-    hour_meter: input.hourMeter,
     km_traveled: metrics.kmTraveled,
     consumption_l_per_100km: metrics.consumptionLPer100km,
     km_per_liter: metrics.kmPerLiter,
