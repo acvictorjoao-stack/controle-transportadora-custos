@@ -26,20 +26,34 @@ export interface ConsumptionResult<TMetrics = ConsumptionMetrics> {
 
 /**
  * The odometer window between two consecutive fuel records of the same
- * vehicle. This is the atomic unit the future engine will ratear (allocate)
- * across the trips that fall inside it.
+ * vehicle. Consumption is attributed to the period's most recent
+ * (`end`) fuel record, since it represents the replenishment of the fuel
+ * consumed while covering `distanceKm`.
+ *
+ * This is the atomic unit that future RCs will use for:
+ *   - rateio (proportional allocation) of liters/cost across the trips
+ *     that fall inside the period's odometer window;
+ *   - route, client and driver consumption indicators, derived from the
+ *     trip-level allocations above.
+ *
+ * Only valid periods are ever constructed (see `calculateConsumptionPeriod`
+ * in `features/fuel/services/consumption/consumption-engine.ts`), so every
+ * field here is guaranteed to be present and numerically meaningful.
  */
 export interface FuelConsumptionPeriod {
   vehicleId: string;
-  startFuelRecordId: string | null;
+  startFuelRecordId: string;
   endFuelRecordId: string;
-  startOdometerKm: number | null;
-  endOdometerKm: number;
-  startFueledAt: string | null;
-  endFueledAt: string;
-  distanceKm: number | null;
-  quantityLiters: number;
-  totalAmount: number;
+  startOdometer: number;
+  endOdometer: number;
+  distanceKm: number;
+  litersConsumed: number;
+  fuelCost: number;
+  pricePerLiter: number;
+  kmPerLiter: number;
+  costPerKm: number;
+  periodStart: string;
+  periodEnd: string;
 }
 
 /** Estimated consumption allocated to a single trip. */

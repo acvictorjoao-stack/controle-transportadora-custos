@@ -1,5 +1,6 @@
 import type {SupabaseClient} from '@supabase/supabase-js';
 
+import {listVehicleFuelRecordsForConsumption} from '../../queries/consumption-queries';
 import type {
   ClientConsumption,
   ConsumptionResult,
@@ -11,43 +12,97 @@ import type {
 } from '../../types';
 
 /**
- * Fuel Consumption Engine — infrastructure only (RC 26.6.1).
+ * Fuel Consumption Engine.
  *
- * This module is the single, reusable entry point for every future fuel
+ * This module is the single, reusable entry point for every fuel
  * consumption calculation. No screen or query outside this file may
  * implement consumption/allocation math — they must call these methods
  * instead.
  *
- * The methods below are intentionally stubs. The real algorithm, to be
- * implemented in upcoming RCs (26.6.x), will be based exclusively on:
- *   1. the sequence of a vehicle's odometer readings (fuel records +
- *      completed trips' initial/final odometer);
- *   2. the fuel records themselves (liters, amount, date) — see
- *      `features/fuel/queries/consumption-queries.ts`;
- *   3. the vehicle's completed trips that fall within each odometer window
- *      between two consecutive fuel records (a `FuelConsumptionPeriod`).
+ * `calculateConsumptionPeriod` is implemented (RC 26.6.2) using the
+ * "Consumo por Período entre Abastecimentos" method: it walks a vehicle's
+ * fuel records ordered by odometer and turns every consecutive pair into a
+ * `FuelConsumptionPeriod`.
  *
- * For each period, the distance travelled will be split proportionally
- * across the trips it contains, and that same proportion will be used to
- * ratear (allocate) the period's liters and cost to each trip. Vehicle,
- * route, driver and client consumption are aggregations of the resulting
- * trip-level allocations.
+ * The remaining methods are still stubs. The algorithm to be implemented in
+ * upcoming RCs (26.6.x) will consume these periods to:
+ *   1. ratear (proportionally allocate) each period's liters and cost
+ *      across the completed trips whose odometer range falls inside it
+ *      (`calculateTripConsumption`, `reprocessVehicleConsumption`);
+ *   2. aggregate the resulting trip-level allocations into vehicle, route,
+ *      driver and client consumption indicators (`calculateVehicleConsumption`,
+ *      `calculateRouteConsumption`, `calculateDriverConsumption`,
+ *      `calculateClientConsumption`).
  */
 
 /**
- * Will calculate the `FuelConsumptionPeriod` ending at the given fuel
- * record — i.e. the odometer window between it and the vehicle's previous
- * fuel record (or the vehicle's initial odometer, if there is none).
+ * Calculates every consumption period of a vehicle.
  *
- * Stub: returns `null` until implemented.
+ * Each fuel record closes a consumption period together with the vehicle's
+ * previous fuel record: the distance travelled between their odometer
+ * readings is attributed to the liters/cost of the most recent
+ * (closing) fill, since that fill represents the replenishment of the fuel
+ * consumed while covering that distance.
+ *
+ * Rules:
+ *   - Fetches all fuel records of the vehicle via
+ *     `listVehicleFuelRecordsForConsumption` and orders them by odometer
+ *     ascending.
+ *   - Records without a known odometer are excluded (no valid distance can
+ *     be derived from them).
+ *   - A vehicle with fewer than two usable fuel records yields no periods.
+ *   - A pair is skipped (not thrown) whenever the resulting distance or the
+ *     closing fill's liters are not strictly positive.
+ *   - All internal math keeps full precision; rounding for display is the
+ *     caller's responsibility.
+ *
+ * These periods are the foundation for the future rateio per trip and the
+ * route/client/driver indicators described in RC 26.6.
  */
 export async function calculateConsumptionPeriod(
-  _supabase: SupabaseClient,
-  _companyId: string,
-  _vehicleId: string,
-  _endFuelRecordId: string,
-): Promise<FuelConsumptionPeriod | null> {
-  return null;
+  supabase: SupabaseClient,
+  companyId: string,
+  vehicleId: string,
+): Promise<FuelConsumptionPeriod[]> {
+  const records = await listVehicleFuelRecordsForConsumption(supabase, companyId, vehicleId);
+
+  const withOdometer = records.filter(
+    (record): record is typeof record & {odometerKm: number} => record.odometerKm !== null,
+  );
+  const sorted = [...withOdometer].sort((a, b) => a.odometerKm - b.odometerKm);
+
+  const periods: FuelConsumptionPeriod[] = [];
+
+  for (let i = 1; i < sorted.length; i += 1) {
+    const start = sorted[i - 1];
+    const end = sorted[i];
+    const distanceKm = end.odometerKm - start.odometerKm;
+    const litersConsumed = end.quantityLiters;
+
+    if (distanceKm <= 0 || litersConsumed <= 0) {
+      continue;
+    }
+
+    const fuelCost = end.totalAmount;
+
+    periods.push({
+      vehicleId,
+      startFuelRecordId: start.id,
+      endFuelRecordId: end.id,
+      startOdometer: start.odometerKm,
+      endOdometer: end.odometerKm,
+      distanceKm,
+      litersConsumed,
+      fuelCost,
+      pricePerLiter: end.pricePerLiter,
+      kmPerLiter: distanceKm / litersConsumed,
+      costPerKm: fuelCost / distanceKm,
+      periodStart: start.fueledAt,
+      periodEnd: end.fueledAt,
+    });
+  }
+
+  return periods;
 }
 
 /**

@@ -16,6 +16,7 @@ export interface VehicleFuelRecordForConsumption {
   odometerKm: number | null;
   quantityLiters: number;
   totalAmount: number;
+  pricePerLiter: number;
   fueledAt: string;
 }
 
@@ -36,7 +37,7 @@ export async function listVehicleFuelRecordsForConsumption(
 ): Promise<VehicleFuelRecordForConsumption[]> {
   const {data, error} = await supabase
     .from('fuel_records')
-    .select('id, odometer_km, quantity_liters, total_amount, fueled_at')
+    .select('id, odometer_km, quantity_liters, total_amount, price_per_liter, fueled_at')
     .eq('company_id', companyId)
     .eq('vehicle_id', vehicleId)
     .is('deleted_at', null)
@@ -52,6 +53,7 @@ export async function listVehicleFuelRecordsForConsumption(
     odometerKm: row.odometer_km !== null ? Number(row.odometer_km) : null,
     quantityLiters: Number(row.quantity_liters),
     totalAmount: Number(row.total_amount),
+    pricePerLiter: Number(row.price_per_liter),
     fueledAt: row.fueled_at,
   }));
 }
