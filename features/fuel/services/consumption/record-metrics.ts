@@ -1,4 +1,4 @@
-import type {FuelInconsistencyFlag} from '../types';
+import type {FuelInconsistencyFlag} from '../../types';
 
 export interface FuelMetricsInput {
   quantityLiters: number;

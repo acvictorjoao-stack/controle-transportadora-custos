@@ -28,7 +28,7 @@ import type {
   FuelSortOptions,
   PaginatedFuelRecords,
 } from '../types';
-import {calculateFuelMetrics} from '../utils/fuel-calculations';
+import {calculateFuelMetrics} from '../services/consumption';
 import type {CreateFuelRecordInput, UpdateFuelRecordInput} from '../validation';
 
 export interface ListFuelRecordsOptions {
