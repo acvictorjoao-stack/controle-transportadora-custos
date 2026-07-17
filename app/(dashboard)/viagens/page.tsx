@@ -12,8 +12,14 @@ import {
 } from '@/features/routes/queries';
 import type {RouteFilterOptions, RouteSelectOption} from '@/features/routes/types';
 import {TripsList} from '@/features/trips/components';
-import {listTrips} from '@/features/trips/queries';
-import type {PaginatedTrips, TripListFilters, TripSortOptions, TripStatus} from '@/features/trips/types';
+import {listTripResourceAvailability, listTrips} from '@/features/trips/queries';
+import type {
+  PaginatedTrips,
+  TripListFilters,
+  TripResourceAvailability,
+  TripSortOptions,
+  TripStatus,
+} from '@/features/trips/types';
 import {listVehiclesForSelect} from '@/features/vehicles/queries';
 import type {VehicleSelectOption} from '@/features/vehicles/types';
 import {
@@ -84,10 +90,20 @@ export default async function ViagensPage({searchParams}: ViagensPageProps) {
   let customers: Customer[];
   let routes: RouteSelectOption[];
   let routeFilterOptions: RouteFilterOptions;
+  let resourceAvailability: TripResourceAvailability;
   let error: string | null = null;
 
   try {
-    [data, branches, drivers, vehicles, customers, routes, routeFilterOptions] =
+    [
+      data,
+      branches,
+      drivers,
+      vehicles,
+      customers,
+      routes,
+      routeFilterOptions,
+      resourceAvailability,
+    ] =
       await Promise.all([
         listTrips(supabase, {companyId, search, page, filters, sort}),
         listBranchesForSelect(supabase, companyId),
@@ -96,6 +112,7 @@ export default async function ViagensPage({searchParams}: ViagensPageProps) {
         listCustomersForSelect(supabase, companyId),
         listRoutesForSelect(supabase, companyId, 200),
         listRouteFilterOptions(supabase, companyId),
+        listTripResourceAvailability(supabase, companyId),
       ]);
   } catch (err) {
     error = err instanceof Error ? err.message : 'Erro ao carregar viagens.';
@@ -106,6 +123,7 @@ export default async function ViagensPage({searchParams}: ViagensPageProps) {
     customers = [];
     routes = [];
     routeFilterOptions = {origins: [], destinations: []};
+    resourceAvailability = {busyVehicleIds: [], busyDriverIds: []};
   }
 
   return (
@@ -120,6 +138,7 @@ export default async function ViagensPage({searchParams}: ViagensPageProps) {
       customers={customers}
       routes={routes}
       routeFilterOptions={routeFilterOptions}
+      resourceAvailability={resourceAvailability}
       error={error}
     />
   );

@@ -1,6 +1,7 @@
 export {
   listTrips,
   listTripsForSelect,
+  listTripResourceAvailability,
   getTripById,
   createTrip,
   updateTrip,

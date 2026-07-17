@@ -29,6 +29,7 @@ import type {
   TripListFilters,
   TripLocation,
   TripOccurrence,
+  TripResourceAvailability,
   TripRow,
   TripSortOptions,
   TripStats,
@@ -288,6 +289,39 @@ async function generateTripNumber(
 /** Status que ocupam veículo/motorista (Sprint 26.5). */
 const TRIP_BUSY_STATUSES = ['planned', 'in_progress'] as const;
 const ODOMETER_REFERENCE_STATUSES = ['completed', 'in_progress', 'delivering'] as const;
+
+export async function listTripResourceAvailability(
+  supabase: SupabaseClient,
+  companyId: string,
+): Promise<TripResourceAvailability> {
+  const {data, error} = await supabase
+    .from('trips')
+    .select('vehicle_id, driver_id')
+    .eq('company_id', companyId)
+    .is('deleted_at', null)
+    .in('trip_status', [...TRIP_BUSY_STATUSES]);
+
+  if (error) {
+    throw new Error(mapDatabaseError(error));
+  }
+
+  return {
+    busyVehicleIds: [
+      ...new Set(
+        (data ?? [])
+          .map((row) => row.vehicle_id)
+          .filter((id): id is string => typeof id === 'string'),
+      ),
+    ],
+    busyDriverIds: [
+      ...new Set(
+        (data ?? [])
+          .map((row) => row.driver_id)
+          .filter((id): id is string => typeof id === 'string'),
+      ),
+    ],
+  };
+}
 
 interface OdometerTripRow {
   id: string;
@@ -704,13 +738,12 @@ export async function completeTrip(
   }
   await assertCompletionOdometer(supabase, companyId, current, input.finalOdometerKm);
 
-  const now = new Date().toISOString();
   const {data, error} = await supabase
     .from('trips')
     .update({
       trip_status: 'completed',
-      completed_at: current.completedAt ?? now,
-      arrived_at: current.arrivedAt ?? now,
+      completed_at: input.completedAt,
+      arrived_at: current.arrivedAt ?? input.completedAt,
       final_odometer_km: input.finalOdometerKm,
       updated_by: profileId,
     })
@@ -729,15 +762,74 @@ export async function completeTrip(
     const {error: vehicleError} = await supabase
       .from('vehicles')
       .update({
+        asset_status: 'active',
         current_odometer_km: input.finalOdometerKm,
         updated_by: profileId,
       })
       .eq('id', trip.vehicleId)
       .eq('company_id', companyId)
-      .is('deleted_at', null);
+      .is('deleted_at', null)
+      .select('id')
+      .single();
     if (vehicleError) {
       throw new Error(
-        `A viagem foi concluída, mas não foi possível atualizar o hodômetro do veículo: ${mapDatabaseError(vehicleError)}`,
+        `A viagem foi concluída, mas não foi possível liberar o veículo: ${mapDatabaseError(vehicleError)}`,
+      );
+    }
+
+    const {error: vehicleHistoryError} = await supabase.from('vehicle_history').insert({
+      company_id: companyId,
+      vehicle_id: trip.vehicleId,
+      action: 'Veículo liberado',
+      changes: {
+        trip_id: trip.id,
+        completed_at: input.completedAt,
+        final_odometer_km: input.finalOdometerKm,
+      },
+      new_asset_status: 'active',
+      created_at: input.completedAt,
+      created_by: profileId,
+    });
+    if (vehicleHistoryError) {
+      throw new Error(
+        `O veículo foi liberado, mas não foi possível registrar o histórico: ${mapDatabaseError(vehicleHistoryError)}`,
+      );
+    }
+  }
+
+  if (trip.driverId) {
+    const {error: driverError} = await supabase
+      .from('drivers')
+      .update({
+        operational_status: 'active',
+        updated_by: profileId,
+      })
+      .eq('id', trip.driverId)
+      .eq('company_id', companyId)
+      .is('deleted_at', null)
+      .select('id')
+      .single();
+    if (driverError) {
+      throw new Error(
+        `A viagem foi concluída, mas não foi possível liberar o motorista: ${mapDatabaseError(driverError)}`,
+      );
+    }
+
+    const {error: driverHistoryError} = await supabase.from('driver_history').insert({
+      company_id: companyId,
+      driver_id: trip.driverId,
+      action: 'Motorista liberado',
+      changes: {
+        trip_id: trip.id,
+        completed_at: input.completedAt,
+      },
+      new_operational_status: 'active',
+      created_at: input.completedAt,
+      created_by: profileId,
+    });
+    if (driverHistoryError) {
+      throw new Error(
+        `O motorista foi liberado, mas não foi possível registrar o histórico: ${mapDatabaseError(driverHistoryError)}`,
       );
     }
   }

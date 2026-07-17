@@ -251,7 +251,7 @@ export async function completeTripAction(
   if (!parsed.success) {
     return {
       success: false,
-      error: 'Informe um KM final válido.',
+      error: 'Verifique a data/hora e o KM final da viagem.',
       fieldErrors: zodFieldErrors(parsed.error.issues),
     };
   }

@@ -142,6 +142,11 @@ export interface Trip {
 
 export type TripSelectOption = Pick<Trip, 'id' | 'tripNumber'>;
 
+export interface TripResourceAvailability {
+  busyVehicleIds: string[];
+  busyDriverIds: string[];
+}
+
 export interface TripHistoryRow {
   id: string;
   company_id: string;

@@ -29,7 +29,11 @@ import {
   upsertTripChecklistAction,
 } from '../actions';
 import {TRIP_DOCUMENT_TYPES, TRIP_OCCURRENCE_TYPES} from '../constants/enums';
-import type {TripDetailData, TripOccurrenceType} from '../types';
+import type {
+  TripDetailData,
+  TripOccurrenceType,
+  TripResourceAvailability,
+} from '../types';
 import {
   TRIP_DOCUMENT_TYPE_LABELS,
   TRIP_HISTORY_ACTION_LABELS,
@@ -52,6 +56,7 @@ export interface TripDetailViewProps {
   vehicles: VehicleSelectOption[];
   customers: Customer[];
   routes: RouteSelectOption[];
+  resourceAvailability: TripResourceAvailability;
 }
 
 const TABS = [
@@ -78,6 +83,7 @@ function TripDetailView({
   vehicles,
   customers,
   routes,
+  resourceAvailability,
 }: TripDetailViewProps) {
   const router = useRouter();
   const confirm = useConfirm();
@@ -501,6 +507,7 @@ function TripDetailView({
         vehicles={vehicles}
         customers={customers}
         routes={routes}
+        resourceAvailability={resourceAvailability}
         onSaved={handleRefresh}
       />
     </PageTemplate>

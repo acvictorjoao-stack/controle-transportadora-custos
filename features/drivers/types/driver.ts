@@ -95,7 +95,13 @@ export interface Driver {
 
 export type DriverSelectOption = Pick<
   Driver,
-  'id' | 'name' | 'phone' | 'cnhNumber' | 'licenseCategory' | 'branchName'
+  | 'id'
+  | 'name'
+  | 'phone'
+  | 'cnhNumber'
+  | 'licenseCategory'
+  | 'branchName'
+  | 'operationalStatus'
 >;
 
 export interface DriverHistoryRow {

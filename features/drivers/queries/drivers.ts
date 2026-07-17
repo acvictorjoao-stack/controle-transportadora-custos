@@ -170,7 +170,9 @@ export async function listDriversForSelect(
 ): Promise<DriverSelectOption[]> {
   const {data, error} = await supabase
     .from('drivers')
-    .select('id, name, phone, cnh_number, license_category, branches:branch_id (id, name)')
+    .select(
+      'id, name, phone, cnh_number, license_category, operational_status, branches:branch_id (id, name)',
+    )
     .eq('company_id', companyId)
     .is('deleted_at', null)
     .order('name')
@@ -188,6 +190,7 @@ export async function listDriversForSelect(
       phone: row.phone,
       cnhNumber: row.cnh_number,
       licenseCategory: row.license_category,
+      operationalStatus: row.operational_status,
       branchName: branch?.name ?? null,
     };
   });

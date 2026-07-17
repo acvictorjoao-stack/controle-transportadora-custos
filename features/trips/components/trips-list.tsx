@@ -29,6 +29,7 @@ import type {
   PaginatedTrips,
   Trip,
   TripListFilters,
+  TripResourceAvailability,
   TripSortOptions,
 } from '../types';
 import {TRIP_STATUS_INDICATORS, TRIP_STATUS_LABELS} from '../types';
@@ -50,6 +51,7 @@ export interface TripsListProps {
   customers: Customer[];
   routes: RouteSelectOption[];
   routeFilterOptions: RouteFilterOptions;
+  resourceAvailability: TripResourceAvailability;
   error: string | null;
 }
 
@@ -68,6 +70,7 @@ function TripsList({
   customers,
   routes,
   routeFilterOptions,
+  resourceAvailability,
   error: initialError,
 }: TripsListProps) {
   const router = useRouter();
@@ -281,6 +284,7 @@ function TripsList({
         vehicles={vehicles}
         customers={customers}
         routes={routes}
+        resourceAvailability={resourceAvailability}
         onSaved={handleSaved}
       />
     </PageTemplate>

@@ -25,7 +25,11 @@ import {
   canCompleteTrip,
   canStartTrip,
 } from '../utils/trip-lifecycle';
-import {formatDateTimeBr} from '../utils/trip-status';
+import {
+  formatDateTimeBr,
+  fromDatetimeLocalValue,
+  toDatetimeLocalValue,
+} from '../utils/trip-status';
 
 export interface TripLifecycleCardProps {
   trip: Trip;
@@ -42,7 +46,11 @@ function TripLifecycleCard({trip, onChanged}: TripLifecycleCardProps) {
   const [finalOdometerKm, setFinalOdometerKm] = React.useState(
     trip.finalOdometerKm?.toString() ?? '',
   );
+  const [completedAt, setCompletedAt] = React.useState(() =>
+    toDatetimeLocalValue(new Date().toISOString()),
+  );
   const [completeError, setCompleteError] = React.useState<string | null>(null);
+  const [completedAtError, setCompletedAtError] = React.useState<string | null>(null);
   const [finalOdometerError, setFinalOdometerError] = React.useState<string | null>(null);
   const [cancellationNotes, setCancellationNotes] = React.useState('');
   const [cancelError, setCancelError] = React.useState<string | null>(null);
@@ -64,6 +72,12 @@ function TripLifecycleCard({trip, onChanged}: TripLifecycleCardProps) {
   }
 
   async function handleComplete() {
+    const completedAtIso = fromDatetimeLocalValue(completedAt);
+    if (!completedAtIso) {
+      setCompletedAtError('Informe a data e hora da conclusão.');
+      return;
+    }
+
     const finalKm = Number(finalOdometerKm.replace(',', '.'));
     if (!finalOdometerKm.trim() || !Number.isFinite(finalKm) || finalKm < 0) {
       setFinalOdometerError('Informe o KM final da viagem.');
@@ -76,10 +90,15 @@ function TripLifecycleCard({trip, onChanged}: TripLifecycleCardProps) {
 
     setLoading('complete');
     setCompleteError(null);
+    setCompletedAtError(null);
     setFinalOdometerError(null);
-    const result = await completeTripAction(trip.id, {finalOdometerKm: finalKm});
+    const result = await completeTripAction(trip.id, {
+      completedAt: completedAtIso,
+      finalOdometerKm: finalKm,
+    });
     if (!result.success) {
       setCompleteError(result.error ?? 'Não foi possível concluir a viagem.');
+      setCompletedAtError(result.fieldErrors?.completedAt ?? null);
       setFinalOdometerError(result.fieldErrors?.finalOdometerKm ?? null);
     } else {
       toast.success('Viagem concluída com sucesso.');
@@ -167,7 +186,9 @@ function TripLifecycleCard({trip, onChanged}: TripLifecycleCardProps) {
                   size="sm"
                   onClick={() => {
                     setCompleteError(null);
+                    setCompletedAtError(null);
                     setFinalOdometerError(null);
+                    setCompletedAt(toDatetimeLocalValue(new Date().toISOString()));
                     setCompleteOpen(true);
                   }}
                   disabled={loading !== null}
@@ -200,7 +221,7 @@ function TripLifecycleCard({trip, onChanged}: TripLifecycleCardProps) {
           setCompleteOpen(false);
         }}
         title="Concluir viagem"
-        description="Informe o hodômetro final para encerrar a viagem."
+        description="Confirme a data, a hora e o hodômetro final da viagem."
         size="md"
       >
         <div className="space-y-4">
@@ -209,6 +230,23 @@ function TripLifecycleCard({trip, onChanged}: TripLifecycleCardProps) {
               <AlertDescription>{completeError}</AlertDescription>
             </Alert>
           )}
+          <FormField
+            label="Data/Hora da conclusão"
+            htmlFor="complete-trip-completed-at"
+            required
+            error={completedAtError ?? undefined}
+          >
+            <Input
+              id="complete-trip-completed-at"
+              type="datetime-local"
+              value={completedAt}
+              onChange={(event) => {
+                setCompletedAt(event.target.value);
+                setCompletedAtError(null);
+              }}
+              disabled={loading === 'complete'}
+            />
+          </FormField>
           <FormField
             label="KM final"
             htmlFor="complete-trip-final-odometer"
@@ -231,7 +269,6 @@ function TripLifecycleCard({trip, onChanged}: TripLifecycleCardProps) {
                 setFinalOdometerError(null);
               }}
               disabled={loading === 'complete'}
-              autoFocus
             />
           </FormField>
           <div className="flex justify-end gap-2">

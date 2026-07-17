@@ -158,6 +158,14 @@ export const cancelTripSchema = z.object({
 });
 
 export const completeTripSchema = z.object({
+  completedAt: z
+    .string()
+    .trim()
+    .min(1, 'Informe a data e hora da conclusão.')
+    .refine((value) => !Number.isNaN(new Date(value).getTime()), {
+      message: 'Informe uma data e hora de conclusão válida.',
+    })
+    .transform((value) => new Date(value).toISOString()),
   finalOdometerKm: z
     .union([z.string(), z.number()])
     .transform((v, ctx) => {

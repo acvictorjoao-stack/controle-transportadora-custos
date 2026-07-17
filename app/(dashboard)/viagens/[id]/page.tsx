@@ -10,8 +10,8 @@ import type {BranchSelectOption} from '@/features/organization/branches/types';
 import {listRoutesForSelect} from '@/features/routes/queries';
 import type {RouteSelectOption} from '@/features/routes/types';
 import {TripDetailView} from '@/features/trips/components';
-import {getTripDetail} from '@/features/trips/queries';
-import type {TripDetailData} from '@/features/trips/types';
+import {getTripDetail, listTripResourceAvailability} from '@/features/trips/queries';
+import type {TripDetailData, TripResourceAvailability} from '@/features/trips/types';
 import {listVehiclesForSelect} from '@/features/vehicles/queries';
 import type {VehicleSelectOption} from '@/features/vehicles/types';
 import {
@@ -45,16 +45,19 @@ export default async function ViagemDetailPage({params}: ViagemDetailPageProps) 
   let vehicles: VehicleSelectOption[];
   let customers: Customer[];
   let routes: RouteSelectOption[];
+  let resourceAvailability: TripResourceAvailability;
 
   try {
-    [data, branches, drivers, vehicles, customers, routes] = await Promise.all([
-      getTripDetail(supabase, companyId, id),
-      listBranchesForSelect(supabase, companyId),
-      listDriversForSelect(supabase, companyId),
-      listVehiclesForSelect(supabase, companyId),
-      listCustomersForSelect(supabase, companyId),
-      listRoutesForSelect(supabase, companyId, 200),
-    ]);
+    [data, branches, drivers, vehicles, customers, routes, resourceAvailability] =
+      await Promise.all([
+        getTripDetail(supabase, companyId, id),
+        listBranchesForSelect(supabase, companyId),
+        listDriversForSelect(supabase, companyId),
+        listVehiclesForSelect(supabase, companyId),
+        listCustomersForSelect(supabase, companyId),
+        listRoutesForSelect(supabase, companyId, 200),
+        listTripResourceAvailability(supabase, companyId),
+      ]);
   } catch {
     notFound();
   }
@@ -72,6 +75,7 @@ export default async function ViagemDetailPage({params}: ViagemDetailPageProps) 
       vehicles={vehicles}
       customers={customers}
       routes={routes}
+      resourceAvailability={resourceAvailability}
     />
   );
 }

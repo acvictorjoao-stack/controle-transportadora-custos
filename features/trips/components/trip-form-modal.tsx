@@ -27,7 +27,7 @@ import {MSG} from '@/lib/feedback/messages';
 
 import {createTripAction, updateTripAction} from '../actions';
 import {TRIP_CARGO_TYPES} from '../constants/enums';
-import type {Trip} from '../types';
+import type {Trip, TripResourceAvailability} from '../types';
 import {TRIP_STATUS_LABELS} from '../types';
 import type {CreateTripInput} from '../validation';
 import {TRIP_NATIVE_SELECT_CLASS} from '../utils/form-styles';
@@ -45,6 +45,7 @@ export interface TripFormModalProps {
   vehicles: VehicleSelectOption[];
   customers: Customer[];
   routes: RouteSelectOption[];
+  resourceAvailability: TripResourceAvailability;
   onSaved: (trip: Trip) => void;
 }
 
@@ -89,6 +90,7 @@ function TripFormModal({
   vehicles,
   customers,
   routes,
+  resourceAvailability,
   onSaved,
 }: TripFormModalProps) {
   const isEdit = Boolean(trip);
@@ -113,6 +115,7 @@ function TripFormModal({
         vehicles={vehicles}
         customers={customers}
         routes={routes}
+        resourceAvailability={resourceAvailability}
         onClose={onClose}
         onSaved={onSaved}
       />
@@ -128,6 +131,7 @@ function TripFormContent({
   vehicles,
   customers,
   routes,
+  resourceAvailability,
   onClose,
   onSaved,
 }: {
@@ -138,6 +142,7 @@ function TripFormContent({
   vehicles: VehicleSelectOption[];
   customers: Customer[];
   routes: RouteSelectOption[];
+  resourceAvailability: TripResourceAvailability;
   onClose: () => void;
   onSaved: (trip: Trip) => void;
 }) {
@@ -197,6 +202,26 @@ function TripFormContent({
     vehicles.find((vehicle) => vehicle.id === formData.vehicleId) ?? null;
   const selectedDriver =
     drivers.find((driver) => driver.id === formData.driverId) ?? null;
+  const busyVehicleIds = React.useMemo(
+    () => new Set(resourceAvailability.busyVehicleIds),
+    [resourceAvailability.busyVehicleIds],
+  );
+  const busyDriverIds = React.useMemo(
+    () => new Set(resourceAvailability.busyDriverIds),
+    [resourceAvailability.busyDriverIds],
+  );
+
+  function getVehicleAvailability(vehicle: VehicleSelectOption): string | null {
+    if (busyVehicleIds.has(vehicle.id)) return 'Em viagem';
+    if (vehicle.assetStatus === 'maintenance') return 'Em manutenção';
+    return null;
+  }
+
+  function getDriverAvailability(driver: DriverSelectOption): string | null {
+    if (busyDriverIds.has(driver.id)) return 'Em viagem';
+    if (driver.operationalStatus === 'inactive') return 'Inativo';
+    return null;
+  }
 
   function handleCustomerChange(customerId: string | null) {
     const customer = customers.find((c) => c.id === customerId);
@@ -445,11 +470,20 @@ function TripFormContent({
             className={TRIP_NATIVE_SELECT_CLASS}
           >
             <option value="">Selecione</option>
-            {vehicles.map((vehicle) => (
-              <option key={vehicle.id} value={vehicle.id}>
-                {vehicle.plate}
-              </option>
-            ))}
+            {vehicles.map((vehicle) => {
+              const availability = getVehicleAvailability(vehicle);
+              const isCurrentVehicle = isEdit && vehicle.id === trip?.vehicleId;
+              return (
+                <option
+                  key={vehicle.id}
+                  value={vehicle.id}
+                  disabled={Boolean(availability) && !isCurrentVehicle}
+                >
+                  {vehicle.plate}
+                  {availability ? ` — ${availability}` : ''}
+                </option>
+              );
+            })}
           </select>
         </FormField>
         <FormField label="Motorista" htmlFor="trip-driver" error={fieldErrors.driverId}>
@@ -460,11 +494,20 @@ function TripFormContent({
             className={TRIP_NATIVE_SELECT_CLASS}
           >
             <option value="">Selecione</option>
-            {drivers.map((driver) => (
-              <option key={driver.id} value={driver.id}>
-                {driver.name}
-              </option>
-            ))}
+            {drivers.map((driver) => {
+              const availability = getDriverAvailability(driver);
+              const isCurrentDriver = isEdit && driver.id === trip?.driverId;
+              return (
+                <option
+                  key={driver.id}
+                  value={driver.id}
+                  disabled={Boolean(availability) && !isCurrentDriver}
+                >
+                  {driver.name}
+                  {availability ? ` — ${availability}` : ''}
+                </option>
+              );
+            })}
           </select>
         </FormField>
 
