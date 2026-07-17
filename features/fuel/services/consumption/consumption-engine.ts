@@ -1,8 +1,13 @@
 import type {SupabaseClient} from '@supabase/supabase-js';
 
-import {listVehicleFuelRecordsForConsumption} from '../../queries/consumption-queries';
+import {
+  getTripOdometerForConsumption,
+  listVehicleCompletedTripsForConsumption,
+  listVehicleFuelRecordsForConsumption,
+} from '../../queries/consumption-queries';
 import type {
   ClientConsumption,
+  ConsumptionAllocationResult,
   ConsumptionResult,
   DriverConsumption,
   FuelConsumptionPeriod,
@@ -10,6 +15,7 @@ import type {
   TripFuelConsumption,
   VehicleConsumption,
 } from '../../types';
+import {allocatePeriodConsumption, buildPeriodId} from './trip-allocation';
 
 /**
  * Fuel Consumption Engine.
@@ -24,15 +30,22 @@ import type {
  * fuel records ordered by odometer and turns every consecutive pair into a
  * `FuelConsumptionPeriod`.
  *
- * The remaining methods are still stubs. The algorithm to be implemented in
- * upcoming RCs (26.6.x) will consume these periods to:
- *   1. ratear (proportionally allocate) each period's liters and cost
- *      across the completed trips whose odometer range falls inside it
- *      (`calculateTripConsumption`, `reprocessVehicleConsumption`);
- *   2. aggregate the resulting trip-level allocations into vehicle, route,
- *      driver and client consumption indicators (`calculateVehicleConsumption`,
- *      `calculateRouteConsumption`, `calculateDriverConsumption`,
- *      `calculateClientConsumption`).
+ * `calculateTripConsumption` and `calculateVehicleConsumptionAllocations`
+ * are implemented (RC 26.6.3): they ratear (proportionally allocate) each
+ * period's liters and cost across the completed trips whose odometer range
+ * falls inside it, via the pure algorithm in `./trip-allocation`. Any
+ * kilometers of a period not covered by a trip become "Consumo
+ * Operacional" — movement not linked to any trip (oficina, lavagem, teste,
+ * movimentação interna, reposicionamento do veículo). This allocation is
+ * never persisted; it only ever exists as an in-memory object returned by
+ * the engine.
+ *
+ * The remaining methods are still stubs. Upcoming RCs (26.6.x) will
+ * aggregate the trip-level allocations above into vehicle, route, driver
+ * and client consumption indicators (`calculateVehicleConsumption`,
+ * `calculateRouteConsumption`, `calculateDriverConsumption`,
+ * `calculateClientConsumption`), and `reprocessVehicleConsumption` will
+ * recompute only what changed instead of the whole database.
  */
 
 /**
@@ -106,17 +119,117 @@ export async function calculateConsumptionPeriod(
 }
 
 /**
- * Will calculate the estimated fuel consumption allocated to a single trip,
- * based on the `FuelConsumptionPeriod`(s) that overlap its odometer range.
+ * Calculates the estimated fuel consumption allocated to a single trip
+ * (RC 26.6.3), based on the rateio of every `FuelConsumptionPeriod` that
+ * overlaps its odometer range.
  *
- * Stub: returns `null` until implemented.
+ * A trip whose odometer range spans more than one period (the vehicle was
+ * refueled mid-trip) has its allocations from every overlapping period
+ * summed together, so no distance/liters/cost is lost or duplicated.
+ *
+ * Returns `null` when the trip cannot be found, is not completed, has no
+ * vehicle, has an invalid odometer range, or does not overlap any known
+ * consumption period.
  */
 export async function calculateTripConsumption(
-  _supabase: SupabaseClient,
-  _companyId: string,
-  _tripId: string,
+  supabase: SupabaseClient,
+  companyId: string,
+  tripId: string,
 ): Promise<ConsumptionResult<TripFuelConsumption> | null> {
-  return null;
+  const trip = await getTripOdometerForConsumption(supabase, companyId, tripId);
+
+  if (
+    !trip ||
+    !trip.vehicleId ||
+    trip.tripStatus !== 'completed' ||
+    trip.initialOdometerKm === null ||
+    trip.finalOdometerKm === null ||
+    trip.finalOdometerKm <= trip.initialOdometerKm
+  ) {
+    return null;
+  }
+
+  const [periods, trips] = await Promise.all([
+    calculateConsumptionPeriod(supabase, companyId, trip.vehicleId),
+    listVehicleCompletedTripsForConsumption(supabase, companyId, trip.vehicleId),
+  ]);
+
+  const overlappingPeriods = periods.filter(
+    (period) => trip.finalOdometerKm! > period.startOdometer && trip.initialOdometerKm! < period.endOdometer,
+  );
+
+  if (overlappingPeriods.length === 0) {
+    return null;
+  }
+
+  const sourcePeriodIds: string[] = [];
+  let distanceKm = 0;
+  let estimatedLiters = 0;
+  let estimatedCost = 0;
+
+  for (const period of overlappingPeriods) {
+    const allocation = allocatePeriodConsumption(period, trips);
+    const tripAllocation = allocation.tripAllocations.find((candidate) => candidate.tripId === tripId);
+
+    if (!tripAllocation) {
+      continue;
+    }
+
+    sourcePeriodIds.push(buildPeriodId(period));
+    distanceKm += tripAllocation.distanceKm;
+    estimatedLiters += tripAllocation.litersAllocated;
+    estimatedCost += tripAllocation.costAllocated;
+  }
+
+  if (sourcePeriodIds.length === 0) {
+    return null;
+  }
+
+  const fullTripDistanceKm = trip.finalOdometerKm - trip.initialOdometerKm;
+  const distanceShare = fullTripDistanceKm > 0 ? distanceKm / fullTripDistanceKm : null;
+
+  const metrics: TripFuelConsumption = {
+    tripId,
+    periodId: sourcePeriodIds.length === 1 ? sourcePeriodIds[0] : null,
+    distanceKm,
+    distanceShare,
+    estimatedLiters,
+    estimatedCost,
+    kmPerLiter: estimatedLiters > 0 ? distanceKm / estimatedLiters : null,
+    costPerKm: distanceKm > 0 ? estimatedCost / distanceKm : null,
+    consumptionPercentage: distanceShare !== null ? distanceShare * 100 : null,
+  };
+
+  return {
+    metrics,
+    isEstimated: true,
+    calculatedAt: new Date().toISOString(),
+    sourcePeriodIds,
+  };
+}
+
+/**
+ * Calculates the full rateio (RC 26.6.3) of every consumption period of a
+ * vehicle: for each `FuelConsumptionPeriod`, allocates liters/cost across
+ * every completed trip that overlaps it and aggregates whatever kilometers
+ * are left over into a Consumo Operacional allocation.
+ *
+ * This is the underlying engine capability that `calculateTripConsumption`
+ * queries for a single trip — exposed directly so future RCs (dashboards,
+ * reprocessing) can consume the full per-period breakdown without
+ * duplicating the algorithm.
+ */
+export async function calculateVehicleConsumptionAllocations(
+  supabase: SupabaseClient,
+  companyId: string,
+  vehicleId: string,
+): Promise<ConsumptionAllocationResult[]> {
+  const [periods, trips] = await Promise.all([
+    calculateConsumptionPeriod(supabase, companyId, vehicleId),
+    listVehicleCompletedTripsForConsumption(supabase, companyId, vehicleId),
+  ]);
+
+  return periods.map((period) => allocatePeriodConsumption(period, trips));
 }
 
 /**

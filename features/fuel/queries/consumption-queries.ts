@@ -29,6 +29,15 @@ export interface VehicleTripForConsumption {
   driverId: string | null;
 }
 
+/** A single trip's odometer range and vehicle, used to locate the consumption period(s) it overlaps. */
+export interface TripOdometerForConsumption {
+  id: string;
+  vehicleId: string | null;
+  tripStatus: string;
+  initialOdometerKm: number | null;
+  finalOdometerKm: number | null;
+}
+
 /** Fuel records of a vehicle ordered by odometer/date, oldest first. */
 export async function listVehicleFuelRecordsForConsumption(
   supabase: SupabaseClient,
@@ -85,6 +94,37 @@ export async function listVehicleCompletedTripsForConsumption(
     customerId: row.customer_id,
     driverId: row.driver_id,
   }));
+}
+
+/** A single trip's vehicle and odometer range, used to resolve which consumption period(s) it overlaps. */
+export async function getTripOdometerForConsumption(
+  supabase: SupabaseClient,
+  companyId: string,
+  tripId: string,
+): Promise<TripOdometerForConsumption | null> {
+  const {data, error} = await supabase
+    .from('trips')
+    .select('id, vehicle_id, trip_status, initial_odometer_km, final_odometer_km')
+    .eq('id', tripId)
+    .eq('company_id', companyId)
+    .is('deleted_at', null)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(mapDatabaseError(error));
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  return {
+    id: data.id,
+    vehicleId: data.vehicle_id,
+    tripStatus: data.trip_status,
+    initialOdometerKm: data.initial_odometer_km !== null ? Number(data.initial_odometer_km) : null,
+    finalOdometerKm: data.final_odometer_km !== null ? Number(data.final_odometer_km) : null,
+  };
 }
 
 /** The vehicle's current odometer reading, used as the upper bound of the last open period. */
