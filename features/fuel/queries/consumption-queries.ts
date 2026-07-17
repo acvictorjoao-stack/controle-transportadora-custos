@@ -38,7 +38,7 @@ export interface TripOdometerForConsumption {
   finalOdometerKm: number | null;
 }
 
-/** Fuel records of a vehicle ordered by odometer/date, oldest first. */
+/** Fuel records of a vehicle ordered chronologically, oldest first. */
 export async function listVehicleFuelRecordsForConsumption(
   supabase: SupabaseClient,
   companyId: string,
@@ -50,8 +50,8 @@ export async function listVehicleFuelRecordsForConsumption(
     .eq('company_id', companyId)
     .eq('vehicle_id', vehicleId)
     .is('deleted_at', null)
-    .order('odometer_km', {ascending: true, nullsFirst: false})
-    .order('fueled_at', {ascending: true});
+    .order('fueled_at', {ascending: true})
+    .order('odometer_km', {ascending: true, nullsFirst: false});
 
   if (error) {
     throw new Error(mapDatabaseError(error));

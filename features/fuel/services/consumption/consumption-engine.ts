@@ -59,8 +59,8 @@ import {allocatePeriodConsumption, buildPeriodId} from './trip-allocation';
  *
  * Rules:
  *   - Fetches all fuel records of the vehicle via
- *     `listVehicleFuelRecordsForConsumption` and orders them by odometer
- *     ascending.
+ *     `listVehicleFuelRecordsForConsumption` and orders them chronologically,
+ *     using odometer only as a deterministic tie-breaker.
  *   - Records without a known odometer are excluded (no valid distance can
  *     be derived from them).
  *   - A vehicle with fewer than two usable fuel records yields no periods.
@@ -82,7 +82,9 @@ export async function calculateConsumptionPeriod(
   const withOdometer = records.filter(
     (record): record is typeof record & {odometerKm: number} => record.odometerKm !== null,
   );
-  const sorted = [...withOdometer].sort((a, b) => a.odometerKm - b.odometerKm);
+  const sorted = [...withOdometer].sort(
+    (a, b) => a.fueledAt.localeCompare(b.fueledAt) || a.odometerKm - b.odometerKm,
+  );
 
   const periods: FuelConsumptionPeriod[] = [];
 

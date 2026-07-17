@@ -32,9 +32,34 @@ interface OdometerRange {
   end: number;
 }
 
+type AllocationInvariant = 'distance' | 'liters' | 'cost';
+
 /** Stable identifier correlating an allocation back to the period it came from. */
 export function buildPeriodId(period: FuelConsumptionPeriod): string {
   return `${period.startFuelRecordId}:${period.endFuelRecordId}`;
+}
+
+/**
+ * Verifies a conservation invariant while allowing only the rounding noise
+ * naturally introduced by IEEE-754 arithmetic. The tolerance scales with
+ * both the compared magnitude and the number of additions that produced it.
+ */
+function assertConserved(
+  invariant: AllocationInvariant,
+  expected: number,
+  actual: number,
+  periodId: string,
+  operationCount: number,
+): void {
+  const scale = Math.max(1, Math.abs(expected), Math.abs(actual));
+  const tolerance = Number.EPSILON * scale * Math.max(32, operationCount * 4);
+
+  if (!Number.isFinite(expected) || !Number.isFinite(actual) || Math.abs(expected - actual) > tolerance) {
+    throw new Error(
+      `Consumption allocation invariant failed for period ${periodId}: ` +
+        `${invariant} expected ${expected}, allocated ${actual}, tolerance ${tolerance}.`,
+    );
+  }
 }
 
 /** Merges overlapping/adjacent odometer ranges into their union, sorted ascending. */
@@ -191,6 +216,14 @@ export function allocatePeriodConsumption(
   const totalAllocatedCost =
     tripAllocations.reduce((sum, allocation) => sum + allocation.costAllocated, 0) +
     (operationalConsumption?.costAllocated ?? 0);
+  const totalAllocatedDistance =
+    tripAllocations.reduce((sum, allocation) => sum + allocation.distanceKm, 0) +
+    (operationalConsumption?.distanceKm ?? 0);
+  const operationCount = tripAllocations.length + gaps.length + 1;
+
+  assertConserved('distance', period.distanceKm, totalAllocatedDistance, periodId, operationCount);
+  assertConserved('liters', period.litersConsumed, totalAllocatedLiters, periodId, operationCount);
+  assertConserved('cost', period.fuelCost, totalAllocatedCost, periodId, operationCount);
 
   return {
     period,
