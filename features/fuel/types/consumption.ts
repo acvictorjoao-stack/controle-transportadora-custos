@@ -143,6 +143,59 @@ export interface ConsumptionAllocationResult {
   totalAllocatedCost: number;
 }
 
+/**
+ * Read model of all consumption allocations for one vehicle. Its totals and
+ * split metrics are derived exclusively from `ConsumptionAllocationResult`s,
+ * so consumers never need to reproduce domain calculations in the UI.
+ */
+export interface VehicleConsumptionSummary {
+  vehicleId: string;
+  totalDistanceKm: number;
+  totalLiters: number;
+  totalFuelCost: number;
+  averageKmPerLiter: number | null;
+  averageCostPerKm: number | null;
+  operationalDistanceKm: number;
+  operationalLiters: number;
+  operationalFuelCost: number;
+  tripDistanceKm: number;
+  tripLiters: number;
+  tripFuelCost: number;
+  periodCount: number;
+}
+
+/**
+ * Read model that rolls up the consumption summaries of vehicles with at
+ * least one valid consumption period. The operational split intentionally
+ * follows the RC 26.6.5 contract, which exposes distance and fuel cost.
+ */
+export interface FleetConsumptionSummary {
+  totalVehicles: number;
+  totalDistanceKm: number;
+  totalLiters: number;
+  totalFuelCost: number;
+  averageKmPerLiter: number | null;
+  averageCostPerKm: number | null;
+  operationalDistanceKm: number;
+  operationalFuelCost: number;
+}
+
+/** A whole-period consumption bucket attributed to its closing fuel-record month. */
+export interface MonthlyConsumptionPoint {
+  month: string;
+  distanceKm: number;
+  liters: number;
+  fuelCost: number;
+  kmPerLiter: number | null;
+  costPerKm: number | null;
+}
+
+/** Optional inclusive `YYYY-MM` bounds for a monthly consumption series. */
+export interface MonthlyConsumptionSeriesOptions {
+  fromMonth?: string;
+  toMonth?: string;
+}
+
 /** Aggregated estimated consumption for a vehicle across all its periods. */
 export interface VehicleConsumption extends ConsumptionMetrics {
   vehicleId: string;

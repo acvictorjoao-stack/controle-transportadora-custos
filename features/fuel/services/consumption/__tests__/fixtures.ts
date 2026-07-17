@@ -3,7 +3,7 @@ import type {
   VehicleFuelRecordForConsumption,
   VehicleTripForConsumption,
 } from '../../../queries/consumption-queries';
-import type {FuelConsumptionPeriod} from '../../../types';
+import type {ConsumptionAllocationResult, FuelConsumptionPeriod} from '../../../types';
 
 export function makeConsumptionPeriod(
   overrides: Partial<FuelConsumptionPeriod> = {},
@@ -63,6 +63,37 @@ export function makeTripOdometer(
     tripStatus: 'completed',
     initialOdometerKm: 100_000,
     finalOdometerKm: 101_000,
+    ...overrides,
+  };
+}
+
+export function makeConsumptionAllocationResult(
+  overrides: Partial<ConsumptionAllocationResult> = {},
+): ConsumptionAllocationResult {
+  const period = makeConsumptionPeriod(overrides.period);
+  const tripAllocation = {
+    tripId: 'trip-1',
+    periodId: `${period.startFuelRecordId}:${period.endFuelRecordId}`,
+    vehicleId: period.vehicleId,
+    overlapStartOdometer: period.startOdometer,
+    overlapEndOdometer: period.endOdometer,
+    distanceKm: period.distanceKm,
+    distanceSharePercentage: 1,
+    litersAllocated: period.litersConsumed,
+    costAllocated: period.fuelCost,
+    estimatedLiters: period.litersConsumed,
+    estimatedCost: period.fuelCost,
+    kmPerLiter: period.kmPerLiter,
+    costPerKm: period.costPerKm,
+    consumptionPercentage: 100,
+  };
+
+  return {
+    period,
+    tripAllocations: [tripAllocation],
+    operationalConsumption: null,
+    totalAllocatedLiters: period.litersConsumed,
+    totalAllocatedCost: period.fuelCost,
     ...overrides,
   };
 }

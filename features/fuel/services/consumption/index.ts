@@ -13,3 +13,12 @@ export {
 } from './consumption-engine';
 
 export {allocatePeriodConsumption, buildPeriodId} from './trip-allocation';
+
+export {
+  buildMonthlyConsumptionSeries,
+  getFleetConsumptionSummary,
+  getMonthlyConsumptionSeries,
+  getVehicleConsumptionSummary,
+  summarizeFleetConsumption,
+  summarizeVehicleConsumption,
+} from './consumption-summary';
