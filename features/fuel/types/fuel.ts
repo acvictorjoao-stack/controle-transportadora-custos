@@ -208,13 +208,6 @@ export interface FuelDetailData extends FuelIntegrationSections {
   record: FuelRecord;
   history: FuelHistory[];
   documents: FuelDocument[];
-  linkedTrip: {
-    id: string;
-    tripNumber: string;
-    origin: string | null;
-    destination: string | null;
-    tripStatus: string | null;
-  } | null;
 }
 
 export {

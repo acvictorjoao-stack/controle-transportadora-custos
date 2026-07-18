@@ -20,8 +20,7 @@ export const FUEL_DETAIL_COLUMNS = `
   created_at, updated_at, deleted_at, created_by, updated_by,
   branches:branch_id (id, name, code),
   vehicles:vehicle_id (id, plate, model, fuel_type, tank_capacity_liters),
-  drivers:driver_id (id, name, cpf),
-  trips:trip_id (id, trip_number, origin, destination, trip_status)
+  drivers:driver_id (id, name, cpf)
 `;
 
 export const FUEL_PAGE_SIZE = 10;

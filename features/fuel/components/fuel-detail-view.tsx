@@ -15,7 +15,6 @@ import {ROUTES} from '@/constants/routes/paths';
 import type {BranchSelectOption} from '@/features/organization/branches/types';
 import type {DriverSelectOption} from '@/features/drivers/types';
 import type {VehicleSelectOption} from '@/features/vehicles/types';
-import {TRIP_STATUS_LABELS} from '@/features/trips/types';
 
 import {deleteFuelDocumentAction} from '../actions';
 import {FUEL_DOCUMENT_TYPES} from '../constants/enums';
@@ -48,7 +47,6 @@ const TABS = [
   {id: 'dados', label: 'Dados'},
   {id: 'documentos', label: 'Documentos'},
   {id: 'historico', label: 'Histórico'},
-  {id: 'viagem', label: 'Viagem vinculada'},
   {id: 'veiculo', label: 'Veículo'},
   {id: 'motorista', label: 'Motorista'},
   {id: 'consumo', label: 'Consumo'},
@@ -85,7 +83,6 @@ function FuelDetailView({
   const infoRows = [
     ['Veículo', record.vehiclePlate ?? '—'],
     ['Motorista', record.driverName ?? '—'],
-    ['Viagem', record.tripNumber ?? '—'],
     ['Filial', record.branchName ?? '—'],
     ['Posto', record.stationName ?? '—'],
     ['Bandeira', record.stationBrand ?? '—'],
@@ -97,7 +94,6 @@ function FuelDetailView({
     ['Valor/L', formatCurrencyBr(record.pricePerLiter)],
     ['Valor total', formatCurrencyBr(record.totalAmount)],
     ['Odômetro', record.odometerKm?.toLocaleString('pt-BR') ?? '—'],
-    ['Horímetro', record.hourMeter?.toLocaleString('pt-BR') ?? '—'],
     ['Responsável', record.responsible ?? '—'],
     ['Observações', record.notes ?? '—'],
   ];
@@ -296,50 +292,6 @@ function FuelDetailView({
             emptyDescription="Alterações e uploads serão registrados automaticamente."
           />
         </TableContainer>
-      )}
-
-      {activeTab === 'viagem' && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Viagem vinculada</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {data.linkedTrip ? (
-              <dl className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <dt className="text-xs text-muted-foreground">Número</dt>
-                  <dd>
-                    <Link
-                      href={ROUTES.viagemDetail(data.linkedTrip.id)}
-                      className="text-sm font-medium hover:underline"
-                    >
-                      {data.linkedTrip.tripNumber}
-                    </Link>
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-muted-foreground">Status</dt>
-                  <dd className="text-sm font-medium">
-                    {data.linkedTrip.tripStatus
-                      ? TRIP_STATUS_LABELS[data.linkedTrip.tripStatus as keyof typeof TRIP_STATUS_LABELS] ??
-                        data.linkedTrip.tripStatus
-                      : '—'}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-muted-foreground">Origem</dt>
-                  <dd className="text-sm font-medium">{data.linkedTrip.origin ?? '—'}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-muted-foreground">Destino</dt>
-                  <dd className="text-sm font-medium">{data.linkedTrip.destination ?? '—'}</dd>
-                </div>
-              </dl>
-            ) : (
-              <p className="text-sm text-muted-foreground">Nenhuma viagem vinculada.</p>
-            )}
-          </CardContent>
-        </Card>
       )}
 
       {activeTab === 'veiculo' && (

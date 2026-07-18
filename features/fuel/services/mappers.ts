@@ -95,15 +95,3 @@ export function getVehicleTankCapacity(row: FuelRecordRow): number | null {
   if (!vehicle?.tank_capacity_liters) return null;
   return Number(vehicle.tank_capacity_liters);
 }
-
-export function getLinkedTripFromRow(row: FuelRecordRow) {
-  const trip = firstRelation(row.trips);
-  if (!trip) return null;
-  return {
-    id: trip.id,
-    tripNumber: trip.trip_number,
-    origin: trip.origin ?? null,
-    destination: trip.destination ?? null,
-    tripStatus: trip.trip_status ?? null,
-  };
-}

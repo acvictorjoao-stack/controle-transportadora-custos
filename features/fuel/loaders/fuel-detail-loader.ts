@@ -67,7 +67,6 @@ export async function composeFuelDetail(
 
   return {
     record: detail.record,
-    linkedTrip: detail.linkedTrip,
     history,
     documents,
     ...integrations,
