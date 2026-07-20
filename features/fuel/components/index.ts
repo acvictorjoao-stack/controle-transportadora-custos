@@ -3,3 +3,8 @@ export {FuelDetailView} from './fuel-detail-view';
 export {FuelFormModal} from './fuel-form-modal';
 export {FuelFilters} from './fuel-filters';
 export {FuelFileUpload} from './fuel-file-upload';
+export {FuelConsumptionDashboardView} from './fuel-consumption-dashboard-view';
+export {FuelDashboardFilters} from './fuel-dashboard-filters';
+export {FuelDashboardCards} from './fuel-dashboard-cards';
+export {FuelMonthlyChart} from './fuel-monthly-chart';
+export {FuelVehicleTable} from './fuel-vehicle-table';

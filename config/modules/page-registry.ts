@@ -17,6 +17,7 @@ export type ModulePageId =
   | 'manutencao'
   | 'pneus'
   | 'abastecimentos'
+  | 'abastecimentos-dashboard'
   | 'relatorios'
   | 'bi'
   | 'ia'
@@ -129,6 +130,12 @@ export const modulePageRegistry: Record<ModulePageId, ModulePageMeta> = {
     title: 'Abastecimentos',
     description: 'Registro e análise de abastecimentos da frota.',
     href: ROUTES.abastecimentos,
+  },
+  'abastecimentos-dashboard': {
+    id: 'abastecimentos-dashboard',
+    title: 'Dashboard de Consumo',
+    description: 'Indicadores de consumo de combustível da frota.',
+    href: ROUTES.abastecimentosDashboard,
   },
   relatorios: {
     id: 'relatorios',

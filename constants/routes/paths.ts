@@ -27,6 +27,7 @@ export const ROUTES = {
   viagemDetail: (id: string) => `/viagens/${id}`,
   abastecimentos: '/abastecimentos',
   abastecimentoDetail: (id: string) => `/abastecimentos/${id}`,
+  abastecimentosDashboard: '/abastecimentos/dashboard',
 
   // Financeiro
   financeiro: '/financeiro',
