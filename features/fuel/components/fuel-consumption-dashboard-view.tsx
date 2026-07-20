@@ -10,9 +10,13 @@ import type {BranchSelectOption} from '@/features/organization/branches/types';
 import type {VehicleSelectOption} from '@/features/vehicles/types';
 
 import type {FuelConsumptionDashboardData, FuelConsumptionDashboardFilters} from '../types';
+import {FuelAlerts} from './fuel-alerts';
+import {FuelComparison} from './fuel-comparison';
 import {FuelDashboardCards} from './fuel-dashboard-cards';
 import {FuelDashboardFilters} from './fuel-dashboard-filters';
+import {FuelExecutiveCards} from './fuel-executive-cards';
 import {FuelMonthlyChart} from './fuel-monthly-chart';
+import {FuelVehicleRanking} from './fuel-vehicle-ranking';
 import {FuelVehicleTable} from './fuel-vehicle-table';
 
 export interface FuelConsumptionDashboardViewProps {
@@ -60,12 +64,28 @@ function FuelConsumptionDashboardView({
 
         {hasProcessedPeriods ? (
           <>
-            <Section title="Indicadores da frota">
-              <FuelDashboardCards fleet={data.fleet} />
+            <Section title="Indicadores Executivos">
+              <FuelExecutiveCards fleet={data.fleet} executive={data.executive} />
+            </Section>
+
+            <Section title="Alertas">
+              <FuelAlerts alerts={data.alerts} />
+            </Section>
+
+            <Section title="Eficiência dos veículos" description="Ranking ordenado por maior km/L">
+              <FuelVehicleRanking rows={data.ranking} />
+            </Section>
+
+            <Section title="Comparativo">
+              <FuelComparison fleet={data.fleet} executive={data.executive} />
             </Section>
 
             <Section title="Consumo mensal">
               <FuelMonthlyChart data={data.monthly} />
+            </Section>
+
+            <Section title="Indicadores da frota">
+              <FuelDashboardCards fleet={data.fleet} />
             </Section>
 
             <Section title="Resumo por veículo">

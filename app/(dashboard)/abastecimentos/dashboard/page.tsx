@@ -32,6 +32,15 @@ const EMPTY_DATA: FuelConsumptionDashboardData = {
   },
   vehicles: [],
   monthly: [],
+  executive: {
+    bestEfficiencyVehicle: null,
+    worstEfficiencyVehicle: null,
+    highestCostVehicle: null,
+    lowestCostVehicle: null,
+    operationalConsumptionPercentage: null,
+  },
+  ranking: [],
+  alerts: [],
 };
 
 interface AbastecimentosDashboardPageProps {

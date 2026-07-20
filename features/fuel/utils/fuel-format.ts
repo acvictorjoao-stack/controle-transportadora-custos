@@ -70,3 +70,8 @@ export function formatKmPerLiter(value: number | null): string {
   if (value === null) return '—';
   return `${value.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} km/L`;
 }
+
+export function formatPercentage(value: number | null): string {
+  if (value === null) return '—';
+  return `${value.toLocaleString('pt-BR', {minimumFractionDigits: 1, maximumFractionDigits: 1})}%`;
+}

@@ -8,3 +8,7 @@ export {FuelDashboardFilters} from './fuel-dashboard-filters';
 export {FuelDashboardCards} from './fuel-dashboard-cards';
 export {FuelMonthlyChart} from './fuel-monthly-chart';
 export {FuelVehicleTable} from './fuel-vehicle-table';
+export {FuelExecutiveCards} from './fuel-executive-cards';
+export {FuelVehicleRanking} from './fuel-vehicle-ranking';
+export {FuelAlerts} from './fuel-alerts';
+export {FuelComparison} from './fuel-comparison';

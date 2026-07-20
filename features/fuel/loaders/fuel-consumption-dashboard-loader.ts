@@ -15,9 +15,15 @@ import type {
   MonthlyConsumptionPoint,
   VehicleConsumptionSummary,
 } from '../types';
+import {
+  buildConsumptionAlerts,
+  buildExecutiveIndicators,
+  buildVehicleRanking,
+} from './fuel-consumption-executive';
 
 /**
- * Fuel Consumption Dashboard loader (RC 26.6.6).
+ * Fuel Consumption Dashboard loader (RC 26.6.6, extended by the Executive
+ * Dashboard in RC 26.6.7).
  *
  * This is the ONLY place, outside `ConsumptionSummary` itself, allowed to
  * combine numbers across vehicles. Every value it produces is either:
@@ -26,6 +32,11 @@ import type {
  *   - a plain sum of fields those functions already computed (never an
  *     average, ratio or rate), using the exact same guarded-division
  *     formula `ConsumptionSummary` uses for `kmPerLiter` / `costPerKm`.
+ *
+ * `executive`, `ranking` and `alerts` (RC 26.6.7, see
+ * `fuel-consumption-executive.ts`) are derived exclusively from `fleet` and
+ * `vehicles` above — sorting, ranking and extreme-picking, plus the same
+ * guarded-division primitive, never a new domain rule.
  *
  * The React layer never touches this arithmetic — it only renders the
  * `FuelConsumptionDashboardData` this loader returns.
@@ -55,6 +66,15 @@ function emptyDashboardData(): FuelConsumptionDashboardData {
     },
     vehicles: [],
     monthly: [],
+    executive: {
+      bestEfficiencyVehicle: null,
+      worstEfficiencyVehicle: null,
+      highestCostVehicle: null,
+      lowestCostVehicle: null,
+      operationalConsumptionPercentage: null,
+    },
+    ranking: [],
+    alerts: [],
   };
 }
 
@@ -144,13 +164,21 @@ export async function composeFuelConsumptionDashboard(
   );
   const periodCount = vehicleSummaries.reduce((total, summary) => total + summary.periodCount, 0);
 
+  const fleet = {
+    ...fleetSummary,
+    operationalLiters,
+    periodCount,
+  };
+  const vehicles = vehicleSummaries.map((summary) =>
+    toVehicleRow(summary, vehicleById.get(summary.vehicleId)),
+  );
+
   return {
-    fleet: {
-      ...fleetSummary,
-      operationalLiters,
-      periodCount,
-    },
-    vehicles: vehicleSummaries.map((summary) => toVehicleRow(summary, vehicleById.get(summary.vehicleId))),
+    fleet,
+    vehicles,
     monthly: mergeMonthlySeries(monthlyPerVehicle),
+    executive: buildExecutiveIndicators(fleet, vehicles),
+    ranking: buildVehicleRanking(vehicles),
+    alerts: buildConsumptionAlerts(fleet, vehicles),
   };
 }
