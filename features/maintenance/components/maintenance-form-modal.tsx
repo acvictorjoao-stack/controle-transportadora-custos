@@ -10,10 +10,11 @@ import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {Textarea} from '@/components/ui/textarea';
 import {useToast} from '@/contexts/feedback/toast-context';
-import {
-  OPERATION_PAYMENT_TYPE_LABELS,
-  OPERATION_PAYMENT_TYPES,
-} from '@/features/financial/constants/operation-financial';
+import {OperationPaymentFields} from '@/features/financial/components/operation-payment-fields';
+import {DEFAULT_INSTALLMENT_INTERVAL_DAYS} from '@/features/financial/utils/installment-schedule';
+import {SupplierSelect} from '@/features/suppliers/components';
+import {useSupplierOptions} from '@/features/suppliers/hooks/use-supplier-options';
+import type {SupplierSelectOption} from '@/features/suppliers/types';
 import type {VehicleSelectOption} from '@/features/vehicles/types';
 
 import {createMaintenanceRecordAction, updateMaintenanceRecordAction} from '../actions';
@@ -36,6 +37,7 @@ export interface MaintenanceFormModalProps {
   onClose: () => void;
   record?: MaintenanceRecord | null;
   vehicles: VehicleSelectOption[];
+  suppliers: SupplierSelectOption[];
   onSaved: (record: MaintenanceRecord) => void;
 }
 
@@ -61,6 +63,7 @@ function MaintenanceFormModal({
   onClose,
   record,
   vehicles,
+  suppliers,
   onSaved,
 }: MaintenanceFormModalProps) {
   const isEdit = Boolean(record);
@@ -81,6 +84,7 @@ function MaintenanceFormModal({
         record={record}
         isEdit={isEdit}
         vehicles={vehicles}
+        suppliers={suppliers}
         onClose={onClose}
         onSaved={onSaved}
       />
@@ -92,16 +96,19 @@ function MaintenanceFormContent({
   record,
   isEdit,
   vehicles,
+  suppliers: initialSuppliers,
   onClose,
   onSaved,
 }: {
   record?: MaintenanceRecord | null;
   isEdit: boolean;
   vehicles: VehicleSelectOption[];
+  suppliers: SupplierSelectOption[];
   onClose: () => void;
   onSaved: (record: MaintenanceRecord) => void;
 }) {
   const initialVehicleId = record?.vehicleId ?? vehicles[0]?.id ?? '';
+  const {options: suppliers, onOptionsChange} = useSupplierOptions(initialSuppliers);
 
   const [formData, setFormData] = React.useState<CreateMaintenanceRecordInput>(() => ({
     vehicleId: initialVehicleId,
@@ -110,8 +117,9 @@ function MaintenanceFormContent({
     maintenanceType: record?.maintenanceType ?? 'corrective',
     priority: record?.priority ?? 'medium',
     maintenanceStatus: record?.maintenanceStatus ?? 'open',
-    supplier: record?.supplier ?? null,
-    workshop: record?.workshop ?? null,
+    supplierId: record?.supplierId ?? '',
+    supplier: record?.supplier ?? '',
+    workshop: null,
     openedAt: record?.openedAt
       ? toLocalDateTimeValue(record.openedAt)
       : toLocalDateTimeValue(new Date().toISOString()),
@@ -127,6 +135,9 @@ function MaintenanceFormContent({
     responsible: record?.responsible ?? null,
     paymentType: record?.paymentType ?? 'cash',
     paymentDueDate: record?.paymentDueDate ?? null,
+    installmentCount: record?.installmentCount ?? 1,
+    installmentIntervalDays:
+      record?.installmentIntervalDays ?? DEFAULT_INSTALLMENT_INTERVAL_DAYS,
   }));
 
   const [loading, setLoading] = React.useState(false);
@@ -163,6 +174,7 @@ function MaintenanceFormContent({
 
     const payload = {
       ...formData,
+      workshop: null,
       branchId:
         formData.branchId ??
         resolveBranchIdFromVehicle(vehicles, formData.vehicleId),
@@ -229,19 +241,32 @@ function MaintenanceFormContent({
           </select>
         </FormField>
 
-        <FormField label="Fornecedor" htmlFor="maint-supplier" error={fieldErrors.supplier}>
-          <Input
+        <FormField
+          label="Fornecedor"
+          htmlFor="maint-supplier"
+          error={fieldErrors.supplierId ?? fieldErrors.supplier}
+          required
+        >
+          <SupplierSelect
             id="maint-supplier"
-            value={formData.supplier ?? ''}
-            onChange={(e) => updateField('supplier', e.target.value || null)}
-          />
-        </FormField>
-
-        <FormField label="Oficina" htmlFor="maint-workshop" error={fieldErrors.workshop}>
-          <Input
-            id="maint-workshop"
-            value={formData.workshop ?? ''}
-            onChange={(e) => updateField('workshop', e.target.value || null)}
+            value={formData.supplierId || null}
+            options={suppliers}
+            onOptionsChange={onOptionsChange}
+            required
+            defaultCategories={['oficina']}
+            onChange={(supplierId, option) => {
+              setFormData((prev) => ({
+                ...prev,
+                supplierId: supplierId ?? '',
+                supplier: option?.displayName ?? '',
+              }));
+              setFieldErrors((prev) => {
+                const next = {...prev};
+                delete next.supplierId;
+                delete next.supplier;
+                return next;
+              });
+            }}
           />
         </FormField>
 
@@ -304,45 +329,33 @@ function MaintenanceFormContent({
           />
         </FormField>
 
-        <FormField
-          label="Forma de pagamento"
-          htmlFor="maint-payment-type"
-          error={fieldErrors.paymentType}
-        >
-          <select
-            id="maint-payment-type"
-            value={formData.paymentType}
-            onChange={(e) => {
-              const value = e.target.value as (typeof OPERATION_PAYMENT_TYPES)[number];
-              updateField('paymentType', value);
-              if (value === 'cash') updateField('paymentDueDate', null);
-            }}
-            className={MAINTENANCE_NATIVE_SELECT_CLASS}
-          >
-            {OPERATION_PAYMENT_TYPES.map((type) => (
-              <option key={type} value={type}>
-                {OPERATION_PAYMENT_TYPE_LABELS[type]}
-              </option>
-            ))}
-          </select>
-        </FormField>
-
-        {formData.paymentType === 'credit' && (
-          <FormField
-            label="Vencimento"
-            htmlFor="maint-payment-due"
-            error={fieldErrors.paymentDueDate}
-            required
-          >
-            <Input
-              id="maint-payment-due"
-              type="date"
-              value={formData.paymentDueDate ?? ''}
-              onChange={(e) => updateField('paymentDueDate', e.target.value || null)}
-              required
-            />
-          </FormField>
-        )}
+        <OperationPaymentFields
+          idPrefix="maint"
+          selectClassName={MAINTENANCE_NATIVE_SELECT_CLASS}
+          totalAmount={formData.finalAmount}
+          value={{
+            paymentType: formData.paymentType,
+            paymentDueDate: formData.paymentDueDate,
+            installmentCount: formData.installmentCount,
+            installmentIntervalDays: formData.installmentIntervalDays,
+          }}
+          onChange={(patch) => {
+            setFormData((prev) => ({...prev, ...patch}));
+            setFieldErrors((prev) => {
+              const next = {...prev};
+              for (const key of Object.keys(patch) as (keyof typeof patch)[]) {
+                next[key] = undefined;
+              }
+              return next;
+            });
+          }}
+          errors={{
+            paymentType: fieldErrors.paymentType,
+            paymentDueDate: fieldErrors.paymentDueDate,
+            installmentCount: fieldErrors.installmentCount,
+            installmentIntervalDays: fieldErrors.installmentIntervalDays,
+          }}
+        />
       </div>
 
       <FormField label="Descrição" htmlFor="maint-description" error={fieldErrors.description}>

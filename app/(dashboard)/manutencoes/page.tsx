@@ -11,6 +11,8 @@ import type {
 } from '@/features/maintenance/types';
 import {listBranchesForSelect} from '@/features/organization/branches/queries';
 import type {BranchSelectOption} from '@/features/organization/branches/types';
+import {getSuppliersForSelect} from '@/features/suppliers/loaders';
+import type {SupplierSelectOption} from '@/features/suppliers/types';
 import {listVehiclesForSelect} from '@/features/vehicles/queries';
 import type {VehicleSelectOption} from '@/features/vehicles/types';
 import {
@@ -73,19 +75,22 @@ export default async function ManutencoesPage({searchParams}: ManutencoesPagePro
   let data: PaginatedMaintenanceRecords;
   let branches: BranchSelectOption[];
   let vehicles: VehicleSelectOption[];
+  let suppliers: SupplierSelectOption[];
   let error: string | null = null;
 
   try {
-    [data, branches, vehicles] = await Promise.all([
+    [data, branches, vehicles, suppliers] = await Promise.all([
       listMaintenanceRecords(supabase, {companyId, search, page, filters, sort}),
       listBranchesForSelect(supabase, companyId),
       listVehiclesForSelect(supabase, companyId),
+      getSuppliersForSelect(supabase, companyId),
     ]);
   } catch (err) {
     error = err instanceof Error ? err.message : 'Erro ao carregar manutenções.';
     data = {items: [], total: 0, page: 1, pageSize: 10, totalPages: 1};
     branches = [];
     vehicles = [];
+    suppliers = [];
   }
 
   return (
@@ -96,6 +101,7 @@ export default async function ManutencoesPage({searchParams}: ManutencoesPagePro
       initialSort={sort}
       branches={branches}
       vehicles={vehicles}
+      suppliers={suppliers}
       error={error}
     />
   );

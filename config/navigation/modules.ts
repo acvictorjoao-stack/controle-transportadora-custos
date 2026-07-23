@@ -94,6 +94,14 @@ export const navigationGroups: NavGroup[] = [
         permission: 'customers:read',
       },
       {
+        id: 'fornecedores',
+        title: 'Fornecedores',
+        description: 'Base de fornecedores',
+        href: ROUTES.fornecedores,
+        icon: Building2,
+        permission: 'suppliers:read',
+      },
+      {
         id: 'contratos',
         title: 'Contratos',
         description: 'Contratos e acordos',

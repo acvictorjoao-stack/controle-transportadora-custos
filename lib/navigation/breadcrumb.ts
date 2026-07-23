@@ -10,6 +10,7 @@ const segmentLabels: Record<string, string> = {
   empresas: 'Empresas',
   filiais: 'Filiais',
   clientes: 'Clientes',
+  fornecedores: 'Fornecedores',
   contratos: 'Contratos',
   veiculos: 'Veículos',
   motoristas: 'Motoristas',

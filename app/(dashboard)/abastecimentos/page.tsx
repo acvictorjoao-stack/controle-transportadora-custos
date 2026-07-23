@@ -7,6 +7,8 @@ import {listFuelRecords} from '@/features/fuel/queries';
 import type {FuelListFilters, FuelSortOptions, FuelType, PaginatedFuelRecords} from '@/features/fuel/types';
 import {listBranchesForSelect} from '@/features/organization/branches/queries';
 import type {BranchSelectOption} from '@/features/organization/branches/types';
+import {getSuppliersForSelect} from '@/features/suppliers/loaders';
+import type {SupplierSelectOption} from '@/features/suppliers/types';
 import {listVehiclesForSelect} from '@/features/vehicles/queries';
 import type {VehicleSelectOption} from '@/features/vehicles/types';
 import {
@@ -72,14 +74,16 @@ export default async function AbastecimentosPage({searchParams}: AbastecimentosP
   let branches: BranchSelectOption[];
   let drivers: DriverSelectOption[];
   let vehicles: VehicleSelectOption[];
+  let suppliers: SupplierSelectOption[];
   let error: string | null = null;
 
   try {
-    [data, branches, drivers, vehicles] = await Promise.all([
+    [data, branches, drivers, vehicles, suppliers] = await Promise.all([
       listFuelRecords(supabase, {companyId, search, page, filters, sort}),
       listBranchesForSelect(supabase, companyId),
       listDriversForSelect(supabase, companyId),
       listVehiclesForSelect(supabase, companyId),
+      getSuppliersForSelect(supabase, companyId),
     ]);
   } catch (err) {
     error = err instanceof Error ? err.message : 'Erro ao carregar abastecimentos.';
@@ -87,6 +91,7 @@ export default async function AbastecimentosPage({searchParams}: AbastecimentosP
     branches = [];
     drivers = [];
     vehicles = [];
+    suppliers = [];
   }
 
   return (
@@ -98,8 +103,8 @@ export default async function AbastecimentosPage({searchParams}: AbastecimentosP
       branches={branches}
       drivers={drivers}
       vehicles={vehicles}
+      suppliers={suppliers}
       error={error}
     />
   );
 }
-

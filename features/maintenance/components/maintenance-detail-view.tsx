@@ -13,6 +13,7 @@ import {Button} from '@/components/ui/button';
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
 import {Input} from '@/components/ui/input';
 import {ROUTES} from '@/constants/routes/paths';
+import type {SupplierSelectOption} from '@/features/suppliers/types';
 import type {VehicleSelectOption} from '@/features/vehicles/types';
 
 import {
@@ -45,6 +46,7 @@ export interface MaintenanceDetailViewProps {
   companyId: string;
   data: MaintenanceDetailData;
   vehicles: VehicleSelectOption[];
+  suppliers: SupplierSelectOption[];
 }
 
 const TABS = [
@@ -65,6 +67,7 @@ function MaintenanceDetailView({
   companyId,
   data,
   vehicles,
+  suppliers,
 }: MaintenanceDetailViewProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = React.useState<TabId>('resumo');
@@ -137,7 +140,6 @@ function MaintenanceDetailView({
     ['Prioridade', MAINTENANCE_PRIORITY_LABELS[record.priority]],
     ['Status', MAINTENANCE_STATUS_LABELS[record.maintenanceStatus]],
     ['Fornecedor', record.supplier ?? '—'],
-    ['Oficina', record.workshop ?? '—'],
     ['Abertura', formatDateTimeBr(record.openedAt)],
     ['Conclusão', formatDateTimeBr(record.completedAt)],
     ['Odômetro', record.odometerKm?.toLocaleString('pt-BR') ?? '—'],
@@ -153,7 +155,7 @@ function MaintenanceDetailView({
   return (
     <PageTemplate
       title={`Manutenção — ${record.vehiclePlate ?? record.id.slice(0, 8)}`}
-      description={[record.supplier, record.workshop].filter(Boolean).join(' · ') || 'Registro de manutenção'}
+      description={record.supplier || 'Registro de manutenção'}
       actions={
         <div className="flex gap-2">
           <Link
@@ -387,6 +389,7 @@ function MaintenanceDetailView({
         onClose={() => setModalOpen(false)}
         record={record}
         vehicles={vehicles}
+        suppliers={suppliers}
         onSaved={handleRefresh}
       />
     </PageTemplate>

@@ -39,6 +39,7 @@ const financialBaseSchema = z.object({
   entryStatus: z.enum(FINANCIAL_ENTRY_STATUSES).optional().default('pending'),
   description: optionalString,
   referenceNumber: optionalString,
+  supplierId: optionalUuid,
   supplier: optionalString,
   client: optionalString,
   amount: requiredAmount,

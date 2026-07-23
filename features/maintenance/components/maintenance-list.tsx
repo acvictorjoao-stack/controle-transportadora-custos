@@ -18,6 +18,7 @@ import {useConfirm} from '@/contexts/feedback/confirm-context';
 import {useToast} from '@/contexts/feedback/toast-context';
 import {ROUTES} from '@/constants/routes/paths';
 import type {BranchSelectOption} from '@/features/organization/branches/types';
+import type {SupplierSelectOption} from '@/features/suppliers/types';
 import type {VehicleSelectOption} from '@/features/vehicles/types';
 
 import {deleteMaintenanceRecordAction} from '../actions';
@@ -47,6 +48,7 @@ export interface MaintenanceListProps {
   initialSort: MaintenanceSortOptions;
   branches: BranchSelectOption[];
   vehicles: VehicleSelectOption[];
+  suppliers: SupplierSelectOption[];
   error: string | null;
 }
 
@@ -64,6 +66,7 @@ function MaintenanceList({
   initialSort,
   branches,
   vehicles,
+  suppliers,
   error: initialError,
 }: MaintenanceListProps) {
   const router = useRouter();
@@ -266,6 +269,7 @@ function MaintenanceList({
         onClose={() => setModalOpen(false)}
         record={editingRecord}
         vehicles={vehicles}
+        suppliers={suppliers}
         onSaved={handleSaved}
       />
     </PageTemplate>

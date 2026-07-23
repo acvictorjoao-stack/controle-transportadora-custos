@@ -29,6 +29,7 @@ const requiredAmount = z
   .refine((v) => Number.isFinite(v) && v > 0, 'Informe um valor válido.');
 
 const accountsPayableBaseSchema = z.object({
+  supplierId: requiredUuid,
   supplier: requiredString,
   categoryId: requiredUuid,
   costCenterId: requiredUuid,

@@ -22,6 +22,7 @@ import {
 } from '@/features/financial/types/financial-entry';
 import {formatCurrencyBr, formatDateBr} from '@/features/financial/utils/financial-format';
 import type {FinancialEntryStatus} from '@/features/financial/types';
+import type {SupplierSelectOption} from '@/features/suppliers/types';
 
 import {
   cancelAccountsPayableAction,
@@ -52,6 +53,7 @@ export interface AccountsPayableListProps {
   initialSort: AccountsPayableSortOptions;
   categories: AccountsPayableCategory[];
   costCenters: AccountsPayableCostCenter[];
+  suppliers: SupplierSelectOption[];
   companyName?: string | null;
   error: string | null;
 }
@@ -93,6 +95,7 @@ function AccountsPayableList({
   initialSort,
   categories,
   costCenters,
+  suppliers,
   companyName,
   error: initialError,
 }: AccountsPayableListProps) {
@@ -376,6 +379,7 @@ function AccountsPayableList({
         entry={editingEntry}
         categories={categories}
         costCenters={costCenters}
+        suppliers={suppliers}
         onSaved={handleSaved}
       />
 

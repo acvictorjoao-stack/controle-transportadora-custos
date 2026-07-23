@@ -10,6 +10,8 @@ import type {
   AccountsPayableCostCenter,
   AccountsPayableDetailData,
 } from '@/features/accounts-payable/types';
+import {getSuppliersForSelect} from '@/features/suppliers/loaders';
+import type {SupplierSelectOption} from '@/features/suppliers/types';
 import {
   assertCompanyPermission,
   getCurrentCompanyId,
@@ -41,16 +43,19 @@ export default async function ContasAPagarDetailPage({params}: ContasAPagarDetai
   let data: AccountsPayableDetailData | null;
   let categories: AccountsPayableCategory[];
   let costCenters: AccountsPayableCostCenter[];
+  let suppliers: SupplierSelectOption[];
 
   try {
-    const [detail, filterOptions] = await Promise.all([
+    const [detail, filterOptions, supplierOptions] = await Promise.all([
       getAccountsPayableDetail(supabase, companyId, id),
       listAccountsPayableFilterOptions(supabase, companyId),
+      getSuppliersForSelect(supabase, companyId),
     ]);
 
     data = detail;
     categories = filterOptions.categories;
     costCenters = filterOptions.costCenters;
+    suppliers = supplierOptions;
   } catch {
     notFound();
   }
@@ -64,6 +69,7 @@ export default async function ContasAPagarDetailPage({params}: ContasAPagarDetai
       data={data}
       categories={categories}
       costCenters={costCenters}
+      suppliers={suppliers}
     />
   );
 }

@@ -20,7 +20,11 @@ export function isManualAccountsPayableEntry(entry: Pick<FinancialEntry, 'source
 }
 
 export function formatAccountsPayableOrigin(
-  entry: Pick<FinancialEntry, 'sourceModule' | 'sourceId' | 'referenceNumber' | 'fuelRecordId'>,
+  entry: Pick<
+    FinancialEntry,
+    'sourceModule' | 'sourceId' | 'referenceNumber' | 'fuelRecordId'
+  > &
+    Partial<Pick<FinancialEntry, 'installmentNumber' | 'installmentTotal'>>,
 ): string {
   const moduleKey = entry.sourceModule ?? ACCOUNTS_PAYABLE_SOURCE_MODULE;
   const icon = OPERATION_SOURCE_ICONS[moduleKey] ?? '📄';
@@ -35,7 +39,12 @@ export function formatAccountsPayableOrigin(
     (entry.sourceId ? entry.sourceId.slice(0, 8).toUpperCase() : null) ||
     (entry.fuelRecordId ? entry.fuelRecordId.slice(0, 8).toUpperCase() : null);
 
-  return ref ? `${icon} ${label} #${ref}` : `${icon} ${label}`;
+  const installment =
+    entry.installmentTotal && entry.installmentTotal > 1 && entry.installmentNumber
+      ? ` · Parcela ${entry.installmentNumber}/${entry.installmentTotal}`
+      : '';
+
+  return ref ? `${icon} ${label} #${ref}${installment}` : `${icon} ${label}${installment}`;
 }
 
 export function getAccountsPayableOriginHref(

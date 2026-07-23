@@ -152,6 +152,7 @@ function buildFuelPayload(
     vehicle_id: input.vehicleId,
     driver_id: input.driverId,
     branch_id: input.branchId,
+    supplier_id: input.supplierId,
     station_name: input.stationName,
     station_brand: input.stationBrand,
     city: input.city,
@@ -171,6 +172,12 @@ function buildFuelPayload(
     responsible: input.responsible,
     payment_type: input.paymentType ?? 'cash',
     payment_due_date: input.paymentType === 'credit' ? input.paymentDueDate : null,
+    installment_count:
+      input.paymentType === 'credit' ? Math.max(1, input.installmentCount ?? 1) : 1,
+    installment_interval_days:
+      input.paymentType === 'credit'
+        ? Math.max(1, input.installmentIntervalDays ?? 30)
+        : 30,
     is_inconsistent: metrics.isInconsistent,
     inconsistency_flags: metrics.inconsistencyFlags,
     updated_by: profileId,

@@ -10,14 +10,14 @@ import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {Textarea} from '@/components/ui/textarea';
 import {useToast} from '@/contexts/feedback/toast-context';
+import {OperationPaymentFields} from '@/features/financial/components/operation-payment-fields';
+import {DEFAULT_INSTALLMENT_INTERVAL_DAYS} from '@/features/financial/utils/installment-schedule';
 import type {BranchSelectOption} from '@/features/organization/branches/types';
 import type {DriverSelectOption} from '@/features/drivers/types';
+import {SupplierSelect} from '@/features/suppliers/components';
+import {useSupplierOptions} from '@/features/suppliers/hooks/use-supplier-options';
+import type {SupplierSelectOption} from '@/features/suppliers/types';
 import type {VehicleSelectOption} from '@/features/vehicles/types';
-
-import {
-  OPERATION_PAYMENT_TYPE_LABELS,
-  OPERATION_PAYMENT_TYPES,
-} from '@/features/financial/constants/operation-financial';
 
 import {createFuelRecordAction, updateFuelRecordAction} from '../actions';
 import {FUEL_TYPES} from '../constants/enums';
@@ -33,6 +33,7 @@ export interface FuelFormModalProps {
   branches: BranchSelectOption[];
   drivers: DriverSelectOption[];
   vehicles: VehicleSelectOption[];
+  suppliers: SupplierSelectOption[];
   onSaved: (record: FuelRecord) => void;
 }
 
@@ -53,6 +54,7 @@ function FuelFormModal({
   branches,
   drivers,
   vehicles,
+  suppliers,
   onSaved,
 }: FuelFormModalProps) {
   const isEdit = Boolean(record);
@@ -75,6 +77,7 @@ function FuelFormModal({
         branches={branches}
         drivers={drivers}
         vehicles={vehicles}
+        suppliers={suppliers}
         onClose={onClose}
         onSaved={onSaved}
       />
@@ -88,6 +91,7 @@ function FuelFormContent({
   branches,
   drivers,
   vehicles,
+  suppliers: initialSuppliers,
   onClose,
   onSaved,
 }: {
@@ -96,14 +100,18 @@ function FuelFormContent({
   branches: BranchSelectOption[];
   drivers: DriverSelectOption[];
   vehicles: VehicleSelectOption[];
+  suppliers: SupplierSelectOption[];
   onClose: () => void;
   onSaved: (record: FuelRecord) => void;
 }) {
+  const {options: suppliers, onOptionsChange} = useSupplierOptions(initialSuppliers);
+
   const [formData, setFormData] = React.useState<CreateFuelRecordInput>(() => ({
     vehicleId: record?.vehicleId ?? vehicles[0]?.id ?? '',
     driverId: record?.driverId ?? drivers[0]?.id ?? '',
     branchId: record?.branchId ?? null,
-    stationName: record?.stationName ?? null,
+    supplierId: record?.supplierId ?? '',
+    stationName: record?.stationName ?? '',
     stationBrand: record?.stationBrand ?? null,
     city: record?.city ?? null,
     state: record?.state ?? null,
@@ -119,6 +127,9 @@ function FuelFormContent({
     responsible: record?.responsible ?? null,
     paymentType: record?.paymentType ?? 'cash',
     paymentDueDate: record?.paymentDueDate ?? null,
+    installmentCount: record?.installmentCount ?? 1,
+    installmentIntervalDays:
+      record?.installmentIntervalDays ?? DEFAULT_INSTALLMENT_INTERVAL_DAYS,
   }));
   const [fieldErrors, setFieldErrors] = React.useState<FieldErrors>({});
   const [formError, setFormError] = React.useState<string | null>(null);
@@ -258,11 +269,34 @@ function FuelFormContent({
             ))}
           </select>
         </FormField>
-        <FormField label="Posto" htmlFor="fuel-station" error={fieldErrors.stationName}>
-          <Input
+        <FormField
+          label="Fornecedor (Posto)"
+          htmlFor="fuel-station"
+          error={fieldErrors.supplierId ?? fieldErrors.stationName}
+          required
+        >
+          <SupplierSelect
             id="fuel-station"
-            value={formData.stationName ?? ''}
-            onChange={(e) => updateField('stationName', e.target.value || null)}
+            value={formData.supplierId || null}
+            options={suppliers}
+            onOptionsChange={onOptionsChange}
+            required
+            defaultCategories={['posto']}
+            onChange={(supplierId, option) => {
+              setFormData((prev) => ({
+                ...prev,
+                supplierId: supplierId ?? '',
+                stationName: option?.displayName ?? '',
+                city: option?.city ?? prev.city,
+                state: option?.state ?? prev.state,
+              }));
+              setFieldErrors((prev) => {
+                const next = {...prev};
+                delete next.supplierId;
+                delete next.stationName;
+                return next;
+              });
+            }}
           />
         </FormField>
         <FormField label="Bandeira" htmlFor="fuel-brand" error={fieldErrors.stationBrand}>
@@ -320,44 +354,33 @@ function FuelFormContent({
             required
           />
         </FormField>
-        <FormField
-          label="Forma de pagamento"
-          htmlFor="fuel-payment-type"
-          error={fieldErrors.paymentType}
-        >
-          <select
-            id="fuel-payment-type"
-            value={formData.paymentType}
-            onChange={(e) => {
-              const value = e.target.value as (typeof OPERATION_PAYMENT_TYPES)[number];
-              updateField('paymentType', value);
-              if (value === 'cash') updateField('paymentDueDate', null);
-            }}
-            className={FUEL_NATIVE_SELECT_CLASS}
-          >
-            {OPERATION_PAYMENT_TYPES.map((type) => (
-              <option key={type} value={type}>
-                {OPERATION_PAYMENT_TYPE_LABELS[type]}
-              </option>
-            ))}
-          </select>
-        </FormField>
-        {formData.paymentType === 'credit' && (
-          <FormField
-            label="Vencimento"
-            htmlFor="fuel-payment-due"
-            error={fieldErrors.paymentDueDate}
-            required
-          >
-            <Input
-              id="fuel-payment-due"
-              type="date"
-              value={formData.paymentDueDate ?? ''}
-              onChange={(e) => updateField('paymentDueDate', e.target.value || null)}
-              required
-            />
-          </FormField>
-        )}
+        <OperationPaymentFields
+          idPrefix="fuel"
+          selectClassName={FUEL_NATIVE_SELECT_CLASS}
+          totalAmount={formData.totalAmount}
+          value={{
+            paymentType: formData.paymentType,
+            paymentDueDate: formData.paymentDueDate,
+            installmentCount: formData.installmentCount,
+            installmentIntervalDays: formData.installmentIntervalDays,
+          }}
+          onChange={(patch) => {
+            setFormData((prev) => ({...prev, ...patch}));
+            setFieldErrors((prev) => {
+              const next = {...prev};
+              for (const key of Object.keys(patch) as (keyof typeof patch)[]) {
+                next[key] = undefined;
+              }
+              return next;
+            });
+          }}
+          errors={{
+            paymentType: fieldErrors.paymentType,
+            paymentDueDate: fieldErrors.paymentDueDate,
+            installmentCount: fieldErrors.installmentCount,
+            installmentIntervalDays: fieldErrors.installmentIntervalDays,
+          }}
+        />
         <FormField label="Odômetro (km)" htmlFor="fuel-odometer" error={fieldErrors.odometerKm}>
           <Input
             id="fuel-odometer"

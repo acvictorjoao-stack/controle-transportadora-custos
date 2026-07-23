@@ -50,6 +50,7 @@ export function mapFinancialEntryRow(row: FinancialEntryRow): FinancialEntry {
     entryStatus: row.entry_status,
     description: row.description,
     referenceNumber: row.reference_number,
+    supplierId: row.supplier_id ?? null,
     supplier: row.supplier ?? null,
     client: row.client ?? null,
     amount: Number(row.amount),
@@ -62,6 +63,10 @@ export function mapFinancialEntryRow(row: FinancialEntryRow): FinancialEntry {
     sourceModule: row.source_module,
     sourceId: row.source_id ?? null,
     isSystemGenerated: row.is_system_generated,
+    installmentNumber:
+      row.installment_number != null ? Number(row.installment_number) : null,
+    installmentTotal:
+      row.installment_total != null ? Number(row.installment_total) : null,
     notes: row.notes,
     externalId: row.external_id ?? null,
     integrationSource: row.integration_source ?? null,

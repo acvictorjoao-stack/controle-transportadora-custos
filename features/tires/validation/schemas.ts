@@ -1,6 +1,9 @@
 import {z} from 'zod';
 
-import {OPERATION_PAYMENT_TYPES} from '@/features/financial/constants/operation-financial';
+import {
+  operationPaymentFieldsSchema,
+  refineOperationPaymentFields,
+} from '@/features/financial/validation/operation-payment';
 
 import {
   TIRE_DOCUMENT_TYPES,
@@ -16,6 +19,13 @@ const optionalString = z
   .trim()
   .nullish()
   .transform((v) => (v?.length ? v : null));
+
+const optionalUuid = z
+  .string()
+  .uuid()
+  .nullable()
+  .optional()
+  .transform((v) => v ?? null);
 
 const optionalNumber = z
   .union([z.number(), z.string()])
@@ -74,22 +84,16 @@ const tireBaseSchema = z
     accumulatedKm: nonNegativeNumber,
     purchaseDate: optionalString,
     purchaseValue: nonNegativeNumber,
+    supplierId: optionalUuid,
     supplier: optionalString,
     warranty: optionalString,
     tireStatus: tireStatusSchema.default('in_stock'),
     currentPosition: tirePositionSchema.nullable().optional().transform((v) => v ?? null),
     notes: optionalString,
-    paymentType: z.enum(OPERATION_PAYMENT_TYPES).default('cash'),
-    paymentDueDate: optionalString,
   })
+  .merge(operationPaymentFieldsSchema)
   .superRefine((data, ctx) => {
-    if (data.paymentType === 'credit' && !data.paymentDueDate) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['paymentDueDate'],
-        message: 'Informe o vencimento para pagamento a prazo.',
-      });
-    }
+    refineOperationPaymentFields(data, ctx);
   });
 
 export const createTireSchema = tireBaseSchema;
@@ -137,6 +141,7 @@ export const createTireInspectionSchema = z.object({
 
 export const createTireRecapSchema = z.object({
   tireId: z.string().uuid(),
+  supplierId: optionalUuid,
   supplier: optionalString,
   recapNumber: optionalString,
   amount: nonNegativeNumber,

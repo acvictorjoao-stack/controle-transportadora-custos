@@ -1,10 +1,11 @@
 import {redirect, notFound} from 'next/navigation';
 
 import '@/features/financial/loaders/module-integration-loaders';
-
 import {MaintenanceDetailView} from '@/features/maintenance/components';
 import {getMaintenanceDetail} from '@/features/maintenance/queries';
 import type {MaintenanceDetailData} from '@/features/maintenance/types';
+import {getSuppliersForSelect} from '@/features/suppliers/loaders';
+import type {SupplierSelectOption} from '@/features/suppliers/types';
 import {listVehiclesForSelect} from '@/features/vehicles/queries';
 import type {VehicleSelectOption} from '@/features/vehicles/types';
 import {
@@ -34,11 +35,13 @@ export default async function ManutencaoDetailPage({params}: ManutencaoDetailPag
 
   let data: MaintenanceDetailData | null;
   let vehicles: VehicleSelectOption[];
+  let suppliers: SupplierSelectOption[];
 
   try {
-    [data, vehicles] = await Promise.all([
+    [data, vehicles, suppliers] = await Promise.all([
       getMaintenanceDetail(supabase, companyId, id),
       listVehiclesForSelect(supabase, companyId),
+      getSuppliersForSelect(supabase, companyId),
     ]);
   } catch {
     notFound();
@@ -53,6 +56,7 @@ export default async function ManutencaoDetailPage({params}: ManutencaoDetailPag
       companyId={companyId}
       data={data}
       vehicles={vehicles}
+      suppliers={suppliers}
     />
   );
 }

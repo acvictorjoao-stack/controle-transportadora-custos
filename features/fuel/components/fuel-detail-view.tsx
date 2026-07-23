@@ -14,6 +14,7 @@ import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
 import {ROUTES} from '@/constants/routes/paths';
 import type {BranchSelectOption} from '@/features/organization/branches/types';
 import type {DriverSelectOption} from '@/features/drivers/types';
+import type {SupplierSelectOption} from '@/features/suppliers/types';
 import type {VehicleSelectOption} from '@/features/vehicles/types';
 
 import {deleteFuelDocumentAction} from '../actions';
@@ -40,6 +41,7 @@ export interface FuelDetailViewProps {
   branches: BranchSelectOption[];
   drivers: DriverSelectOption[];
   vehicles: VehicleSelectOption[];
+  suppliers: SupplierSelectOption[];
 }
 
 const TABS = [
@@ -61,6 +63,7 @@ function FuelDetailView({
   branches,
   drivers,
   vehicles,
+  suppliers,
 }: FuelDetailViewProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = React.useState<TabId>('resumo');
@@ -457,6 +460,7 @@ function FuelDetailView({
         branches={branches}
         drivers={drivers}
         vehicles={vehicles}
+        suppliers={suppliers}
         onSaved={handleRefresh}
       />
     </PageTemplate>

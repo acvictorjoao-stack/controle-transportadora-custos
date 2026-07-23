@@ -9,11 +9,12 @@ import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {Textarea} from '@/components/ui/textarea';
 import {useToast} from '@/contexts/feedback/toast-context';
-import {
-  OPERATION_PAYMENT_TYPE_LABELS,
-  OPERATION_PAYMENT_TYPES,
-} from '@/features/financial/constants/operation-financial';
+import {OperationPaymentFields} from '@/features/financial/components/operation-payment-fields';
+import {DEFAULT_INSTALLMENT_INTERVAL_DAYS} from '@/features/financial/utils/installment-schedule';
 import type {BranchSelectOption} from '@/features/organization/branches/types';
+import {SupplierSelect} from '@/features/suppliers/components';
+import {useSupplierOptions} from '@/features/suppliers/hooks/use-supplier-options';
+import type {SupplierSelectOption} from '@/features/suppliers/types';
 import type {VehicleSelectOption} from '@/features/vehicles/types';
 
 import {createTireAction, updateTireAction} from '../actions';
@@ -29,6 +30,7 @@ export interface TireFormModalProps {
   tire?: Tire | null;
   branches: BranchSelectOption[];
   vehicles: VehicleSelectOption[];
+  suppliers: SupplierSelectOption[];
   onSaved: (tire: Tire) => void;
 }
 
@@ -52,7 +54,15 @@ function Field({
   );
 }
 
-function TireFormModal({open, onClose, tire, branches, vehicles, onSaved}: TireFormModalProps) {
+function TireFormModal({
+  open,
+  onClose,
+  tire,
+  branches,
+  vehicles,
+  suppliers,
+  onSaved,
+}: TireFormModalProps) {
   const isEdit = Boolean(tire);
   const formKey = `${open}-${tire?.id ?? 'new'}`;
 
@@ -70,6 +80,7 @@ function TireFormModal({open, onClose, tire, branches, vehicles, onSaved}: TireF
         isEdit={isEdit}
         branches={branches}
         vehicles={vehicles}
+        suppliers={suppliers}
         onClose={onClose}
         onSaved={onSaved}
       />
@@ -82,6 +93,7 @@ function TireFormContent({
   isEdit,
   branches,
   vehicles,
+  suppliers: initialSuppliers,
   onClose,
   onSaved,
 }: {
@@ -89,9 +101,12 @@ function TireFormContent({
   isEdit: boolean;
   branches: BranchSelectOption[];
   vehicles: VehicleSelectOption[];
+  suppliers: SupplierSelectOption[];
   onClose: () => void;
   onSaved: (tire: Tire) => void;
 }) {
+  const {options: suppliers, onOptionsChange} = useSupplierOptions(initialSuppliers);
+
   const [formData, setFormData] = React.useState<CreateTireInput>(() => ({
     branchId: tire?.branchId ?? null,
     vehicleId: tire?.vehicleId ?? null,
@@ -110,6 +125,7 @@ function TireFormContent({
     accumulatedKm: tire?.accumulatedKm ?? 0,
     purchaseDate: tire?.purchaseDate ?? null,
     purchaseValue: tire?.purchaseValue ?? null,
+    supplierId: tire?.supplierId ?? null,
     supplier: tire?.supplier ?? null,
     warranty: tire?.warranty ?? null,
     tireStatus: tire?.tireStatus ?? 'in_stock',
@@ -117,6 +133,9 @@ function TireFormContent({
     notes: tire?.notes ?? null,
     paymentType: tire?.paymentType ?? 'cash',
     paymentDueDate: tire?.paymentDueDate ?? null,
+    installmentCount: tire?.installmentCount ?? 1,
+    installmentIntervalDays:
+      tire?.installmentIntervalDays ?? DEFAULT_INSTALLMENT_INTERVAL_DAYS,
   }));
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -251,37 +270,53 @@ function TireFormContent({
             onChange={(e) => updateField('purchaseValue', e.target.value ? Number(e.target.value) : null)}
           />
         </Field>
-        <Field label="Forma de pagamento" error={fieldErrors.paymentType}>
-          <select
-            value={formData.paymentType}
-            onChange={(e) => {
-              const value = e.target.value as (typeof OPERATION_PAYMENT_TYPES)[number];
-              updateField('paymentType', value);
-              if (value === 'cash') updateField('paymentDueDate', null);
+        <OperationPaymentFields
+          idPrefix="tire"
+          selectClassName={TIRE_NATIVE_SELECT_CLASS}
+          totalAmount={formData.purchaseValue}
+          value={{
+            paymentType: formData.paymentType,
+            paymentDueDate: formData.paymentDueDate,
+            installmentCount: formData.installmentCount,
+            installmentIntervalDays: formData.installmentIntervalDays,
+          }}
+          onChange={(patch) => {
+            setFormData((prev) => ({...prev, ...patch}));
+            setFieldErrors((prev) => {
+              const next = {...prev};
+              for (const key of Object.keys(patch) as (keyof typeof patch)[]) {
+                next[key] = undefined;
+              }
+              return next;
+            });
+          }}
+          errors={{
+            paymentType: fieldErrors.paymentType,
+            paymentDueDate: fieldErrors.paymentDueDate,
+            installmentCount: fieldErrors.installmentCount,
+            installmentIntervalDays: fieldErrors.installmentIntervalDays,
+          }}
+        />
+        <Field label="Fornecedor" error={fieldErrors.supplierId ?? fieldErrors.supplier}>
+          <SupplierSelect
+            id="tire-supplier"
+            value={formData.supplierId}
+            options={suppliers}
+            onOptionsChange={onOptionsChange}
+            defaultCategories={['pneus']}
+            onChange={(supplierId, option) => {
+              setFormData((prev) => ({
+                ...prev,
+                supplierId,
+                supplier: option?.displayName ?? null,
+              }));
+              setFieldErrors((prev) => {
+                const next = {...prev};
+                delete next.supplierId;
+                delete next.supplier;
+                return next;
+              });
             }}
-            className={TIRE_NATIVE_SELECT_CLASS}
-          >
-            {OPERATION_PAYMENT_TYPES.map((type) => (
-              <option key={type} value={type}>
-                {OPERATION_PAYMENT_TYPE_LABELS[type]}
-              </option>
-            ))}
-          </select>
-        </Field>
-        {formData.paymentType === 'credit' && (
-          <Field label="Vencimento" error={fieldErrors.paymentDueDate}>
-            <Input
-              type="date"
-              value={formData.paymentDueDate ?? ''}
-              onChange={(e) => updateField('paymentDueDate', e.target.value || null)}
-              required
-            />
-          </Field>
-        )}
-        <Field label="Fornecedor" error={fieldErrors.supplier}>
-          <Input
-            value={formData.supplier ?? ''}
-            onChange={(e) => updateField('supplier', e.target.value || null)}
           />
         </Field>
         <Field label="Garantia" error={fieldErrors.warranty}>

@@ -35,6 +35,7 @@ export interface TireRow {
   accumulated_km: number;
   purchase_date: string | null;
   purchase_value: number | null;
+  supplier_id: string | null;
   supplier: string | null;
   warranty: string | null;
   tire_status: TireStatus;
@@ -47,6 +48,8 @@ export interface TireRow {
   last_tread_depth_mm: number | null;
   payment_type: 'cash' | 'credit';
   payment_due_date: string | null;
+  installment_count: number;
+  installment_interval_days: number;
   external_id: string | null;
   integration_source: string | null;
   metadata: Record<string, unknown>;
@@ -83,6 +86,7 @@ export interface Tire {
   accumulatedKm: number;
   purchaseDate: string | null;
   purchaseValue: number | null;
+  supplierId: string | null;
   supplier: string | null;
   warranty: string | null;
   tireStatus: TireStatus;
@@ -95,6 +99,8 @@ export interface Tire {
   lastTreadDepthMm: number | null;
   paymentType: 'cash' | 'credit';
   paymentDueDate: string | null;
+  installmentCount: number;
+  installmentIntervalDays: number;
   externalId: string | null;
   integrationSource: string | null;
   metadata: Record<string, unknown>;
@@ -188,6 +194,7 @@ export interface TireRecapRow {
   id: string;
   company_id: string;
   tire_id: string;
+  supplier_id: string | null;
   supplier: string | null;
   recap_number: string | null;
   amount: number | null;
@@ -202,6 +209,7 @@ export interface TireRecapRow {
 export interface TireRecap {
   id: string;
   tireId: string;
+  supplierId: string | null;
   supplier: string | null;
   recapNumber: string | null;
   amount: number | null;

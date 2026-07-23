@@ -18,6 +18,7 @@ import {useConfirm} from '@/contexts/feedback/confirm-context';
 import {useToast} from '@/contexts/feedback/toast-context';
 import {ROUTES} from '@/constants/routes/paths';
 import type {BranchSelectOption} from '@/features/organization/branches/types';
+import type {SupplierSelectOption} from '@/features/suppliers/types';
 import type {VehicleSelectOption} from '@/features/vehicles/types';
 
 import {deleteTireAction} from '../actions';
@@ -35,6 +36,7 @@ export interface TiresListProps {
   initialSort: TireSortOptions;
   branches: BranchSelectOption[];
   vehicles: VehicleSelectOption[];
+  suppliers: SupplierSelectOption[];
   error: string | null;
 }
 
@@ -52,6 +54,7 @@ function TiresList({
   initialSort,
   branches,
   vehicles,
+  suppliers,
   error: initialError,
 }: TiresListProps) {
   const router = useRouter();
@@ -257,6 +260,7 @@ function TiresList({
         tire={editingTire}
         branches={branches}
         vehicles={vehicles}
+        suppliers={suppliers}
         onSaved={handleSaved}
       />
     </PageTemplate>

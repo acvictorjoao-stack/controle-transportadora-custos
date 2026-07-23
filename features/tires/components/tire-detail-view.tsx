@@ -14,6 +14,9 @@ import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
 import {Input} from '@/components/ui/input';
 import {ROUTES} from '@/constants/routes/paths';
 import type {BranchSelectOption} from '@/features/organization/branches/types';
+import {SupplierSelect} from '@/features/suppliers/components';
+import {useSupplierOptions} from '@/features/suppliers/hooks/use-supplier-options';
+import type {SupplierSelectOption} from '@/features/suppliers/types';
 import type {VehicleSelectOption} from '@/features/vehicles/types';
 
 import {
@@ -48,6 +51,7 @@ export interface TireDetailViewProps {
   data: TireDetailData;
   branches: BranchSelectOption[];
   vehicles: VehicleSelectOption[];
+  suppliers: SupplierSelectOption[];
 }
 
 const TABS = [
@@ -64,11 +68,12 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]['id'];
 
-function TireDetailView({companyId, data, branches, vehicles}: TireDetailViewProps) {
+function TireDetailView({companyId, data, branches, vehicles, suppliers: initialSuppliers}: TireDetailViewProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = React.useState<TabId>('resumo');
   const [modalOpen, setModalOpen] = React.useState(false);
   const {tire} = data;
+  const {options: suppliers, onOptionsChange} = useSupplierOptions(initialSuppliers);
 
   const [movementForm, setMovementForm] = React.useState({
     movementType: 'install' as (typeof TIRE_MOVEMENT_TYPES)[number],
@@ -86,6 +91,7 @@ function TireDetailView({companyId, data, branches, vehicles}: TireDetailViewPro
     responsible: '',
   });
   const [recapForm, setRecapForm] = React.useState({
+    supplierId: null as string | null,
     supplier: '',
     recapNumber: '',
     amount: '',
@@ -141,6 +147,7 @@ function TireDetailView({companyId, data, branches, vehicles}: TireDetailViewPro
     setFormLoading(true);
     const result = await createTireRecapAction({
       tireId: tire.id,
+      supplierId: recapForm.supplierId,
       supplier: recapForm.supplier || null,
       recapNumber: recapForm.recapNumber || null,
       amount: Number(recapForm.amount) || null,
@@ -494,10 +501,20 @@ function TireDetailView({companyId, data, branches, vehicles}: TireDetailViewPro
             </CardHeader>
             <CardContent>
               <form onSubmit={handleAddRecap} className="grid gap-3 sm:grid-cols-2">
-                <Input
+                <SupplierSelect
+                  id="tire-recap-supplier"
+                  value={recapForm.supplierId}
+                  options={suppliers}
+                  onOptionsChange={onOptionsChange}
+                  defaultCategories={['pneus']}
                   placeholder="Fornecedor"
-                  value={recapForm.supplier}
-                  onChange={(e) => setRecapForm((prev) => ({...prev, supplier: e.target.value}))}
+                  onChange={(supplierId, option) => {
+                    setRecapForm((prev) => ({
+                      ...prev,
+                      supplierId,
+                      supplier: option?.displayName ?? '',
+                    }));
+                  }}
                 />
                 <Input
                   placeholder="Nº recapagem"
@@ -711,6 +728,7 @@ function TireDetailView({companyId, data, branches, vehicles}: TireDetailViewPro
         tire={tire}
         branches={branches}
         vehicles={vehicles}
+        suppliers={suppliers}
         onSaved={handleRefresh}
       />
     </PageTemplate>

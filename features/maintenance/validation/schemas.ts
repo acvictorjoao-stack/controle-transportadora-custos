@@ -1,6 +1,9 @@
 import {z} from 'zod';
 
-import {OPERATION_PAYMENT_TYPES} from '@/features/financial/constants/operation-financial';
+import {
+  operationPaymentFieldsSchema,
+  refineOperationPaymentFields,
+} from '@/features/financial/validation/operation-payment';
 
 import {
   MAINTENANCE_DOCUMENT_TYPES,
@@ -51,7 +54,10 @@ const maintenanceBaseSchema = z
     maintenanceType: maintenanceTypeSchema,
     priority: maintenancePrioritySchema.default('medium'),
     maintenanceStatus: maintenanceStatusSchema.default('open'),
-    supplier: optionalString,
+    supplierId: z.string().uuid('Selecione o fornecedor.'),
+    /** Denormalizado a partir do SupplierSelect (compatibilidade / busca). */
+    supplier: z.string().trim().min(1, 'Informe o fornecedor.'),
+    /** Removido do formulário (RC 27.1.1); mantido opcional por compatibilidade. */
     workshop: optionalString,
     openedAt: z.string().trim().min(1, 'Informe a data de abertura.'),
     completedAt: optionalString,
@@ -64,17 +70,10 @@ const maintenanceBaseSchema = z
     estimatedAmount: nonNegativeNumber,
     finalAmount: nonNegativeNumber,
     responsible: optionalString,
-    paymentType: z.enum(OPERATION_PAYMENT_TYPES).default('cash'),
-    paymentDueDate: optionalString,
   })
+  .merge(operationPaymentFieldsSchema)
   .superRefine((data, ctx) => {
-    if (data.paymentType === 'credit' && !data.paymentDueDate) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['paymentDueDate'],
-        message: 'Informe o vencimento para pagamento a prazo.',
-      });
-    }
+    refineOperationPaymentFields(data, ctx);
   });
 
 export const createMaintenanceRecordSchema = maintenanceBaseSchema;

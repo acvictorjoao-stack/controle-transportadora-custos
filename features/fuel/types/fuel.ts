@@ -20,6 +20,7 @@ export interface FuelRecordRow {
   vehicle_id: string;
   driver_id: string;
   trip_id: string | null;
+  supplier_id: string | null;
   station_name: string | null;
   station_brand: string | null;
   city: string | null;
@@ -42,6 +43,8 @@ export interface FuelRecordRow {
   inconsistency_flags: FuelInconsistencyFlag[];
   payment_type: 'cash' | 'credit';
   payment_due_date: string | null;
+  installment_count?: number | null;
+  installment_interval_days?: number | null;
   external_id: string | null;
   integration_source: string | null;
   metadata: Record<string, unknown>;
@@ -69,6 +72,7 @@ export interface FuelRecord {
   driverName: string | null;
   tripId: string | null;
   tripNumber: string | null;
+  supplierId: string | null;
   stationName: string | null;
   stationBrand: string | null;
   city: string | null;
@@ -91,6 +95,8 @@ export interface FuelRecord {
   inconsistencyFlags: FuelInconsistencyFlag[];
   paymentType: 'cash' | 'credit';
   paymentDueDate: string | null;
+  installmentCount: number;
+  installmentIntervalDays: number;
   externalId: string | null;
   integrationSource: string | null;
   metadata: Record<string, unknown>;

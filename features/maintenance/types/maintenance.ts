@@ -27,6 +27,7 @@ export interface MaintenanceRecordRow {
   maintenance_type: MaintenanceType;
   priority: MaintenancePriority;
   maintenance_status: MaintenanceStatus;
+  supplier_id: string | null;
   supplier: string | null;
   workshop: string | null;
   opened_at: string;
@@ -47,6 +48,8 @@ export interface MaintenanceRecordRow {
   responsible: string | null;
   payment_type: 'cash' | 'credit';
   payment_due_date: string | null;
+  installment_count: number;
+  installment_interval_days: number;
   external_id: string | null;
   integration_source: string | null;
   metadata: Record<string, unknown>;
@@ -77,6 +80,7 @@ export interface MaintenanceRecord {
   maintenanceType: MaintenanceType;
   priority: MaintenancePriority;
   maintenanceStatus: MaintenanceStatus;
+  supplierId: string | null;
   supplier: string | null;
   workshop: string | null;
   openedAt: string;
@@ -97,6 +101,8 @@ export interface MaintenanceRecord {
   responsible: string | null;
   paymentType: 'cash' | 'credit';
   paymentDueDate: string | null;
+  installmentCount: number;
+  installmentIntervalDays: number;
   externalId: string | null;
   integrationSource: string | null;
   metadata: Record<string, unknown>;

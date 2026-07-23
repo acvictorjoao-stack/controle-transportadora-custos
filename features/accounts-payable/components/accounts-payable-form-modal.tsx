@@ -11,6 +11,9 @@ import {Input} from '@/components/ui/input';
 import {Textarea} from '@/components/ui/textarea';
 import {useToast} from '@/contexts/feedback/toast-context';
 import {financialInputClassName} from '@/features/financial/utils/form-styles';
+import {SupplierSelect} from '@/features/suppliers/components';
+import {useSupplierOptions} from '@/features/suppliers/hooks/use-supplier-options';
+import type {SupplierSelectOption} from '@/features/suppliers/types';
 
 import {
   createAccountsPayableAction,
@@ -33,6 +36,7 @@ export interface AccountsPayableFormModalProps {
   entry?: AccountsPayableEntry | null;
   categories: AccountsPayableCategory[];
   costCenters: AccountsPayableCostCenter[];
+  suppliers: SupplierSelectOption[];
   onSaved: (entry: AccountsPayableEntry) => void;
 }
 
@@ -49,6 +53,7 @@ function AccountsPayableFormModal({
   entry,
   categories,
   costCenters,
+  suppliers,
   onSaved,
 }: AccountsPayableFormModalProps) {
   const isEdit = Boolean(entry);
@@ -72,6 +77,7 @@ function AccountsPayableFormModal({
         isEdit={isEdit}
         categories={categories}
         costCenters={costCenters}
+        suppliers={suppliers}
         onClose={onClose}
         onSaved={onSaved}
       />
@@ -84,6 +90,7 @@ function AccountsPayableFormContent({
   isEdit,
   categories,
   costCenters,
+  suppliers: initialSuppliers,
   onClose,
   onSaved,
 }: {
@@ -91,10 +98,14 @@ function AccountsPayableFormContent({
   isEdit: boolean;
   categories: AccountsPayableCategory[];
   costCenters: AccountsPayableCostCenter[];
+  suppliers: SupplierSelectOption[];
   onClose: () => void;
   onSaved: (entry: AccountsPayableEntry) => void;
 }) {
+  const {options: suppliers, onOptionsChange} = useSupplierOptions(initialSuppliers);
+
   const [formData, setFormData] = React.useState(() => ({
+    supplierId: entry?.supplierId ?? '',
     supplier: entry?.supplier ?? '',
     categoryId: entry?.categoryId ?? '',
     costCenterId: entry?.costCenterId ?? '',
@@ -177,13 +188,32 @@ function AccountsPayableFormContent({
           Informações Gerais
         </h3>
         <div className="grid gap-4 sm:grid-cols-2">
-          <FormField label="Fornecedor" htmlFor="ap-supplier" error={fieldErrors.supplier} required>
-            <Input
+          <FormField
+            label="Fornecedor"
+            htmlFor="ap-supplier"
+            error={fieldErrors.supplierId ?? fieldErrors.supplier}
+            required
+          >
+            <SupplierSelect
               id="ap-supplier"
-              value={formData.supplier}
-              onChange={(e) => updateField('supplier', e.target.value.toUpperCase())}
-              className="uppercase"
+              value={formData.supplierId || null}
+              options={suppliers}
+              onOptionsChange={onOptionsChange}
               required
+              defaultCategories={['administrativo']}
+              onChange={(supplierId, option) => {
+                setFormData((prev) => ({
+                  ...prev,
+                  supplierId: supplierId ?? '',
+                  supplier: (option?.displayName ?? '').toUpperCase(),
+                }));
+                setFieldErrors((prev) => {
+                  const next = {...prev};
+                  delete next.supplierId;
+                  delete next.supplier;
+                  return next;
+                });
+              }}
             />
           </FormField>
           <FormField label="Categoria" htmlFor="ap-category" error={fieldErrors.categoryId} required>

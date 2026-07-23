@@ -13,6 +13,8 @@ import type {
   AccountsPayableStatus,
   PaginatedAccountsPayable,
 } from '@/features/accounts-payable/types';
+import {getSuppliersForSelect} from '@/features/suppliers/loaders';
+import type {SupplierSelectOption} from '@/features/suppliers/types';
 import {
   assertCompanyPermission,
   getCurrentCompanyId,
@@ -74,19 +76,22 @@ export default async function ContasAPagarPage({searchParams}: ContasAPagarPageP
   let data: PaginatedAccountsPayable;
   let categories: AccountsPayableCategory[];
   let costCenters: AccountsPayableCostCenter[];
+  let suppliers: SupplierSelectOption[];
   let companyName: string | null = null;
   let error: string | null = null;
 
   try {
-    const [entries, filterOptions, companyRow] = await Promise.all([
+    const [entries, filterOptions, companyRow, supplierOptions] = await Promise.all([
       listAccountsPayable(supabase, {companyId, search, page, filters, sort}),
       listAccountsPayableFilterOptions(supabase, companyId),
       supabase.from('companies').select('trade_name, legal_name').eq('id', companyId).maybeSingle(),
+      getSuppliersForSelect(supabase, companyId),
     ]);
 
     data = entries;
     categories = filterOptions.categories;
     costCenters = filterOptions.costCenters;
+    suppliers = supplierOptions;
     companyName =
       companyRow.data?.trade_name ?? companyRow.data?.legal_name ?? null;
   } catch (err) {
@@ -94,6 +99,7 @@ export default async function ContasAPagarPage({searchParams}: ContasAPagarPageP
     data = {items: [], total: 0, page: 1, pageSize: 10, totalPages: 1};
     categories = [];
     costCenters = [];
+    suppliers = [];
     companyName = null;
   }
 
@@ -105,6 +111,7 @@ export default async function ContasAPagarPage({searchParams}: ContasAPagarPageP
       initialSort={sort}
       categories={categories}
       costCenters={costCenters}
+      suppliers={suppliers}
       companyName={companyName}
       error={error}
     />

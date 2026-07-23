@@ -84,6 +84,7 @@ function buildTirePayload(
     accumulated_km: input.accumulatedKm ?? 0,
     purchase_date: input.purchaseDate,
     purchase_value: input.purchaseValue,
+    supplier_id: input.supplierId,
     supplier: input.supplier,
     warranty: input.warranty,
     tire_status: input.tireStatus,
@@ -91,6 +92,12 @@ function buildTirePayload(
     notes: input.notes,
     payment_type: input.paymentType ?? 'cash',
     payment_due_date: input.paymentType === 'credit' ? input.paymentDueDate : null,
+    installment_count:
+      input.paymentType === 'credit' ? Math.max(1, input.installmentCount ?? 1) : 1,
+    installment_interval_days:
+      input.paymentType === 'credit'
+        ? Math.max(1, input.installmentIntervalDays ?? 30)
+        : 30,
     updated_by: profileId,
   };
 
@@ -363,7 +370,7 @@ export async function listTireRecaps(
   const {data, error} = await supabase
     .from('tire_recaps')
     .select(
-      'id, company_id, tire_id, supplier, recap_number, amount, odometer_km, recapped_at, warranty, notes, created_at, deleted_at',
+      'id, company_id, tire_id, supplier_id, supplier, recap_number, amount, odometer_km, recapped_at, warranty, notes, created_at, deleted_at',
     )
     .eq('company_id', companyId)
     .eq('tire_id', tireId)
@@ -515,6 +522,7 @@ export async function createTireRecap(
       vehicle_id: tire.vehicleId,
       maintenance_record_id: tire.maintenanceRecordId,
       tire_id: input.tireId,
+      supplier_id: input.supplierId,
       supplier: input.supplier,
       recap_number: input.recapNumber,
       amount: input.amount,
@@ -526,7 +534,7 @@ export async function createTireRecap(
       updated_by: profileId,
     })
     .select(
-      'id, company_id, tire_id, supplier, recap_number, amount, odometer_km, recapped_at, warranty, notes, created_at, deleted_at',
+      'id, company_id, tire_id, supplier_id, supplier, recap_number, amount, odometer_km, recapped_at, warranty, notes, created_at, deleted_at',
     )
     .single();
 

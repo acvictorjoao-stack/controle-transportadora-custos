@@ -30,6 +30,7 @@ export interface FinancialEntryRow {
   entry_status: FinancialEntryStatus;
   description: string | null;
   reference_number: string | null;
+  supplier_id: string | null;
   supplier: string | null;
   client: string | null;
   amount: number;
@@ -42,6 +43,8 @@ export interface FinancialEntryRow {
   source_module: string | null;
   source_id: string | null;
   is_system_generated: boolean;
+  installment_number: number | null;
+  installment_total: number | null;
   notes: string | null;
   external_id: string | null;
   integration_source: string | null;
@@ -90,6 +93,7 @@ export interface FinancialEntry {
   entryStatus: FinancialEntryStatus;
   description: string | null;
   referenceNumber: string | null;
+  supplierId: string | null;
   supplier: string | null;
   client: string | null;
   amount: number;
@@ -102,6 +106,9 @@ export interface FinancialEntry {
   sourceModule: string | null;
   sourceId: string | null;
   isSystemGenerated: boolean;
+  /** 1-based parcel number when part of an installment plan. */
+  installmentNumber: number | null;
+  installmentTotal: number | null;
   notes: string | null;
   externalId: string | null;
   integrationSource: string | null;

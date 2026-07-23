@@ -19,6 +19,7 @@ import {useToast} from '@/contexts/feedback/toast-context';
 import {ROUTES} from '@/constants/routes/paths';
 import type {BranchSelectOption} from '@/features/organization/branches/types';
 import type {DriverSelectOption} from '@/features/drivers/types';
+import type {SupplierSelectOption} from '@/features/suppliers/types';
 import type {VehicleSelectOption} from '@/features/vehicles/types';
 
 import {deleteFuelRecordAction} from '../actions';
@@ -47,6 +48,7 @@ export interface FuelListProps {
   branches: BranchSelectOption[];
   drivers: DriverSelectOption[];
   vehicles: VehicleSelectOption[];
+  suppliers: SupplierSelectOption[];
   error: string | null;
 }
 
@@ -58,6 +60,7 @@ function FuelList({
   branches,
   drivers,
   vehicles,
+  suppliers,
   error: initialError,
 }: FuelListProps) {
   const router = useRouter();
@@ -274,6 +277,7 @@ function FuelList({
         branches={branches}
         drivers={drivers}
         vehicles={vehicles}
+        suppliers={suppliers}
         onSaved={handleSaved}
       />
     </PageTemplate>

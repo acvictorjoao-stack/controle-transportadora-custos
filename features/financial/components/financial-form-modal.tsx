@@ -134,6 +134,7 @@ function FinancialFormContent({
     tripId: entry?.tripId ?? null,
     description: entry?.description ?? null,
     referenceNumber: entry?.referenceNumber ?? null,
+    supplierId: entry?.supplierId ?? null,
     supplier: entry?.supplier ?? null,
     client: entry?.client ?? null,
     notes: entry?.notes ?? null,

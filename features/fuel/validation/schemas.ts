@@ -1,6 +1,9 @@
 import {z} from 'zod';
 
-import {OPERATION_PAYMENT_TYPES} from '@/features/financial/constants/operation-financial';
+import {
+  operationPaymentFieldsSchema,
+  refineOperationPaymentFields,
+} from '@/features/financial/validation/operation-payment';
 
 import {FUEL_DOCUMENT_TYPES, FUEL_TYPES} from '../constants/enums';
 
@@ -49,7 +52,8 @@ const fuelBaseSchema = z
       .nullable()
       .optional()
       .transform((v) => v ?? null),
-    stationName: optionalString,
+    supplierId: z.string().uuid('Selecione o fornecedor.'),
+    stationName: z.string().trim().min(1, 'Informe o posto.'),
     stationBrand: optionalString,
     city: optionalString,
     state: optionalString,
@@ -61,17 +65,10 @@ const fuelBaseSchema = z
     odometerKm: optionalNumber,
     notes: optionalString,
     responsible: optionalString,
-    paymentType: z.enum(OPERATION_PAYMENT_TYPES).default('cash'),
-    paymentDueDate: optionalString,
   })
+  .merge(operationPaymentFieldsSchema)
   .superRefine((data, ctx) => {
-    if (data.paymentType === 'credit' && !data.paymentDueDate) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['paymentDueDate'],
-        message: 'Informe o vencimento para pagamento a prazo.',
-      });
-    }
+    refineOperationPaymentFields(data, ctx);
   });
 
 export const createFuelRecordSchema = fuelBaseSchema;

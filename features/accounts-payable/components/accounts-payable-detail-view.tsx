@@ -24,6 +24,7 @@ import {
   formatDateTimeBr,
 } from '@/features/financial/utils/financial-format';
 import type {FinancialEntryStatus} from '@/features/financial/types';
+import type {SupplierSelectOption} from '@/features/suppliers/types';
 
 import {cancelAccountsPayableAction} from '../actions';
 import type {
@@ -45,6 +46,7 @@ export interface AccountsPayableDetailViewProps {
   data: AccountsPayableDetailData;
   categories: AccountsPayableCategory[];
   costCenters: AccountsPayableCostCenter[];
+  suppliers: SupplierSelectOption[];
 }
 
 const TABS = [
@@ -89,6 +91,7 @@ function AccountsPayableDetailView({
   data,
   categories,
   costCenters,
+  suppliers,
 }: AccountsPayableDetailViewProps) {
   const router = useRouter();
   const confirm = useConfirm();
@@ -310,6 +313,7 @@ function AccountsPayableDetailView({
         entry={entry}
         categories={categories}
         costCenters={costCenters}
+        suppliers={suppliers}
         onSaved={handleRefresh}
       />
 

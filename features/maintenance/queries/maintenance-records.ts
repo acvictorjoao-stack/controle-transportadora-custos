@@ -78,8 +78,9 @@ function buildMaintenancePayload(
     maintenance_type: input.maintenanceType,
     priority: input.priority,
     maintenance_status: input.maintenanceStatus,
+    supplier_id: input.supplierId,
     supplier: input.supplier,
-    workshop: input.workshop,
+    workshop: null,
     opened_at: input.openedAt,
     completed_at: input.completedAt,
     odometer_km: input.odometerKm,
@@ -95,6 +96,12 @@ function buildMaintenancePayload(
     responsible: input.responsible,
     payment_type: input.paymentType ?? 'cash',
     payment_due_date: input.paymentType === 'credit' ? input.paymentDueDate : null,
+    installment_count:
+      input.paymentType === 'credit' ? Math.max(1, input.installmentCount ?? 1) : 1,
+    installment_interval_days:
+      input.paymentType === 'credit'
+        ? Math.max(1, input.installmentIntervalDays ?? 30)
+        : 30,
     updated_by: profileId,
   };
 
