@@ -5,3 +5,4 @@ export * from './queries';
 export * from './services';
 export * from './types';
 export {buildOperationalDreUrl, parseOperationalDreFilters} from './utils/list-url';
+export {formatOperationalDreRouteLabel} from './utils/route-label';

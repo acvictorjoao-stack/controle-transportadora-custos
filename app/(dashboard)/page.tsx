@@ -3,10 +3,14 @@ import {redirect} from 'next/navigation';
 import {PageTemplate} from '@/components/layout/page-template';
 import {OperationalDreView} from '@/features/dre/components';
 import {
-  getOperationalDRE,
+  getOperationalDreBundle,
   getOperationalDreFilterOptions,
 } from '@/features/dre/loaders';
-import type {OperationalDreData, OperationalDreFilterOptions} from '@/features/dre/types';
+import type {
+  OperationalDreByRouteData,
+  OperationalDreData,
+  OperationalDreFilterOptions,
+} from '@/features/dre/types';
 import {parseOperationalDreFilters} from '@/features/dre/utils/list-url';
 import {OperationalDashboard} from '@/features/organization/dashboard/components/operational-dashboard';
 import {getOperationalDashboardData} from '@/features/organization/dashboard/queries/operational-dashboard';
@@ -49,6 +53,11 @@ const EMPTY_DRE: OperationalDreData = {
   filters: {},
 };
 
+const EMPTY_BY_ROUTE: OperationalDreByRouteData = {
+  groups: [],
+  filters: {},
+};
+
 const EMPTY_FILTER_OPTIONS: OperationalDreFilterOptions = {
   branches: [],
   customers: [],
@@ -88,14 +97,18 @@ export default async function DashboardPage({searchParams}: DashboardPageProps) 
     : null;
 
   let dreData: OperationalDreData = {...EMPTY_DRE, filters: dreFilters};
+  let dreByRoute: OperationalDreByRouteData = {...EMPTY_BY_ROUTE, filters: dreFilters};
   let dreFilterOptions: OperationalDreFilterOptions = EMPTY_FILTER_OPTIONS;
   let dreError: string | null = null;
 
   try {
-    [dreData, dreFilterOptions] = await Promise.all([
-      getOperationalDRE(supabase, companyId, dreFilters),
+    const [bundle, filterOptions] = await Promise.all([
+      getOperationalDreBundle(supabase, companyId, dreFilters),
       getOperationalDreFilterOptions(supabase, companyId),
     ]);
+    dreData = bundle.dre;
+    dreByRoute = bundle.byRoute;
+    dreFilterOptions = filterOptions;
   } catch (err) {
     dreError =
       err instanceof Error ? err.message : 'Erro ao carregar a DRE Operacional.';
@@ -115,6 +128,7 @@ export default async function DashboardPage({searchParams}: DashboardPageProps) 
           <OperationalDashboard data={dashboardData} />
           <OperationalDreView
             data={dreData}
+            byRoute={dreByRoute}
             filterOptions={dreFilterOptions}
             initialFilters={dreFilters}
             error={dreError}

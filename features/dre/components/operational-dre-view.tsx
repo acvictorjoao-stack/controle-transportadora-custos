@@ -11,15 +11,18 @@ import {
 
 import type {
   OperationalDreAnalyticalRow,
+  OperationalDreByRouteData,
   OperationalDreCostCenterRow,
   OperationalDreData,
   OperationalDreFilterOptions,
   OperationalDreFilters,
 } from '../types';
 import {OperationalDreFiltersBar} from './operational-dre-filters';
+import {OperationalDreRouteCosts} from './operational-dre-route-costs';
 
 export interface OperationalDreViewProps {
   data: OperationalDreData;
+  byRoute: OperationalDreByRouteData;
   filterOptions: OperationalDreFilterOptions;
   initialFilters: OperationalDreFilters;
   error?: string | null;
@@ -54,6 +57,7 @@ function resultClass(value: number): string | undefined {
  */
 function OperationalDreView({
   data,
+  byRoute,
   filterOptions,
   initialFilters,
   error = null,
@@ -330,6 +334,8 @@ function OperationalDreView({
             />
           </TableContainer>
         </div>
+
+        <OperationalDreRouteCosts data={byRoute} filters={initialFilters} />
       </div>
     </Section>
   );

@@ -7,14 +7,40 @@ import {listRoutesForSelect} from '@/features/routes/queries';
 
 import {
   fetchOperationalDreExpenses,
+  fetchOperationalDreRouteLabels,
+  fetchOperationalDreTripDetails,
   fetchOperationalDreTrips,
 } from '../queries';
+import {
+  calculateOperationalDreByRoute,
+  calculateOperationalDreRouteTrips,
+  OPERATIONAL_DRE_UNASSIGNED_DIMENSION_KEY,
+} from '../services/operational-dre-by-dimension';
 import {calculateOperationalDre} from '../services';
 import type {
+  OperationalDreByRouteData,
   OperationalDreData,
   OperationalDreFilterOptions,
   OperationalDreFilters,
+  OperationalDreTripMetrics,
 } from '../types';
+
+/**
+ * Fonte compartilhada da DRE — uma leitura de viagens + despesas.
+ * Evita N+1 e consultas duplicadas entre loaders.
+ */
+export async function fetchOperationalDreSource(
+  supabase: SupabaseClient,
+  companyId: string,
+  filters: OperationalDreFilters = {},
+) {
+  const trips = await fetchOperationalDreTrips(supabase, companyId, filters);
+  const expenses = await fetchOperationalDreExpenses(supabase, companyId, {
+    filters,
+    tripIds: trips.map((trip) => trip.id),
+  });
+  return {trips, expenses};
+}
 
 /**
  * Loader da DRE Operacional — único ponto que combina leituras e cálculo.
@@ -25,13 +51,112 @@ export async function getOperationalDRE(
   companyId: string,
   filters: OperationalDreFilters = {},
 ): Promise<OperationalDreData> {
-  const trips = await fetchOperationalDreTrips(supabase, companyId, filters);
-  const expenses = await fetchOperationalDreExpenses(supabase, companyId, {
+  const {trips, expenses} = await fetchOperationalDreSource(
+    supabase,
+    companyId,
     filters,
+  );
+  return calculateOperationalDre(trips, expenses, filters);
+}
+
+/**
+ * Custos agregados por rota — reutiliza viagens/despesas da DRE.
+ * `trips` de cada grupo inicia vazio (lazy load na expansão).
+ */
+export async function getOperationalDreByRoute(
+  supabase: SupabaseClient,
+  companyId: string,
+  filters: OperationalDreFilters = {},
+): Promise<OperationalDreByRouteData> {
+  const {trips, expenses} = await fetchOperationalDreSource(
+    supabase,
+    companyId,
+    filters,
+  );
+  const routeIds = trips
+    .map((trip) => trip.routeId)
+    .filter((id): id is string => Boolean(id));
+  const routeLabels = await fetchOperationalDreRouteLabels(
+    supabase,
+    companyId,
+    routeIds,
+  );
+
+  return {
+    groups: calculateOperationalDreByRoute(trips, expenses, filters, routeLabels),
+    filters,
+  };
+}
+
+/**
+ * Bundle DRE + custos por rota com uma única leitura de fonte.
+ */
+export async function getOperationalDreBundle(
+  supabase: SupabaseClient,
+  companyId: string,
+  filters: OperationalDreFilters = {},
+): Promise<{
+  dre: OperationalDreData;
+  byRoute: OperationalDreByRouteData;
+}> {
+  const {trips, expenses} = await fetchOperationalDreSource(
+    supabase,
+    companyId,
+    filters,
+  );
+  const routeIds = trips
+    .map((trip) => trip.routeId)
+    .filter((id): id is string => Boolean(id));
+  const routeLabels = await fetchOperationalDreRouteLabels(
+    supabase,
+    companyId,
+    routeIds,
+  );
+
+  return {
+    dre: calculateOperationalDre(trips, expenses, filters),
+    byRoute: {
+      groups: calculateOperationalDreByRoute(
+        trips,
+        expenses,
+        filters,
+        routeLabels,
+      ),
+      filters,
+    },
+  };
+}
+
+/**
+ * Detalhe lazy das viagens de uma rota (ou "Sem rota").
+ * Reutiliza queries/loaders da DRE — sem consultas independentes.
+ */
+export async function getOperationalDreRouteTripDetails(
+  supabase: SupabaseClient,
+  companyId: string,
+  dimensionKey: string,
+  filters: OperationalDreFilters = {},
+): Promise<OperationalDreTripMetrics[]> {
+  const unassigned =
+    dimensionKey === OPERATIONAL_DRE_UNASSIGNED_DIMENSION_KEY ||
+    dimensionKey === '';
+  const scopedFilters: OperationalDreFilters = {
+    ...filters,
+    routeId: unassigned ? undefined : dimensionKey,
+  };
+
+  const trips = await fetchOperationalDreTripDetails(
+    supabase,
+    companyId,
+    scopedFilters,
+    {unassignedRouteOnly: unassigned},
+  );
+  const expenses = await fetchOperationalDreExpenses(supabase, companyId, {
+    filters: scopedFilters,
     tripIds: trips.map((trip) => trip.id),
   });
 
-  return calculateOperationalDre(trips, expenses, filters);
+  return calculateOperationalDreRouteTrips(trips, expenses, scopedFilters);
 }
 
 export async function getOperationalDreFilterOptions(

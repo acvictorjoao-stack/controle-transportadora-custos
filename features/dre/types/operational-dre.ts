@@ -127,3 +127,73 @@ export type OperationalDreCostBucket =
   | 'financial'
   | 'accountsPayable'
   | 'other';
+
+/**
+ * Dimensão agrupadora da análise expansível.
+ * Novos agrupamentos (cliente, veículo, …) reutilizam o mesmo contrato.
+ */
+export type OperationalDreGroupDimension =
+  | 'route'
+  | 'customer'
+  | 'vehicle'
+  | 'driver'
+  | 'cost_center';
+
+/** Métricas de uma viagem dentro de um grupo analítico. */
+export interface OperationalDreTripMetrics {
+  id: string;
+  date: string | null;
+  tripNumber: string;
+  vehicleLabel: string | null;
+  driverLabel: string | null;
+  customerLabel: string | null;
+  distanceKm: number;
+  revenue: number;
+  cost: number;
+  profit: number;
+  marginPercent: number | null;
+}
+
+/**
+ * Grupo analítico genérico (rota, cliente, veículo, …).
+ * `trips` inicia vazio no load agregado e é preenchido no lazy load.
+ */
+export interface OperationalDreDimensionGroup {
+  dimensionKey: string;
+  dimensionType: OperationalDreGroupDimension;
+  label: string;
+  tripCount: number;
+  totalRevenue: number;
+  totalCost: number;
+  totalProfit: number;
+  marginPercent: number | null;
+  totalKm: number;
+  costPerKm: number | null;
+  revenuePerKm: number | null;
+  trips: OperationalDreTripMetrics[];
+}
+
+/** Alias tipado do agrupamento por rota (RC 26.9). */
+export interface OperationalDreRouteGroup extends OperationalDreDimensionGroup {
+  dimensionType: 'route';
+  route: {
+    id: string | null;
+    label: string;
+  };
+}
+
+export interface OperationalDreByRouteData {
+  groups: OperationalDreRouteGroup[];
+  filters: OperationalDreFilters;
+}
+
+/** Linha enriquecida para detalhe de viagem (lazy load). */
+export interface OperationalDreTripDetailRow extends OperationalDreTripRow {
+  tripNumber: string;
+  completedAt: string | null;
+  driverId: string | null;
+  vehicleLabel: string | null;
+  driverLabel: string | null;
+  customerLabel: string | null;
+  routeLabel: string | null;
+}
