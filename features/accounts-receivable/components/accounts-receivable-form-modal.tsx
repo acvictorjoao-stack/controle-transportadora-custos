@@ -97,7 +97,7 @@ function AccountsReceivableFormContent({
   const [formData, setFormData] = React.useState(() => ({
     client: entry?.client ?? '',
     categoryId: entry?.categoryId ?? '',
-    costCenterId: entry?.costCenterId ?? null,
+    costCenterId: entry?.costCenterId ?? '',
     description: entry?.description ?? '',
     notes: entry?.notes ?? null,
     amount: entry?.amount ?? 0,
@@ -206,17 +206,19 @@ function AccountsReceivableFormContent({
             label="Centro de custo"
             htmlFor="ar-cost-center"
             error={fieldErrors.costCenterId}
+            required
           >
             <select
               id="ar-cost-center"
               value={formData.costCenterId ?? ''}
-              onChange={(e) => updateField('costCenterId', e.target.value || null)}
+              onChange={(e) => updateField('costCenterId', e.target.value)}
               className={financialInputClassName}
+              required
             >
-              <option value="">Sem centro de custo</option>
+              <option value="">Selecione</option>
               {costCenters.map((center) => (
                 <option key={center.id} value={center.id}>
-                  {center.name}
+                  {center.code ? `${center.code} — ${center.name}` : center.name}
                 </option>
               ))}
             </select>

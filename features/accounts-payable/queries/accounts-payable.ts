@@ -13,8 +13,13 @@ import {
   updateFinancialEntry,
 } from '@/features/financial/queries';
 import type {FinancialEntry} from '@/features/financial/types';
+import {OPERATIONAL_EXPENSE_CATEGORY_SLUGS} from '@/features/financial/constants/operation-financial';
 
-import {ACCOUNTS_PAYABLE_PAGE_SIZE, ACCOUNTS_PAYABLE_SOURCE_MODULE} from '../constants';
+import {
+  ACCOUNTS_PAYABLE_PAGE_SIZE,
+  ACCOUNTS_PAYABLE_SOURCE_MODULE,
+  ACCOUNTS_PAYABLE_MANAGED_SOURCE_MODULES,
+} from '../constants';
 import type {
   AccountsPayableDetailData,
   AccountsPayableEntry,
@@ -26,9 +31,13 @@ import type {
   CreateAccountsPayableInput,
   UpdateAccountsPayableInput,
 } from '../validation';
+import {
+  isAccountsPayableManagedEntry,
+  isManualAccountsPayableEntry,
+} from '../utils/origin';
 
 function assertAccountsPayableEntry(entry: FinancialEntry | null): AccountsPayableEntry {
-  if (!entry || entry.sourceModule !== ACCOUNTS_PAYABLE_SOURCE_MODULE) {
+  if (!entry || !isAccountsPayableManagedEntry(entry)) {
     throw new Error('Conta a pagar não encontrada.');
   }
   return entry;
@@ -50,7 +59,7 @@ export async function listAccountsPayable(
     page: options.page,
     pageSize: ACCOUNTS_PAYABLE_PAGE_SIZE,
     filters: {
-      sourceModule: ACCOUNTS_PAYABLE_SOURCE_MODULE,
+      sourceModules: [...ACCOUNTS_PAYABLE_MANAGED_SOURCE_MODULES],
       entryType: 'expense',
       entryStatus: options.filters?.entryStatus,
       categoryId: options.filters?.categoryId,
@@ -59,6 +68,8 @@ export async function listAccountsPayable(
       dueDateTo: options.filters?.dueDateTo,
       dateFrom: options.filters?.dateFrom,
       dateTo: options.filters?.dateTo,
+      // À vista (cash) ops have null due_date and stay out of Contas a Pagar.
+      hasDueDate: true,
     },
     sort: {
       sortBy: options.sort?.sortBy ?? 'due_date',
@@ -80,7 +91,11 @@ export async function getAccountsPayableById(
   entryId: string,
 ): Promise<AccountsPayableEntry | null> {
   const entry = await getFinancialEntryById(supabase, companyId, entryId);
-  if (!entry || entry.sourceModule !== ACCOUNTS_PAYABLE_SOURCE_MODULE) {
+  if (!entry || !isAccountsPayableManagedEntry(entry)) {
+    return null;
+  }
+  // Credit ops appear in AP; cash-only system entries without due date are ledger-only.
+  if (entry.sourceModule !== ACCOUNTS_PAYABLE_SOURCE_MODULE && !entry.dueDate) {
     return null;
   }
   return entry;
@@ -92,12 +107,41 @@ export async function getAccountsPayableDetail(
   entryId: string,
 ): Promise<AccountsPayableDetailData | null> {
   const detail = await getFinancialDetail(supabase, companyId, entryId);
-  if (!detail || detail.entry.sourceModule !== ACCOUNTS_PAYABLE_SOURCE_MODULE) {
+  if (!detail || !isAccountsPayableManagedEntry(detail.entry)) {
+    return null;
+  }
+  if (detail.entry.sourceModule !== ACCOUNTS_PAYABLE_SOURCE_MODULE && !detail.entry.dueDate) {
     return null;
   }
 
   const history = await listFinancialHistory(supabase, companyId, entryId);
   return {entry: detail.entry, history};
+}
+
+async function assertManualCategoryAllowed(
+  supabase: SupabaseClient,
+  companyId: string,
+  categoryId: string,
+): Promise<void> {
+  const {data} = await supabase
+    .from('financial_categories')
+    .select('slug')
+    .eq('id', categoryId)
+    .eq('company_id', companyId)
+    .is('deleted_at', null)
+    .maybeSingle();
+
+  const slug = data?.slug ?? null;
+  if (
+    slug &&
+    OPERATIONAL_EXPENSE_CATEGORY_SLUGS.includes(
+      slug as (typeof OPERATIONAL_EXPENSE_CATEGORY_SLUGS)[number],
+    )
+  ) {
+    throw new Error(
+      'Esta categoria deve ser lançada pelo módulo operacional correspondente (Abastecimentos, Manutenções, Pneus, Multas ou Pedágios).',
+    );
+  }
 }
 
 export async function createAccountsPayable(
@@ -106,6 +150,8 @@ export async function createAccountsPayable(
   input: CreateAccountsPayableInput,
   profileId: string,
 ): Promise<AccountsPayableEntry> {
+  await assertManualCategoryAllowed(supabase, companyId, input.categoryId);
+
   return createFinancialEntry(
     supabase,
     companyId,
@@ -147,9 +193,17 @@ export async function updateAccountsPayable(
     await getFinancialEntryById(supabase, companyId, entryId),
   );
 
+  if (!isManualAccountsPayableEntry(existing)) {
+    throw new Error(
+      'Contas originadas de módulos operacionais devem ser alteradas na origem.',
+    );
+  }
+
   if (existing.entryStatus === 'cancelled') {
     throw new Error('Não é possível editar uma conta cancelada.');
   }
+
+  await assertManualCategoryAllowed(supabase, companyId, input.categoryId);
 
   return updateFinancialEntry(
     supabase,

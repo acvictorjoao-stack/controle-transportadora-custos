@@ -74,22 +74,27 @@ export default async function ContasAPagarPage({searchParams}: ContasAPagarPageP
   let data: PaginatedAccountsPayable;
   let categories: AccountsPayableCategory[];
   let costCenters: AccountsPayableCostCenter[];
+  let companyName: string | null = null;
   let error: string | null = null;
 
   try {
-    const [entries, filterOptions] = await Promise.all([
+    const [entries, filterOptions, companyRow] = await Promise.all([
       listAccountsPayable(supabase, {companyId, search, page, filters, sort}),
       listAccountsPayableFilterOptions(supabase, companyId),
+      supabase.from('companies').select('trade_name, legal_name').eq('id', companyId).maybeSingle(),
     ]);
 
     data = entries;
     categories = filterOptions.categories;
     costCenters = filterOptions.costCenters;
+    companyName =
+      companyRow.data?.trade_name ?? companyRow.data?.legal_name ?? null;
   } catch (err) {
     error = err instanceof Error ? err.message : 'Erro ao carregar contas a pagar.';
     data = {items: [], total: 0, page: 1, pageSize: 10, totalPages: 1};
     categories = [];
     costCenters = [];
+    companyName = null;
   }
 
   return (
@@ -100,6 +105,7 @@ export default async function ContasAPagarPage({searchParams}: ContasAPagarPageP
       initialSort={sort}
       categories={categories}
       costCenters={costCenters}
+      companyName={companyName}
       error={error}
     />
   );

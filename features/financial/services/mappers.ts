@@ -20,7 +20,8 @@ export function mapFinancialEntryRow(row: FinancialEntryRow): FinancialEntry {
   const driver = firstRelation(row.drivers);
   const trip = firstRelation(row.trips);
   const category = firstRelation(row.financial_categories);
-  const costCenter = firstRelation(row.financial_cost_centers);
+  const costCenter =
+    firstRelation(row.cost_centers) ?? firstRelation(row.financial_cost_centers);
   const customer = firstRelation(row.customers);
 
   return {
@@ -58,6 +59,7 @@ export function mapFinancialEntryRow(row: FinancialEntryRow): FinancialEntry {
     paidAmount: row.paid_amount != null ? Number(row.paid_amount) : null,
     reversedEntryId: row.reversed_entry_id,
     sourceModule: row.source_module,
+    sourceId: row.source_id ?? null,
     isSystemGenerated: row.is_system_generated,
     notes: row.notes,
     externalId: row.external_id ?? null,

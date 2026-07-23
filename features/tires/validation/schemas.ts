@@ -1,5 +1,7 @@
 import {z} from 'zod';
 
+import {OPERATION_PAYMENT_TYPES} from '@/features/financial/constants/operation-financial';
+
 import {
   TIRE_DOCUMENT_TYPES,
   TIRE_MOVEMENT_TYPES,
@@ -38,45 +40,57 @@ export const tirePositionSchema = z.enum(TIRE_POSITIONS);
 export const tireMovementTypeSchema = z.enum(TIRE_MOVEMENT_TYPES);
 export const tireWearLevelSchema = z.enum(TIRE_WEAR_LEVELS);
 
-const tireBaseSchema = z.object({
-  branchId: z
-    .string()
-    .uuid('Filial inválida.')
-    .nullable()
-    .optional()
-    .transform((v) => v ?? null),
-  vehicleId: z
-    .string()
-    .uuid('Veículo inválido.')
-    .nullable()
-    .optional()
-    .transform((v) => v ?? null),
-  maintenanceRecordId: z
-    .string()
-    .uuid('Manutenção inválida.')
-    .nullable()
-    .optional()
-    .transform((v) => v ?? null),
-  assetNumber: optionalString,
-  internalCode: optionalString,
-  brand: optionalString,
-  model: optionalString,
-  tireSize: optionalString,
-  manufacturer: optionalString,
-  dotNumber: optionalString,
-  fireNumber: optionalString,
-  serialNumber: optionalString,
-  expectedLifeKm: nonNegativeNumber,
-  currentKm: nonNegativeNumber,
-  accumulatedKm: nonNegativeNumber,
-  purchaseDate: optionalString,
-  purchaseValue: nonNegativeNumber,
-  supplier: optionalString,
-  warranty: optionalString,
-  tireStatus: tireStatusSchema.default('in_stock'),
-  currentPosition: tirePositionSchema.nullable().optional().transform((v) => v ?? null),
-  notes: optionalString,
-});
+const tireBaseSchema = z
+  .object({
+    branchId: z
+      .string()
+      .uuid('Filial inválida.')
+      .nullable()
+      .optional()
+      .transform((v) => v ?? null),
+    vehicleId: z
+      .string()
+      .uuid('Veículo inválido.')
+      .nullable()
+      .optional()
+      .transform((v) => v ?? null),
+    maintenanceRecordId: z
+      .string()
+      .uuid('Manutenção inválida.')
+      .nullable()
+      .optional()
+      .transform((v) => v ?? null),
+    assetNumber: optionalString,
+    internalCode: optionalString,
+    brand: optionalString,
+    model: optionalString,
+    tireSize: optionalString,
+    manufacturer: optionalString,
+    dotNumber: optionalString,
+    fireNumber: optionalString,
+    serialNumber: optionalString,
+    expectedLifeKm: nonNegativeNumber,
+    currentKm: nonNegativeNumber,
+    accumulatedKm: nonNegativeNumber,
+    purchaseDate: optionalString,
+    purchaseValue: nonNegativeNumber,
+    supplier: optionalString,
+    warranty: optionalString,
+    tireStatus: tireStatusSchema.default('in_stock'),
+    currentPosition: tirePositionSchema.nullable().optional().transform((v) => v ?? null),
+    notes: optionalString,
+    paymentType: z.enum(OPERATION_PAYMENT_TYPES).default('cash'),
+    paymentDueDate: optionalString,
+  })
+  .superRefine((data, ctx) => {
+    if (data.paymentType === 'credit' && !data.paymentDueDate) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['paymentDueDate'],
+        message: 'Informe o vencimento para pagamento a prazo.',
+      });
+    }
+  });
 
 export const createTireSchema = tireBaseSchema;
 export const updateTireSchema = tireBaseSchema;

@@ -8,28 +8,12 @@ import type {Trip} from '@/features/trips/types';
 import {
   createFinancialEntry,
   getCategoryBySlug,
-  listFinancialEntriesByRelation,
-  softDeleteFinancialEntry,
 } from '../queries/financial-entries';
-
-async function resolveVehicleCostCenter(
-  supabase: SupabaseClient,
-  companyId: string,
-  vehicleId: string | null,
-): Promise<string | null> {
-  if (!vehicleId) return null;
-
-  const {data} = await supabase
-    .from('financial_cost_centers')
-    .select('id')
-    .eq('company_id', companyId)
-    .eq('vehicle_id', vehicleId)
-    .eq('center_type', 'vehicle')
-    .is('deleted_at', null)
-    .maybeSingle();
-
-  return data?.id ?? null;
-}
+import {
+  deleteFinancialEntriesFromOperation,
+  resolveOperationPaymentType,
+  upsertFinancialEntryFromOperation,
+} from './operation-financial.service';
 
 async function resolveTireIdForMaintenance(
   supabase: SupabaseClient,
@@ -58,16 +42,7 @@ export async function onLinkedFinancialEntryDeleted(
     tireId?: string;
   },
 ): Promise<void> {
-  const entries = await listFinancialEntriesByRelation(supabase, companyId, relation);
-
-  for (const entry of entries) {
-    if (entry.entryStatus === 'reversed') continue;
-    try {
-      await softDeleteFinancialEntry(supabase, companyId, entry.id, profileId);
-    } catch {
-      // Financial integration must not block source record deletion
-    }
-  }
+  await deleteFinancialEntriesFromOperation(supabase, companyId, profileId, relation);
 }
 
 export async function onFuelRecordCreated(
@@ -76,43 +51,29 @@ export async function onFuelRecordCreated(
   record: FuelRecord,
   profileId: string,
 ): Promise<void> {
-  const existing = await listFinancialEntriesByRelation(supabase, companyId, {
-    fuelRecordId: record.id,
-  });
-  if (existing.length > 0) return;
-
-  const category = await getCategoryBySlug(supabase, companyId, 'combustivel');
-  const costCenterId = await resolveVehicleCostCenter(supabase, companyId, record.vehicleId);
-
-  await createFinancialEntry(
+  const paymentType = resolveOperationPaymentType(record.paymentType);
+  await upsertFinancialEntryFromOperation(
     supabase,
     companyId,
     {
+      sourceModule: 'fuel',
+      sourceId: record.id,
+      paymentType,
+      amount: record.totalAmount,
+      entryDate: record.fueledAt.slice(0, 10),
+      dueDate: record.paymentDueDate,
+      description: `Abastecimento — ${record.stationName ?? record.vehiclePlate ?? record.id}`,
+      categorySlug: 'combustivel',
+      supplier: record.stationName,
       branchId: record.branchId,
       vehicleId: record.vehicleId,
       driverId: record.driverId,
       tripId: record.tripId,
-      categoryId: category?.id ?? null,
-      costCenterId,
-      entryType: 'expense',
-      entryStatus: 'paid',
-      description: `Abastecimento — ${record.stationName ?? record.vehiclePlate ?? record.id}`,
-      referenceNumber: null,
-      supplier: null,
-      client: null,
-      amount: record.totalAmount,
-      currency: 'BRL',
-      entryDate: record.fueledAt.slice(0, 10),
-      dueDate: null,
       notes: record.notes,
+      paidAt: record.fueledAt,
+      relations: {fuelRecordId: record.id},
     },
     profileId,
-    {
-      fuel_record_id: record.id,
-      source_module: 'fuel',
-      is_system_generated: true,
-      paid_at: record.fueledAt,
-    },
   );
 }
 
@@ -122,35 +83,7 @@ export async function onFuelRecordUpdated(
   record: FuelRecord,
   profileId: string,
 ): Promise<void> {
-  const existing = await listFinancialEntriesByRelation(supabase, companyId, {
-    fuelRecordId: record.id,
-  });
-
-  if (existing.length === 0) {
-    await onFuelRecordCreated(supabase, companyId, record, profileId);
-    return;
-  }
-
-  const entry = existing[0];
-  if (!entry.isSystemGenerated || entry.entryStatus === 'reversed') return;
-
-  const costCenterId = await resolveVehicleCostCenter(supabase, companyId, record.vehicleId);
-
-  await supabase
-    .from('financial_entries')
-    .update({
-      amount: record.totalAmount,
-      entry_date: record.fueledAt.slice(0, 10),
-      vehicle_id: record.vehicleId,
-      driver_id: record.driverId,
-      trip_id: record.tripId,
-      branch_id: record.branchId,
-      cost_center_id: costCenterId,
-      paid_at: record.fueledAt,
-      updated_by: profileId,
-    })
-    .eq('id', entry.id)
-    .eq('company_id', companyId);
+  await onFuelRecordCreated(supabase, companyId, record, profileId);
 }
 
 export async function onMaintenanceRecordCreated(
@@ -160,76 +93,41 @@ export async function onMaintenanceRecordCreated(
   profileId: string,
 ): Promise<void> {
   const amount = record.finalAmount ?? record.totalCost ?? record.estimatedAmount ?? 0;
-  const existing = await listFinancialEntriesByRelation(supabase, companyId, {
-    maintenanceRecordId: record.id,
-  });
+  if (amount <= 0) return;
 
-  const entryStatus = record.maintenanceStatus === 'completed' ? 'paid' : 'pending';
+  const paymentType = resolveOperationPaymentType(record.paymentType);
   const entryDate = (record.completedAt ?? record.openedAt).slice(0, 10);
   const tireId =
     record.maintenanceType === 'tires'
       ? await resolveTireIdForMaintenance(supabase, companyId, record.id)
       : null;
 
-  if (existing.length > 0) {
-    const entry = existing[0];
-    if (entry.entryStatus === 'reversed') return;
-    if (amount <= 0) return;
-
-    await supabase
-      .from('financial_entries')
-      .update({
-        amount,
-        entry_status: entryStatus,
-        entry_date: entryDate,
-        vehicle_id: record.vehicleId,
-        driver_id: record.driverId,
-        trip_id: record.tripId,
-        branch_id: record.branchId,
-        paid_at: record.completedAt,
-        tire_id: tireId ?? entry.tireId,
-        updated_by: profileId,
-      })
-      .eq('id', entry.id)
-      .eq('company_id', companyId);
-    return;
-  }
-
-  if (amount <= 0) return;
-
-  const category = await getCategoryBySlug(supabase, companyId, 'manutencao');
-  const costCenterId = await resolveVehicleCostCenter(supabase, companyId, record.vehicleId);
-
-  await createFinancialEntry(
+  await upsertFinancialEntryFromOperation(
     supabase,
     companyId,
     {
+      sourceModule: 'maintenance',
+      sourceId: record.id,
+      paymentType,
+      amount,
+      entryDate,
+      dueDate: record.paymentDueDate,
+      description: `Manutenção — ${record.description ?? record.vehiclePlate ?? record.id}`,
+      categorySlug: 'manutencao',
+      supplier: record.supplier,
       branchId: record.branchId,
       vehicleId: record.vehicleId,
       driverId: record.driverId,
       tripId: record.tripId,
-      categoryId: category?.id ?? null,
-      costCenterId,
-      entryType: 'expense',
-      entryStatus,
-      description: `Manutenção — ${record.description ?? record.vehiclePlate ?? record.id}`,
       referenceNumber: record.externalId,
-      supplier: record.supplier ?? null,
-      client: null,
-      amount,
-      currency: 'BRL',
-      entryDate,
-      dueDate: null,
       notes: record.notes,
+      paidAt: record.completedAt ?? record.openedAt,
+      relations: {
+        maintenanceRecordId: record.id,
+        tireId,
+      },
     },
     profileId,
-    {
-      maintenance_record_id: record.id,
-      tire_id: tireId,
-      source_module: 'maintenance',
-      is_system_generated: true,
-      paid_at: record.completedAt,
-    },
   );
 }
 
@@ -243,61 +141,35 @@ export async function onTireCostUpdated(
   const accumulatedCost = purchaseCost + (tire.totalRecapCost ?? 0);
   if (accumulatedCost <= 0) return;
 
-  const existing = await listFinancialEntriesByRelation(supabase, companyId, {
-    tireId: tire.id,
-  });
+  const paymentType = resolveOperationPaymentType(tire.paymentType);
 
-  const category = await getCategoryBySlug(supabase, companyId, 'pneus');
-  const costCenterId = await resolveVehicleCostCenter(supabase, companyId, tire.vehicleId);
-
-  if (existing.length === 0) {
-    await createFinancialEntry(
-      supabase,
-      companyId,
-      {
-        branchId: tire.branchId,
-        vehicleId: tire.vehicleId,
-        driverId: null,
-        tripId: null,
-        categoryId: category?.id ?? null,
-        costCenterId,
-        entryType: 'expense',
-        entryStatus: 'paid',
-        description: `Pneu — ${tire.brand ?? ''} ${tire.model ?? ''}`.trim(),
-        referenceNumber: tire.serialNumber,
-        supplier: tire.supplier ?? null,
-        client: null,
-        amount: accumulatedCost,
-        currency: 'BRL',
-        entryDate: tire.purchaseDate?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
-        dueDate: null,
-        notes: null,
-      },
-      profileId,
-      {
-        tire_id: tire.id,
-        maintenance_record_id: tire.maintenanceRecordId,
-        source_module: 'tires',
-        is_system_generated: true,
-        metadata: {accumulated_cost: accumulatedCost},
-      },
-    );
-    return;
-  }
-
-  const entry = existing[0];
-  if (entry.entryStatus === 'reversed') return;
-
-  await supabase
-    .from('financial_entries')
-    .update({
+  await upsertFinancialEntryFromOperation(
+    supabase,
+    companyId,
+    {
+      sourceModule: 'tires',
+      sourceId: tire.id,
+      paymentType,
       amount: accumulatedCost,
-      maintenance_record_id: tire.maintenanceRecordId,
-      metadata: {...(entry.metadata ?? {}), accumulated_cost: accumulatedCost},
-      updated_by: profileId,
-    })
-    .eq('id', entry.id)
-    .eq('company_id', companyId);
+      entryDate: tire.purchaseDate?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
+      dueDate: tire.paymentDueDate,
+      description: `Pneu — ${tire.brand ?? ''} ${tire.model ?? ''}`.trim() || `Pneu — ${tire.id}`,
+      categorySlug: 'pneus',
+      supplier: tire.supplier,
+      branchId: tire.branchId,
+      vehicleId: tire.vehicleId,
+      referenceNumber: tire.serialNumber,
+      paidAt: tire.purchaseDate
+        ? `${tire.purchaseDate.slice(0, 10)}T12:00:00.000Z`
+        : new Date().toISOString(),
+      relations: {
+        tireId: tire.id,
+        maintenanceRecordId: tire.maintenanceRecordId,
+      },
+      metadata: {accumulated_cost: accumulatedCost},
+    },
+    profileId,
+  );
 }
 
 export async function onTripCompleted(
@@ -323,9 +195,10 @@ export async function onTripCompleted(
 
   const metadataRevenue =
     typeof trip.metadata?.freight_value === 'number' ? trip.metadata.freight_value : 0;
-  const revenue = totalRevenue > 0
-    ? totalRevenue
-    : (trip.contractedFreightValue ?? trip.actualFreightValue ?? metadataRevenue);
+  const revenue =
+    totalRevenue > 0
+      ? totalRevenue
+      : (trip.contractedFreightValue ?? trip.actualFreightValue ?? metadataRevenue);
 
   const freightMargin =
     trip.contractedFreightValue !== null && trip.actualFreightValue !== null
@@ -380,6 +253,7 @@ export async function onTripCompleted(
       profileId,
       {
         source_module: 'trips',
+        source_id: trip.id,
         is_system_generated: true,
         paid_at: trip.arrivedAt,
         customer_id: trip.customerId,

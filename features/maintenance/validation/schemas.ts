@@ -1,5 +1,7 @@
 import {z} from 'zod';
 
+import {OPERATION_PAYMENT_TYPES} from '@/features/financial/constants/operation-financial';
+
 import {
   MAINTENANCE_DOCUMENT_TYPES,
   MAINTENANCE_PRIORITIES,
@@ -36,43 +38,55 @@ export const maintenanceTypeSchema = z.enum(MAINTENANCE_TYPES);
 export const maintenancePrioritySchema = z.enum(MAINTENANCE_PRIORITIES);
 export const maintenanceStatusSchema = z.enum(MAINTENANCE_STATUSES);
 
-const maintenanceBaseSchema = z.object({
-  vehicleId: z.string().uuid('Veículo inválido.'),
-  driverId: z
-    .string()
-    .uuid('Motorista inválido.')
-    .nullable()
-    .optional()
-    .transform((v) => v ?? null),
-  tripId: z
-    .string()
-    .uuid('Viagem inválida.')
-    .nullable()
-    .optional()
-    .transform((v) => v ?? null),
-  branchId: z
-    .string()
-    .uuid('Filial inválida.')
-    .nullable()
-    .optional()
-    .transform((v) => v ?? null),
-  maintenanceType: maintenanceTypeSchema,
-  priority: maintenancePrioritySchema.default('medium'),
-  maintenanceStatus: maintenanceStatusSchema.default('open'),
-  supplier: optionalString,
-  workshop: optionalString,
-  openedAt: z.string().trim().min(1, 'Informe a data de abertura.'),
-  completedAt: optionalString,
-  odometerKm: optionalNumber,
-  hourMeter: optionalNumber,
-  description: optionalString,
-  diagnosis: optionalString,
-  solution: optionalString,
-  notes: optionalString,
-  estimatedAmount: nonNegativeNumber,
-  finalAmount: nonNegativeNumber,
-  responsible: optionalString,
-});
+const maintenanceBaseSchema = z
+  .object({
+    vehicleId: z.string().uuid('Veículo inválido.'),
+    driverId: z
+      .string()
+      .uuid('Motorista inválido.')
+      .nullable()
+      .optional()
+      .transform((v) => v ?? null),
+    tripId: z
+      .string()
+      .uuid('Viagem inválida.')
+      .nullable()
+      .optional()
+      .transform((v) => v ?? null),
+    branchId: z
+      .string()
+      .uuid('Filial inválida.')
+      .nullable()
+      .optional()
+      .transform((v) => v ?? null),
+    maintenanceType: maintenanceTypeSchema,
+    priority: maintenancePrioritySchema.default('medium'),
+    maintenanceStatus: maintenanceStatusSchema.default('open'),
+    supplier: optionalString,
+    workshop: optionalString,
+    openedAt: z.string().trim().min(1, 'Informe a data de abertura.'),
+    completedAt: optionalString,
+    odometerKm: optionalNumber,
+    hourMeter: optionalNumber,
+    description: optionalString,
+    diagnosis: optionalString,
+    solution: optionalString,
+    notes: optionalString,
+    estimatedAmount: nonNegativeNumber,
+    finalAmount: nonNegativeNumber,
+    responsible: optionalString,
+    paymentType: z.enum(OPERATION_PAYMENT_TYPES).default('cash'),
+    paymentDueDate: optionalString,
+  })
+  .superRefine((data, ctx) => {
+    if (data.paymentType === 'credit' && !data.paymentDueDate) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['paymentDueDate'],
+        message: 'Informe o vencimento para pagamento a prazo.',
+      });
+    }
+  });
 
 export const createMaintenanceRecordSchema = maintenanceBaseSchema;
 export const updateMaintenanceRecordSchema = maintenanceBaseSchema;

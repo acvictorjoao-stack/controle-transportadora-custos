@@ -13,13 +13,6 @@ const optionalString = z
   .nullish()
   .transform((v) => (v?.length ? v.toUpperCase() : null));
 
-const optionalUuid = z
-  .string()
-  .uuid()
-  .nullable()
-  .optional()
-  .transform((v) => v ?? null);
-
 const requiredUuid = z.string().uuid('Selecione uma opção válida.');
 
 const requiredAmount = z
@@ -38,7 +31,7 @@ const requiredAmount = z
 const accountsReceivableBaseSchema = z.object({
   client: requiredString,
   categoryId: requiredUuid,
-  costCenterId: optionalUuid,
+  costCenterId: requiredUuid,
   description: requiredString,
   notes: optionalString,
   amount: requiredAmount,

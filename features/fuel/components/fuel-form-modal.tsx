@@ -14,6 +14,11 @@ import type {BranchSelectOption} from '@/features/organization/branches/types';
 import type {DriverSelectOption} from '@/features/drivers/types';
 import type {VehicleSelectOption} from '@/features/vehicles/types';
 
+import {
+  OPERATION_PAYMENT_TYPE_LABELS,
+  OPERATION_PAYMENT_TYPES,
+} from '@/features/financial/constants/operation-financial';
+
 import {createFuelRecordAction, updateFuelRecordAction} from '../actions';
 import {FUEL_TYPES} from '../constants/enums';
 import type {FuelRecord, FuelType} from '../types';
@@ -112,6 +117,8 @@ function FuelFormContent({
     odometerKm: record?.odometerKm ?? null,
     notes: record?.notes ?? null,
     responsible: record?.responsible ?? null,
+    paymentType: record?.paymentType ?? 'cash',
+    paymentDueDate: record?.paymentDueDate ?? null,
   }));
   const [fieldErrors, setFieldErrors] = React.useState<FieldErrors>({});
   const [formError, setFormError] = React.useState<string | null>(null);
@@ -313,6 +320,44 @@ function FuelFormContent({
             required
           />
         </FormField>
+        <FormField
+          label="Forma de pagamento"
+          htmlFor="fuel-payment-type"
+          error={fieldErrors.paymentType}
+        >
+          <select
+            id="fuel-payment-type"
+            value={formData.paymentType}
+            onChange={(e) => {
+              const value = e.target.value as (typeof OPERATION_PAYMENT_TYPES)[number];
+              updateField('paymentType', value);
+              if (value === 'cash') updateField('paymentDueDate', null);
+            }}
+            className={FUEL_NATIVE_SELECT_CLASS}
+          >
+            {OPERATION_PAYMENT_TYPES.map((type) => (
+              <option key={type} value={type}>
+                {OPERATION_PAYMENT_TYPE_LABELS[type]}
+              </option>
+            ))}
+          </select>
+        </FormField>
+        {formData.paymentType === 'credit' && (
+          <FormField
+            label="Vencimento"
+            htmlFor="fuel-payment-due"
+            error={fieldErrors.paymentDueDate}
+            required
+          >
+            <Input
+              id="fuel-payment-due"
+              type="date"
+              value={formData.paymentDueDate ?? ''}
+              onChange={(e) => updateField('paymentDueDate', e.target.value || null)}
+              required
+            />
+          </FormField>
+        )}
         <FormField label="Odômetro (km)" htmlFor="fuel-odometer" error={fieldErrors.odometerKm}>
           <Input
             id="fuel-odometer"

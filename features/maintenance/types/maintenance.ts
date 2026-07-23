@@ -45,6 +45,8 @@ export interface MaintenanceRecordRow {
   total_cost: number;
   cost_per_km: number | null;
   responsible: string | null;
+  payment_type: 'cash' | 'credit';
+  payment_due_date: string | null;
   external_id: string | null;
   integration_source: string | null;
   metadata: Record<string, unknown>;
@@ -93,6 +95,8 @@ export interface MaintenanceRecord {
   totalCost: number;
   costPerKm: number | null;
   responsible: string | null;
+  paymentType: 'cash' | 'credit';
+  paymentDueDate: string | null;
   externalId: string | null;
   integrationSource: string | null;
   metadata: Record<string, unknown>;

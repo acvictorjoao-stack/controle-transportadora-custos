@@ -10,6 +10,10 @@ import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {Textarea} from '@/components/ui/textarea';
 import {useToast} from '@/contexts/feedback/toast-context';
+import {
+  OPERATION_PAYMENT_TYPE_LABELS,
+  OPERATION_PAYMENT_TYPES,
+} from '@/features/financial/constants/operation-financial';
 import type {BranchSelectOption} from '@/features/organization/branches/types';
 import type {DriverSelectOption} from '@/features/drivers/types';
 import type {VehicleSelectOption} from '@/features/vehicles/types';
@@ -131,6 +135,8 @@ function MaintenanceFormContent({
     estimatedAmount: record?.estimatedAmount ?? null,
     finalAmount: record?.finalAmount ?? null,
     responsible: record?.responsible ?? null,
+    paymentType: record?.paymentType ?? 'cash',
+    paymentDueDate: record?.paymentDueDate ?? null,
   }));
 
   const [loading, setLoading] = React.useState(false);
@@ -359,6 +365,46 @@ function MaintenanceFormContent({
             onChange={(e) => updateField('finalAmount', e.target.value ? Number(e.target.value) : null)}
           />
         </FormField>
+
+        <FormField
+          label="Forma de pagamento"
+          htmlFor="maint-payment-type"
+          error={fieldErrors.paymentType}
+        >
+          <select
+            id="maint-payment-type"
+            value={formData.paymentType}
+            onChange={(e) => {
+              const value = e.target.value as (typeof OPERATION_PAYMENT_TYPES)[number];
+              updateField('paymentType', value);
+              if (value === 'cash') updateField('paymentDueDate', null);
+            }}
+            className={MAINTENANCE_NATIVE_SELECT_CLASS}
+          >
+            {OPERATION_PAYMENT_TYPES.map((type) => (
+              <option key={type} value={type}>
+                {OPERATION_PAYMENT_TYPE_LABELS[type]}
+              </option>
+            ))}
+          </select>
+        </FormField>
+
+        {formData.paymentType === 'credit' && (
+          <FormField
+            label="Vencimento"
+            htmlFor="maint-payment-due"
+            error={fieldErrors.paymentDueDate}
+            required
+          >
+            <Input
+              id="maint-payment-due"
+              type="date"
+              value={formData.paymentDueDate ?? ''}
+              onChange={(e) => updateField('paymentDueDate', e.target.value || null)}
+              required
+            />
+          </FormField>
+        )}
 
         <FormField label="Responsável" htmlFor="maint-responsible" error={fieldErrors.responsible}>
           <Input

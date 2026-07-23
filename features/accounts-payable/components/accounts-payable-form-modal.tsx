@@ -62,7 +62,7 @@ function AccountsPayableFormModal({
       description={
         isEdit
           ? 'Atualize os dados da obrigação financeira'
-          : 'Cadastre uma nova obrigação financeira'
+          : 'Cadastre uma despesa administrativa sem módulo operacional próprio'
       }
       size="xl"
     >
@@ -97,7 +97,7 @@ function AccountsPayableFormContent({
   const [formData, setFormData] = React.useState(() => ({
     supplier: entry?.supplier ?? '',
     categoryId: entry?.categoryId ?? '',
-    costCenterId: entry?.costCenterId ?? null,
+    costCenterId: entry?.costCenterId ?? '',
     description: entry?.description ?? '',
     notes: entry?.notes ?? null,
     amount: entry?.amount ?? 0,
@@ -195,7 +195,19 @@ function AccountsPayableFormContent({
               required
             >
               <option value="">Selecione</option>
-              {categories.map((category) => (
+              {categories
+                .filter((category) => {
+                  const slug = category.slug;
+                  if (!slug) return true;
+                  return ![
+                    'combustivel',
+                    'manutencao',
+                    'pneus',
+                    'multas',
+                    'pedagio',
+                  ].includes(slug);
+                })
+                .map((category) => (
                 <option key={category.id} value={category.id}>
                   {category.name}
                 </option>
@@ -206,17 +218,19 @@ function AccountsPayableFormContent({
             label="Centro de custo"
             htmlFor="ap-cost-center"
             error={fieldErrors.costCenterId}
+            required
           >
             <select
               id="ap-cost-center"
               value={formData.costCenterId ?? ''}
-              onChange={(e) => updateField('costCenterId', e.target.value || null)}
+              onChange={(e) => updateField('costCenterId', e.target.value)}
               className={financialInputClassName}
+              required
             >
-              <option value="">Sem centro de custo</option>
+              <option value="">Selecione</option>
               {costCenters.map((center) => (
                 <option key={center.id} value={center.id}>
-                  {center.name}
+                  {center.code ? `${center.code} — ${center.name}` : center.name}
                 </option>
               ))}
             </select>

@@ -31,7 +31,7 @@ function OperationalDreFiltersBar({
   }, [filters, router]);
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
       <select
         value={filters.branchId ?? ''}
         onChange={(e) =>
@@ -83,7 +83,26 @@ function OperationalDreFiltersBar({
         ))}
       </select>
 
-      <div className="grid grid-cols-2 gap-2">
+      <select
+        value={filters.costCenterId ?? ''}
+        onChange={(e) =>
+          setFilters((prev) => ({
+            ...prev,
+            costCenterId: e.target.value || undefined,
+          }))
+        }
+        className={VEHICLE_NATIVE_SELECT_CLASS}
+        aria-label="Centro de Custo"
+      >
+        <option value="">Todos os centros</option>
+        {options.costCenters.map((center) => (
+          <option key={center.id} value={center.id}>
+            {center.code} — {center.name}
+          </option>
+        ))}
+      </select>
+
+      <div className="grid grid-cols-2 gap-2 xl:col-span-2">
         <input
           type="date"
           value={filters.dateFrom ?? ''}

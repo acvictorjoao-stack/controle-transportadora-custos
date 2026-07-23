@@ -1,5 +1,6 @@
 import type {SupabaseClient} from '@supabase/supabase-js';
 
+import {listCostCentersForSelect} from '@/features/cost-centers/queries';
 import {listCustomersForSelect} from '@/features/customers/queries';
 import {listBranchesForSelect} from '@/features/organization/branches/queries';
 import {listRoutesForSelect} from '@/features/routes/queries';
@@ -37,10 +38,11 @@ export async function getOperationalDreFilterOptions(
   supabase: SupabaseClient,
   companyId: string,
 ): Promise<OperationalDreFilterOptions> {
-  const [branches, customers, routes] = await Promise.all([
+  const [branches, customers, routes, costCenters] = await Promise.all([
     listBranchesForSelect(supabase, companyId),
     listCustomersForSelect(supabase, companyId),
     listRoutesForSelect(supabase, companyId),
+    listCostCentersForSelect(supabase, companyId),
   ]);
 
   return {
@@ -57,6 +59,11 @@ export async function getOperationalDreFilterOptions(
       id: route.id,
       name: route.name,
       code: route.code,
+    })),
+    costCenters: costCenters.map((center) => ({
+      id: center.id,
+      name: center.name,
+      code: center.code,
     })),
   };
 }

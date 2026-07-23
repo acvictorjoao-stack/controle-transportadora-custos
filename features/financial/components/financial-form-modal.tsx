@@ -281,7 +281,7 @@ function FinancialFormContent({
             <option value="">Sem centro de custo</option>
             {costCenters.map((center) => (
               <option key={center.id} value={center.id}>
-                {center.name}
+                {center.code ? `${center.code} — ${center.name}` : center.name}
               </option>
             ))}
           </select>

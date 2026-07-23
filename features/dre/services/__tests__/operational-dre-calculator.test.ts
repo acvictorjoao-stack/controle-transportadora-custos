@@ -2,6 +2,7 @@ import {describe, expect, it} from 'vitest';
 
 import {
   aggregateCosts,
+  aggregateCostsByCostCenter,
   buildIndicators,
   calculateOperationalDre,
   categorizeExpense,
@@ -41,6 +42,9 @@ function makeExpense(
     fuelRecordId: null,
     maintenanceRecordId: null,
     tireId: null,
+    costCenterId: null,
+    costCenterCode: null,
+    costCenterName: null,
     ...overrides,
   };
 }
@@ -243,5 +247,53 @@ describe('calculateOperationalDre', () => {
     );
 
     expect(dre.costs.other).toBe(30);
+  });
+});
+
+describe('aggregateCostsByCostCenter', () => {
+  it('builds ranking with participation percent', () => {
+    const breakdown = aggregateCostsByCostCenter([
+      makeExpense({
+        id: '1',
+        amount: 720,
+        costCenterId: 'cc-op',
+        costCenterCode: 'OPERACIONAL',
+        costCenterName: 'Operacional',
+      }),
+      makeExpense({
+        id: '2',
+        amount: 140,
+        costCenterId: 'cc-adm',
+        costCenterCode: 'ADMINISTRATIVO',
+        costCenterName: 'Administrativo',
+      }),
+      makeExpense({
+        id: '3',
+        amount: 80,
+        costCenterId: 'cc-com',
+        costCenterCode: 'COMERCIAL',
+        costCenterName: 'Comercial',
+      }),
+      makeExpense({
+        id: '4',
+        amount: 40,
+        costCenterId: 'cc-rh',
+        costCenterCode: 'RH',
+        costCenterName: 'RH',
+      }),
+      makeExpense({
+        id: '5',
+        amount: 20,
+        costCenterId: 'cc-ti',
+        costCenterCode: 'TI',
+        costCenterName: 'TI',
+      }),
+    ]);
+
+    expect(breakdown.total).toBe(1000);
+    expect(breakdown.byCode.OPERACIONAL).toBe(720);
+    expect(breakdown.ranking[0]?.code).toBe('OPERACIONAL');
+    expect(breakdown.ranking[0]?.percent).toBe(72);
+    expect(breakdown.ranking.find((row) => row.code === 'TI')?.percent).toBe(2);
   });
 });

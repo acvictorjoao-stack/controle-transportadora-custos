@@ -45,6 +45,7 @@ const EMPTY_DRE: OperationalDreData = {
     vehiclesUsed: 0,
   },
   analyticalTable: [],
+  costCenterBreakdown: {byCode: {}, ranking: [], total: 0},
   filters: {},
 };
 
@@ -52,6 +53,7 @@ const EMPTY_FILTER_OPTIONS: OperationalDreFilterOptions = {
   branches: [],
   customers: [],
   routes: [],
+  costCenters: [],
 };
 
 interface DashboardPageProps {
@@ -59,6 +61,7 @@ interface DashboardPageProps {
     empresa?: string;
     cliente?: string;
     rota?: string;
+    centro?: string;
     de?: string;
     ate?: string;
   }>;

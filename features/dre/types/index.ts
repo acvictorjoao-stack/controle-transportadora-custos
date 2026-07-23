@@ -2,6 +2,8 @@ export type {
   OperationalDreAnalyticalCategory,
   OperationalDreAnalyticalRow,
   OperationalDreCostBucket,
+  OperationalDreCostCenterBreakdown,
+  OperationalDreCostCenterRow,
   OperationalDreCosts,
   OperationalDreData,
   OperationalDreExpenseRow,

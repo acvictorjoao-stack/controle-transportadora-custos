@@ -62,6 +62,8 @@ export function mapMaintenanceRecordRow(row: MaintenanceRecordRow): MaintenanceR
     totalCost: Number(row.total_cost),
     costPerKm: row.cost_per_km !== null ? Number(row.cost_per_km) : null,
     responsible: row.responsible,
+    paymentType: row.payment_type === 'credit' ? 'credit' : 'cash',
+    paymentDueDate: row.payment_due_date ?? null,
     externalId: row.external_id ?? null,
     integrationSource: row.integration_source ?? null,
     metadata: row.metadata ?? {},

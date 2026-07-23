@@ -8,6 +8,7 @@ export function buildOperationalDreUrl(filters: OperationalDreFilters = {}): str
   if (filters.branchId) params.set('empresa', filters.branchId);
   if (filters.customerId) params.set('cliente', filters.customerId);
   if (filters.routeId) params.set('rota', filters.routeId);
+  if (filters.costCenterId) params.set('centro', filters.costCenterId);
   if (filters.dateFrom) params.set('de', filters.dateFrom);
   if (filters.dateTo) params.set('ate', filters.dateTo);
 
@@ -19,6 +20,7 @@ export function parseOperationalDreFilters(params: {
   empresa?: string;
   cliente?: string;
   rota?: string;
+  centro?: string;
   de?: string;
   ate?: string;
 }): OperationalDreFilters {
@@ -26,6 +28,7 @@ export function parseOperationalDreFilters(params: {
     branchId: params.empresa || undefined,
     customerId: params.cliente || undefined,
     routeId: params.rota || undefined,
+    costCenterId: params.centro || undefined,
     dateFrom: params.de || undefined,
     dateTo: params.ate || undefined,
   };

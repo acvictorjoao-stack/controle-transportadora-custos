@@ -1,6 +1,6 @@
 'use client';
 
-import {ArrowLeft, Ban, CheckCircle2, Pencil} from 'lucide-react';
+import {ArrowLeft, Ban, CheckCircle2, ExternalLink, Pencil} from 'lucide-react';
 import Link from 'next/link';
 import {useRouter} from 'next/navigation';
 import * as React from 'react';
@@ -33,6 +33,11 @@ import type {
   AccountsPayableEntry,
   AccountsPayableHistory,
 } from '../types';
+import {
+  formatAccountsPayableOrigin,
+  getAccountsPayableOriginHref,
+  isManualAccountsPayableEntry,
+} from '../utils/origin';
 import {AccountsPayableFormModal} from './accounts-payable-form-modal';
 import {AccountsPayablePayModal} from './accounts-payable-pay-modal';
 
@@ -118,10 +123,15 @@ function AccountsPayableDetailView({
   const generalRows = [
     ['Fornecedor', entry.supplier ?? '—'],
     ['Categoria', entry.categoryName ?? '—'],
+    ['Origem', formatAccountsPayableOrigin(entry)],
     ['Centro de custo', entry.costCenterName ?? '—'],
+    ['Documento', entry.referenceNumber ?? '—'],
     ['Descrição', entry.description ?? '—'],
     ['Observações', entry.notes ?? '—'],
   ];
+
+  const originHref = getAccountsPayableOriginHref(entry);
+  const canEdit = isManualAccountsPayableEntry(entry);
 
   const financialRows = [
     ['Valor', formatCurrencyBr(entry.amount, entry.currency)],
@@ -172,10 +182,21 @@ function AccountsPayableDetailView({
           </Link>
           {isOpenStatus(entry.entryStatus) && (
             <>
-              <Button size="sm" variant="outline" onClick={() => setModalOpen(true)}>
-                <Pencil className="size-4" />
-                Editar
-              </Button>
+              {canEdit && (
+                <Button size="sm" variant="outline" onClick={() => setModalOpen(true)}>
+                  <Pencil className="size-4" />
+                  Editar
+                </Button>
+              )}
+              {originHref && (
+                <Link
+                  href={originHref}
+                  className="inline-flex h-8 items-center gap-2 rounded-md border border-border bg-background px-3 text-xs font-medium shadow-xs hover:bg-accent"
+                >
+                  <ExternalLink className="size-4" />
+                  Abrir origem
+                </Link>
+              )}
               <Button size="sm" onClick={() => setPayModalOpen(true)}>
                 <CheckCircle2 className="size-4" />
                 Marcar como pago
@@ -185,6 +206,15 @@ function AccountsPayableDetailView({
                 Cancelar
               </Button>
             </>
+          )}
+          {!isOpenStatus(entry.entryStatus) && originHref && (
+            <Link
+              href={originHref}
+              className="inline-flex h-8 items-center gap-2 rounded-md border border-border bg-background px-3 text-xs font-medium shadow-xs hover:bg-accent"
+            >
+              <ExternalLink className="size-4" />
+              Abrir origem
+            </Link>
           )}
         </div>
       }

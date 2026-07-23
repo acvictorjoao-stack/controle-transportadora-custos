@@ -11,6 +11,7 @@ import {
 
 import type {
   OperationalDreAnalyticalRow,
+  OperationalDreCostCenterRow,
   OperationalDreData,
   OperationalDreFilterOptions,
   OperationalDreFilters,
@@ -57,7 +58,24 @@ function OperationalDreView({
   initialFilters,
   error = null,
 }: OperationalDreViewProps) {
-  const {revenues, costs, result, indicators, analyticalTable} = data;
+  const {revenues, costs, result, indicators, analyticalTable, costCenterBreakdown} =
+    data;
+
+  const displayCenters = [
+    'OPERACIONAL',
+    'ADMINISTRATIVO',
+    'COMERCIAL',
+    'RH',
+    'TI',
+  ].map((code) => {
+    const row = costCenterBreakdown.ranking.find((item) => item.code === code);
+    return {
+      code,
+      name: row?.name ?? code,
+      value: row?.value ?? costCenterBreakdown.byCode[code] ?? 0,
+      percent: row?.percent ?? null,
+    };
+  });
 
   const analyticalColumns = [
     {
@@ -223,6 +241,79 @@ function OperationalDreView({
               value={formatCount(indicators.vehiclesUsed)}
             />
           </div>
+        </div>
+
+        <div>
+          <h3 className="mb-3 text-sm font-medium text-muted-foreground">
+            Custos por Centro
+          </h3>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+            {displayCenters.map((center) => (
+              <StatCard
+                key={center.code}
+                title={center.name}
+                value={
+                  <span className="flex flex-col gap-0.5">
+                    <span>{formatMoney(center.value)}</span>
+                    <span className="text-xs font-normal text-muted-foreground">
+                      {center.percent === null
+                        ? '—'
+                        : formatPercent(center.percent)}
+                    </span>
+                  </span>
+                }
+              />
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <h3 className="mb-3 text-sm font-medium text-muted-foreground">
+            Ranking — Centros de Custo
+          </h3>
+          <TableContainer>
+            <DataTable
+              columns={[
+                {
+                  id: 'center',
+                  header: 'Centro',
+                  cell: (row: OperationalDreCostCenterRow) =>
+                    `${row.code} — ${row.name}`,
+                },
+                {
+                  id: 'value',
+                  header: 'Valor',
+                  cell: (row: OperationalDreCostCenterRow) => formatMoney(row.value),
+                },
+                {
+                  id: 'percent',
+                  header: '%',
+                  cell: (row: OperationalDreCostCenterRow) =>
+                    row.percent === null ? '—' : formatPercent(row.percent),
+                },
+                {
+                  id: 'share',
+                  header: 'Participação',
+                  cell: (row: OperationalDreCostCenterRow) => (
+                    <div className="flex min-w-[8rem] items-center gap-2">
+                      <div className="h-2 flex-1 overflow-hidden rounded bg-muted">
+                        <div
+                          className="h-full bg-primary/80"
+                          style={{
+                            width: `${Math.min(100, Math.max(0, row.percent ?? 0))}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ),
+                },
+              ]}
+              data={costCenterBreakdown.ranking}
+              getRowKey={(row) => row.costCenterId ?? row.code}
+              emptyTitle="Sem custos por centro"
+              emptyDescription="Lançamentos com centro de custo aparecerão aqui."
+            />
+          </TableContainer>
         </div>
 
         <div>

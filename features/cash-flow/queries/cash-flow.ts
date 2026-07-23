@@ -108,6 +108,7 @@ function toAggregateEntry(row: AggregateRow): FinancialEntry {
     paidAmount: row.paid_amount != null ? Number(row.paid_amount) : null,
     reversedEntryId: null,
     sourceModule: row.source_module,
+    sourceId: null,
     isSystemGenerated: false,
     notes: null,
     externalId: null,

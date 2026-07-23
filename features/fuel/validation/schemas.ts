@@ -1,5 +1,7 @@
 import {z} from 'zod';
 
+import {OPERATION_PAYMENT_TYPES} from '@/features/financial/constants/operation-financial';
+
 import {FUEL_DOCUMENT_TYPES, FUEL_TYPES} from '../constants/enums';
 
 // Campos opcionais aceitam null (formulários enviam null para vazio).
@@ -37,28 +39,40 @@ const nonNegativeNumber = z
 
 export const fuelTypeSchema = z.enum(FUEL_TYPES);
 
-const fuelBaseSchema = z.object({
-  vehicleId: z.string().uuid('Veículo inválido.'),
-  driverId: z.string().uuid('Motorista inválido.'),
-  branchId: z
-    .string()
-    .uuid('Filial inválida.')
-    .nullable()
-    .optional()
-    .transform((v) => v ?? null),
-  stationName: optionalString,
-  stationBrand: optionalString,
-  city: optionalString,
-  state: optionalString,
-  fueledAt: z.string().trim().min(1, 'Informe a data do abastecimento.'),
-  fuelType: fuelTypeSchema,
-  quantityLiters: requiredPositiveNumber,
-  pricePerLiter: nonNegativeNumber.refine((v) => v !== null, 'Informe o valor por litro.'),
-  totalAmount: nonNegativeNumber.refine((v) => v !== null, 'Informe o valor total.'),
-  odometerKm: optionalNumber,
-  notes: optionalString,
-  responsible: optionalString,
-});
+const fuelBaseSchema = z
+  .object({
+    vehicleId: z.string().uuid('Veículo inválido.'),
+    driverId: z.string().uuid('Motorista inválido.'),
+    branchId: z
+      .string()
+      .uuid('Filial inválida.')
+      .nullable()
+      .optional()
+      .transform((v) => v ?? null),
+    stationName: optionalString,
+    stationBrand: optionalString,
+    city: optionalString,
+    state: optionalString,
+    fueledAt: z.string().trim().min(1, 'Informe a data do abastecimento.'),
+    fuelType: fuelTypeSchema,
+    quantityLiters: requiredPositiveNumber,
+    pricePerLiter: nonNegativeNumber.refine((v) => v !== null, 'Informe o valor por litro.'),
+    totalAmount: nonNegativeNumber.refine((v) => v !== null, 'Informe o valor total.'),
+    odometerKm: optionalNumber,
+    notes: optionalString,
+    responsible: optionalString,
+    paymentType: z.enum(OPERATION_PAYMENT_TYPES).default('cash'),
+    paymentDueDate: optionalString,
+  })
+  .superRefine((data, ctx) => {
+    if (data.paymentType === 'credit' && !data.paymentDueDate) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['paymentDueDate'],
+        message: 'Informe o vencimento para pagamento a prazo.',
+      });
+    }
+  });
 
 export const createFuelRecordSchema = fuelBaseSchema;
 

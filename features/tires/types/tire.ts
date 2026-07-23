@@ -45,6 +45,8 @@ export interface TireRow {
   remaining_life_km: number | null;
   cost_per_km: number | null;
   last_tread_depth_mm: number | null;
+  payment_type: 'cash' | 'credit';
+  payment_due_date: string | null;
   external_id: string | null;
   integration_source: string | null;
   metadata: Record<string, unknown>;
@@ -91,6 +93,8 @@ export interface Tire {
   remainingLifeKm: number | null;
   costPerKm: number | null;
   lastTreadDepthMm: number | null;
+  paymentType: 'cash' | 'credit';
+  paymentDueDate: string | null;
   externalId: string | null;
   integrationSource: string | null;
   metadata: Record<string, unknown>;

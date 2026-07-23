@@ -126,24 +126,16 @@ async function fetchFinancialCostCenters(
   supabase: SupabaseClient,
   companyId: string,
 ): Promise<FinancialCostCenter[]> {
-  const {data, error} = await supabase
-    .from('financial_cost_centers')
-    .select('id, company_id, name, center_type, is_system')
-    .eq('company_id', companyId)
-    .is('deleted_at', null)
-    .eq('status', 'active')
-    .order('name');
-
-  if (error) {
-    throw new Error(mapDatabaseError(error));
-  }
-
-  return (data ?? []).map((row) => ({
+  const {listCostCentersForSelect} = await import(
+    '@/features/cost-centers/queries'
+  );
+  const centers = await listCostCentersForSelect(supabase, companyId);
+  return centers.map((row) => ({
     id: row.id,
-    companyId: row.company_id,
+    companyId,
     name: row.name,
-    centerType: row.center_type,
-    isSystem: row.is_system,
+    code: row.code,
+    isSystem: false,
   }));
 }
 
@@ -251,6 +243,9 @@ export async function listFinancialEntries(
     query = query.in('source_module', filters.sourceModules);
   } else if (filters.sourceModule) {
     query = query.eq('source_module', filters.sourceModule);
+  }
+  if (filters.hasDueDate) {
+    query = query.not('due_date', 'is', null);
   }
   if (filters.supplier) query = query.ilike('supplier', `%${sanitizeSearchTerm(filters.supplier)}%`);
   if (filters.client) query = query.ilike('client', `%${sanitizeSearchTerm(filters.client)}%`);
@@ -509,6 +504,7 @@ export async function reverseFinancialEntry(
     {
       reversed_entry_id: entryId,
       source_module: original.sourceModule,
+      source_id: original.sourceId,
       fuel_record_id: original.fuelRecordId,
       maintenance_record_id: original.maintenanceRecordId,
       tire_id: original.tireId,

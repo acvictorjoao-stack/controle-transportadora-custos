@@ -1,6 +1,6 @@
 'use client';
 
-import {Ban, CheckCircle2, Eye, Pencil, Plus, Trash2} from 'lucide-react';
+import {Ban, CheckCircle2, Eye, ExternalLink, Pencil, Plus, Trash2} from 'lucide-react';
 import Link from 'next/link';
 import {useRouter} from 'next/navigation';
 import * as React from 'react';
@@ -36,6 +36,11 @@ import type {
   PaginatedAccountsPayable,
 } from '../types';
 import {buildAccountsPayableListUrl} from '../utils/list-url';
+import {
+  formatAccountsPayableOrigin,
+  getAccountsPayableOriginHref,
+  isManualAccountsPayableEntry,
+} from '../utils/origin';
 import {AccountsPayableFilters} from './accounts-payable-filters';
 import {AccountsPayableFormModal} from './accounts-payable-form-modal';
 import {AccountsPayablePayModal} from './accounts-payable-pay-modal';
@@ -47,6 +52,7 @@ export interface AccountsPayableListProps {
   initialSort: AccountsPayableSortOptions;
   categories: AccountsPayableCategory[];
   costCenters: AccountsPayableCostCenter[];
+  companyName?: string | null;
   error: string | null;
 }
 
@@ -87,6 +93,7 @@ function AccountsPayableList({
   initialSort,
   categories,
   costCenters,
+  companyName,
   error: initialError,
 }: AccountsPayableListProps) {
   const router = useRouter();
@@ -135,6 +142,10 @@ function AccountsPayableList({
   }
 
   function openEdit(entry: AccountsPayableEntry) {
+    if (!isManualAccountsPayableEntry(entry)) {
+      toast.error('Altere esta conta no módulo de origem.');
+      return;
+    }
     setEditingEntry(entry);
     setModalOpen(true);
   }
@@ -213,16 +224,14 @@ function AccountsPayableList({
       cell: (row: AccountsPayableEntry) => row.categoryName ?? '—',
     },
     {
-      id: 'description',
-      header: 'Descrição',
-      cell: (row: AccountsPayableEntry) => (
-        <Link
-          href={ROUTES.contasAPagarDetail(row.id)}
-          className="text-sm font-medium hover:underline"
-        >
-          {row.description ?? '—'}
-        </Link>
-      ),
+      id: 'origin',
+      header: 'Origem',
+      cell: (row: AccountsPayableEntry) => formatAccountsPayableOrigin(row),
+    },
+    {
+      id: 'document',
+      header: 'Documento',
+      cell: (row: AccountsPayableEntry) => row.referenceNumber ?? '—',
     },
     {
       id: 'amount',
@@ -239,57 +248,80 @@ function AccountsPayableList({
       ),
     },
     {
+      id: 'company',
+      header: 'Empresa',
+      cell: () => companyName ?? '—',
+    },
+    {
       id: 'actions',
       header: '',
       className: 'w-12',
-      cell: (row: AccountsPayableEntry) => (
-        <RowActionsMenu
-          open={openMenuId === row.id}
-          onOpenChange={(open) => setOpenMenuId(open ? row.id : null)}
-          disabled={actionLoading === row.id}
-        >
-          <Link
-            href={ROUTES.contasAPagarDetail(row.id)}
-            className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
-            onClick={() => setOpenMenuId(null)}
+      cell: (row: AccountsPayableEntry) => {
+        const originHref = getAccountsPayableOriginHref(row);
+        const canEdit = isManualAccountsPayableEntry(row);
+
+        return (
+          <RowActionsMenu
+            open={openMenuId === row.id}
+            onOpenChange={(open) => setOpenMenuId(open ? row.id : null)}
+            disabled={actionLoading === row.id}
           >
-            <Eye className="size-4" /> Visualizar
-          </Link>
-          {isOpenStatus(row.entryStatus) && (
-            <>
-              <RowActionsMenuItem
-                onClick={() => {
-                  openEdit(row);
-                  setOpenMenuId(null);
-                }}
+            <Link
+              href={ROUTES.contasAPagarDetail(row.id)}
+              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
+              onClick={() => setOpenMenuId(null)}
+            >
+              <Eye className="size-4" /> Visualizar
+            </Link>
+            {originHref && (
+              <Link
+                href={originHref}
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent"
+                onClick={() => setOpenMenuId(null)}
               >
-                <Pencil className="size-4" /> Editar
+                <ExternalLink className="size-4" /> Abrir origem
+              </Link>
+            )}
+            {isOpenStatus(row.entryStatus) && (
+              <>
+                {canEdit && (
+                  <RowActionsMenuItem
+                    onClick={() => {
+                      openEdit(row);
+                      setOpenMenuId(null);
+                    }}
+                  >
+                    <Pencil className="size-4" /> Editar
+                  </RowActionsMenuItem>
+                )}
+                <RowActionsMenuItem
+                  onClick={() => {
+                    openPay(row);
+                    setOpenMenuId(null);
+                  }}
+                >
+                  <CheckCircle2 className="size-4" /> Marcar como pago
+                </RowActionsMenuItem>
+                <RowActionsMenuItem destructive onClick={() => handleCancel(row)}>
+                  <Ban className="size-4" /> Cancelar
+                </RowActionsMenuItem>
+              </>
+            )}
+            {canEdit && (
+              <RowActionsMenuItem destructive onClick={() => handleDelete(row)}>
+                <Trash2 className="size-4" /> Excluir
               </RowActionsMenuItem>
-              <RowActionsMenuItem
-                onClick={() => {
-                  openPay(row);
-                  setOpenMenuId(null);
-                }}
-              >
-                <CheckCircle2 className="size-4" /> Marcar como pago
-              </RowActionsMenuItem>
-              <RowActionsMenuItem destructive onClick={() => handleCancel(row)}>
-                <Ban className="size-4" /> Cancelar
-              </RowActionsMenuItem>
-            </>
-          )}
-          <RowActionsMenuItem destructive onClick={() => handleDelete(row)}>
-            <Trash2 className="size-4" /> Excluir
-          </RowActionsMenuItem>
-        </RowActionsMenu>
-      ),
+            )}
+          </RowActionsMenu>
+        );
+      },
     },
   ];
 
   return (
     <PageTemplate
       title="Contas a Pagar"
-      description="Controle das obrigações financeiras da empresa"
+      description="Gerencie obrigações financeiras — incluindo lançamentos gerados pelos módulos operacionais"
       actions={
         <Button size="sm" onClick={openCreate}>
           <Plus className="size-4" />
@@ -324,7 +356,7 @@ function AccountsPayableList({
           data={data.items}
           getRowKey={(row) => row.id}
           emptyTitle="Nenhuma conta a pagar encontrada"
-          emptyDescription="Cadastre a primeira conta a pagar."
+          emptyDescription="Cadastre despesas administrativas ou registre custos a prazo nos módulos operacionais."
           emptyAction={{label: 'Nova conta', onClick: openCreate}}
         />
       </TableContainer>

@@ -56,6 +56,8 @@ export function mapFuelRecordRow(row: FuelRecordRow): FuelRecord {
     responsible: row.responsible,
     isInconsistent: row.is_inconsistent,
     inconsistencyFlags: row.inconsistency_flags ?? [],
+    paymentType: row.payment_type === 'credit' ? 'credit' : 'cash',
+    paymentDueDate: row.payment_due_date ?? null,
     externalId: row.external_id ?? null,
     integrationSource: row.integration_source ?? null,
     metadata: row.metadata ?? {},

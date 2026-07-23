@@ -12,8 +12,9 @@ const DRE_TRIP_COLUMNS = `
 
 const DRE_EXPENSE_COLUMNS = `
   id, amount, branch_id, customer_id, trip_id, source_module,
-  fuel_record_id, maintenance_record_id, tire_id,
-  financial_categories:category_id (slug)
+  fuel_record_id, maintenance_record_id, tire_id, cost_center_id,
+  financial_categories:category_id (slug),
+  cost_centers:cost_center_id (id, code, name)
 `;
 
 function asNumber(value: unknown): number {
@@ -50,9 +51,14 @@ type ExpenseRawRow = {
   fuel_record_id: string | null;
   maintenance_record_id: string | null;
   tire_id: string | null;
+  cost_center_id: string | null;
   financial_categories:
     | {slug: string | null}
     | {slug: string | null}[]
+    | null;
+  cost_centers:
+    | {id: string; code: string; name: string}
+    | {id: string; code: string; name: string}[]
     | null;
 };
 
@@ -64,7 +70,16 @@ function mapCategorySlug(
   return value.slug ?? null;
 }
 
+function mapCostCenter(
+  value: ExpenseRawRow['cost_centers'],
+): {id: string; code: string; name: string} | null {
+  if (!value) return null;
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value;
+}
+
 function mapExpenseRow(row: ExpenseRawRow): OperationalDreExpenseRow {
+  const costCenter = mapCostCenter(row.cost_centers);
   return {
     id: row.id,
     amount: asNumber(row.amount),
@@ -76,6 +91,9 @@ function mapExpenseRow(row: ExpenseRawRow): OperationalDreExpenseRow {
     fuelRecordId: row.fuel_record_id,
     maintenanceRecordId: row.maintenance_record_id,
     tireId: row.tire_id,
+    costCenterId: row.cost_center_id ?? costCenter?.id ?? null,
+    costCenterCode: costCenter?.code ?? null,
+    costCenterName: costCenter?.name ?? null,
   };
 }
 
@@ -169,6 +187,7 @@ export async function fetchOperationalDreExpenses(
     .not('entry_status', 'in', '(cancelled,reversed)');
 
   if (filters.branchId) query = query.eq('branch_id', filters.branchId);
+  if (filters.costCenterId) query = query.eq('cost_center_id', filters.costCenterId);
   if (filters.dateFrom) query = query.gte('entry_date', filters.dateFrom);
   if (filters.dateTo) query = query.lte('entry_date', filters.dateTo);
 

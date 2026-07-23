@@ -92,6 +92,8 @@ function buildMaintenancePayload(
     final_amount: input.finalAmount ?? metrics.totalCost,
     cost_per_km: metrics.costPerKm,
     responsible: input.responsible,
+    payment_type: input.paymentType ?? 'cash',
+    payment_due_date: input.paymentType === 'credit' ? input.paymentDueDate : null,
     updated_by: profileId,
   };
 

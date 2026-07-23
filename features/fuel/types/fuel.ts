@@ -40,6 +40,8 @@ export interface FuelRecordRow {
   responsible: string | null;
   is_inconsistent: boolean;
   inconsistency_flags: FuelInconsistencyFlag[];
+  payment_type: 'cash' | 'credit';
+  payment_due_date: string | null;
   external_id: string | null;
   integration_source: string | null;
   metadata: Record<string, unknown>;
@@ -87,6 +89,8 @@ export interface FuelRecord {
   responsible: string | null;
   isInconsistent: boolean;
   inconsistencyFlags: FuelInconsistencyFlag[];
+  paymentType: 'cash' | 'credit';
+  paymentDueDate: string | null;
   externalId: string | null;
   integrationSource: string | null;
   metadata: Record<string, unknown>;

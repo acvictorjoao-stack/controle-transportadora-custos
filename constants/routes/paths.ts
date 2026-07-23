@@ -15,6 +15,7 @@ export const ROUTES = {
   clientes: '/clientes',
   clienteDetail: (id: string) => `/clientes/${id}`,
   contratos: '/contratos',
+  centrosDeCusto: '/centros-de-custo',
 
   // Operações
   veiculos: '/veiculos',

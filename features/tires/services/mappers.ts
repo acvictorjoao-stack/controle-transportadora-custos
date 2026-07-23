@@ -58,6 +58,8 @@ export function mapTireRow(row: TireRow): Tire {
     remainingLifeKm: row.remaining_life_km !== null ? Number(row.remaining_life_km) : null,
     costPerKm: row.cost_per_km !== null ? Number(row.cost_per_km) : null,
     lastTreadDepthMm: row.last_tread_depth_mm !== null ? Number(row.last_tread_depth_mm) : null,
+    paymentType: row.payment_type === 'credit' ? 'credit' : 'cash',
+    paymentDueDate: row.payment_due_date ?? null,
     externalId: row.external_id ?? null,
     integrationSource: row.integration_source ?? null,
     metadata: row.metadata ?? {},

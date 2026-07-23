@@ -1,5 +1,6 @@
 export {
   aggregateCosts,
+  aggregateCostsByCostCenter,
   buildAnalyticalTable,
   buildIndicators,
   calculateOperationalDre,

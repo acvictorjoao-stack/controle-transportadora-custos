@@ -89,6 +89,8 @@ function buildTirePayload(
     tire_status: input.tireStatus,
     current_position: input.currentPosition,
     notes: input.notes,
+    payment_type: input.paymentType ?? 'cash',
+    payment_due_date: input.paymentType === 'credit' ? input.paymentDueDate : null,
     updated_by: profileId,
   };
 

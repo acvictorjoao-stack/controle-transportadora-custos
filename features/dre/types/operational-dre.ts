@@ -3,6 +3,7 @@ export interface OperationalDreFilters {
   branchId?: string;
   customerId?: string;
   routeId?: string;
+  costCenterId?: string;
   dateFrom?: string;
   dateTo?: string;
 }
@@ -11,6 +12,7 @@ export interface OperationalDreFilterOptions {
   branches: {id: string; name: string; code: string}[];
   customers: {id: string; name: string}[];
   routes: {id: string; name: string; code: string | null}[];
+  costCenters: {id: string; name: string; code: string}[];
 }
 
 export interface OperationalDreRevenues {
@@ -70,6 +72,8 @@ export interface OperationalDreData {
   result: OperationalDreResult;
   indicators: OperationalDreIndicators;
   analyticalTable: OperationalDreAnalyticalRow[];
+  /** Custos agregados por centro organizacional (OPERACIONAL, RH, …). */
+  costCenterBreakdown: OperationalDreCostCenterBreakdown;
   filters: OperationalDreFilters;
 }
 
@@ -97,6 +101,23 @@ export interface OperationalDreExpenseRow {
   fuelRecordId: string | null;
   maintenanceRecordId: string | null;
   tireId: string | null;
+  costCenterId: string | null;
+  costCenterCode: string | null;
+  costCenterName: string | null;
+}
+
+export interface OperationalDreCostCenterRow {
+  costCenterId: string | null;
+  code: string;
+  name: string;
+  value: number;
+  percent: number | null;
+}
+
+export interface OperationalDreCostCenterBreakdown {
+  byCode: Record<string, number>;
+  ranking: OperationalDreCostCenterRow[];
+  total: number;
 }
 
 export type OperationalDreCostBucket =

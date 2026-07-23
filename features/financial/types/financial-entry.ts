@@ -40,6 +40,7 @@ export interface FinancialEntryRow {
   paid_amount: number | null;
   reversed_entry_id: string | null;
   source_module: string | null;
+  source_id: string | null;
   is_system_generated: boolean;
   notes: string | null;
   external_id: string | null;
@@ -56,6 +57,8 @@ export interface FinancialEntryRow {
   drivers?: {id: string; name: string; cpf?: string} | {id: string; name: string; cpf?: string}[] | null;
   trips?: {id: string; trip_number: string; origin?: string | null; destination?: string | null; trip_status?: string} | {id: string; trip_number: string; origin?: string | null; destination?: string | null; trip_status?: string}[] | null;
   financial_categories?: {id: string; name: string; slug: string | null} | {id: string; name: string; slug: string | null}[] | null;
+  cost_centers?: {id: string; name: string; code: string} | {id: string; name: string; code: string}[] | null;
+  /** @deprecated Legacy entity analytical centers — prefer cost_centers + direct FKs. */
   financial_cost_centers?: {id: string; name: string; center_type: FinancialCostCenterType} | {id: string; name: string; center_type: FinancialCostCenterType}[] | null;
   customers?: {id: string; legal_name: string; trade_name: string | null} | {id: string; legal_name: string; trade_name: string | null}[] | null;
 }
@@ -95,6 +98,7 @@ export interface FinancialEntry {
   paidAmount: number | null;
   reversedEntryId: string | null;
   sourceModule: string | null;
+  sourceId: string | null;
   isSystemGenerated: boolean;
   notes: string | null;
   externalId: string | null;
@@ -163,7 +167,9 @@ export interface FinancialCostCenter {
   id: string;
   companyId: string;
   name: string;
-  centerType: FinancialCostCenterType;
+  code: string;
+  /** @deprecated Organizational centers no longer use center_type. */
+  centerType?: FinancialCostCenterType;
   isSystem: boolean;
 }
 
@@ -186,6 +192,8 @@ export interface FinancialListFilters {
   client?: string;
   sourceModule?: string;
   sourceModules?: string[];
+  /** When true, only entries with a due_date (obligations / a prazo). */
+  hasDueDate?: boolean;
 }
 
 export interface FinancialSortOptions {

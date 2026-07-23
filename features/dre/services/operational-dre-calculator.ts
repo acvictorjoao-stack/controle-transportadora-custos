@@ -10,6 +10,8 @@ import {
 import type {
   OperationalDreAnalyticalRow,
   OperationalDreCostBucket,
+  OperationalDreCostCenterBreakdown,
+  OperationalDreCostCenterRow,
   OperationalDreCosts,
   OperationalDreData,
   OperationalDreExpenseRow,
@@ -230,6 +232,75 @@ export function filterExpensesForScope(
   return expenses.filter((expense) => expenseMatchesScope(expense, filters, tripIds));
 }
 
+const SYSTEM_COST_CENTER_ORDER = [
+  'OPERACIONAL',
+  'ADMINISTRATIVO',
+  'COMERCIAL',
+  'RH',
+  'TI',
+] as const;
+
+/**
+ * Agrega custos por centro organizacional para cards, % e ranking da DRE.
+ */
+export function aggregateCostsByCostCenter(
+  expenses: OperationalDreExpenseRow[],
+): OperationalDreCostCenterBreakdown {
+  const totals = new Map<
+    string,
+    {costCenterId: string | null; code: string; name: string; value: number}
+  >();
+
+  for (const expense of expenses) {
+    const amount = asFinite(expense.amount);
+    const code = (expense.costCenterCode ?? 'SEM_CENTRO').toUpperCase();
+    const key = expense.costCenterId ?? code;
+    const existing = totals.get(key);
+    if (existing) {
+      existing.value += amount;
+      continue;
+    }
+    totals.set(key, {
+      costCenterId: expense.costCenterId,
+      code,
+      name: expense.costCenterName ?? code,
+      value: amount,
+    });
+  }
+
+  const total = Array.from(totals.values()).reduce((sum, row) => sum + row.value, 0);
+
+  const ranking: OperationalDreCostCenterRow[] = Array.from(totals.values())
+    .map((row) => ({
+      costCenterId: row.costCenterId,
+      code: row.code,
+      name: row.name,
+      value: row.value,
+      percent: total > 0 ? (row.value / total) * 100 : null,
+    }))
+    .sort((a, b) => {
+      const ai = SYSTEM_COST_CENTER_ORDER.indexOf(
+        a.code as (typeof SYSTEM_COST_CENTER_ORDER)[number],
+      );
+      const bi = SYSTEM_COST_CENTER_ORDER.indexOf(
+        b.code as (typeof SYSTEM_COST_CENTER_ORDER)[number],
+      );
+      if (ai !== -1 || bi !== -1) {
+        if (ai === -1) return 1;
+        if (bi === -1) return -1;
+        return ai - bi;
+      }
+      return b.value - a.value;
+    });
+
+  const byCode: Record<string, number> = {};
+  for (const row of ranking) {
+    byCode[row.code] = (byCode[row.code] ?? 0) + row.value;
+  }
+
+  return {byCode, ranking, total};
+}
+
 /**
  * Consolida a DRE Operacional a partir de linhas já filtradas.
  * Toda regra financeira da DRE vive aqui — componentes só renderizam.
@@ -243,6 +314,7 @@ export function calculateOperationalDre(
   const freightRevenue = sumFreightRevenue(trips);
   const totalRevenue = freightRevenue;
   const costs = aggregateCosts(scopedExpenses);
+  const costCenterBreakdown = aggregateCostsByCostCenter(scopedExpenses);
   const operatingProfit = totalRevenue - costs.totalOperatingCosts;
   const operatingMarginPercent =
     totalRevenue > 0 ? (operatingProfit / totalRevenue) * 100 : 0;
@@ -265,6 +337,7 @@ export function calculateOperationalDre(
       ...dimensions,
     }),
     analyticalTable: buildAnalyticalTable(totalRevenue, costs, operatingProfit),
+    costCenterBreakdown,
     filters,
   };
 }

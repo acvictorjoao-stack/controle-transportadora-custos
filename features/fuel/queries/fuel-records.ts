@@ -169,6 +169,8 @@ function buildFuelPayload(
     autonomy_km: metrics.autonomyKm,
     notes: input.notes,
     responsible: input.responsible,
+    payment_type: input.paymentType ?? 'cash',
+    payment_due_date: input.paymentType === 'credit' ? input.paymentDueDate : null,
     is_inconsistent: metrics.isInconsistent,
     inconsistency_flags: metrics.inconsistencyFlags,
     updated_by: profileId,

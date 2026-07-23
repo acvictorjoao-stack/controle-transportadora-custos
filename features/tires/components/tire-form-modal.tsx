@@ -9,6 +9,10 @@ import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {Textarea} from '@/components/ui/textarea';
 import {useToast} from '@/contexts/feedback/toast-context';
+import {
+  OPERATION_PAYMENT_TYPE_LABELS,
+  OPERATION_PAYMENT_TYPES,
+} from '@/features/financial/constants/operation-financial';
 import type {BranchSelectOption} from '@/features/organization/branches/types';
 import type {VehicleSelectOption} from '@/features/vehicles/types';
 
@@ -111,6 +115,8 @@ function TireFormContent({
     tireStatus: tire?.tireStatus ?? 'in_stock',
     currentPosition: tire?.currentPosition ?? null,
     notes: tire?.notes ?? null,
+    paymentType: tire?.paymentType ?? 'cash',
+    paymentDueDate: tire?.paymentDueDate ?? null,
   }));
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -245,6 +251,33 @@ function TireFormContent({
             onChange={(e) => updateField('purchaseValue', e.target.value ? Number(e.target.value) : null)}
           />
         </Field>
+        <Field label="Forma de pagamento" error={fieldErrors.paymentType}>
+          <select
+            value={formData.paymentType}
+            onChange={(e) => {
+              const value = e.target.value as (typeof OPERATION_PAYMENT_TYPES)[number];
+              updateField('paymentType', value);
+              if (value === 'cash') updateField('paymentDueDate', null);
+            }}
+            className={TIRE_NATIVE_SELECT_CLASS}
+          >
+            {OPERATION_PAYMENT_TYPES.map((type) => (
+              <option key={type} value={type}>
+                {OPERATION_PAYMENT_TYPE_LABELS[type]}
+              </option>
+            ))}
+          </select>
+        </Field>
+        {formData.paymentType === 'credit' && (
+          <Field label="Vencimento" error={fieldErrors.paymentDueDate}>
+            <Input
+              type="date"
+              value={formData.paymentDueDate ?? ''}
+              onChange={(e) => updateField('paymentDueDate', e.target.value || null)}
+              required
+            />
+          </Field>
+        )}
         <Field label="Fornecedor" error={fieldErrors.supplier}>
           <Input
             value={formData.supplier ?? ''}
