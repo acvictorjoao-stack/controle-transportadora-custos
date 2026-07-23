@@ -28,7 +28,7 @@ const DRE_TRIP_DETAIL_COLUMNS = `
 `;
 
 const DRE_EXPENSE_COLUMNS = `
-  id, amount, branch_id, customer_id, trip_id, source_module,
+  id, amount, branch_id, customer_id, trip_id, vehicle_id, source_module,
   fuel_record_id, maintenance_record_id, tire_id, cost_center_id,
   financial_categories:category_id (slug),
   cost_centers:cost_center_id (id, code, name)
@@ -87,6 +87,7 @@ type ExpenseRawRow = {
   branch_id: string | null;
   customer_id: string | null;
   trip_id: string | null;
+  vehicle_id: string | null;
   source_module: string | null;
   fuel_record_id: string | null;
   maintenance_record_id: string | null;
@@ -126,6 +127,7 @@ function mapExpenseRow(row: ExpenseRawRow): OperationalDreExpenseRow {
     branchId: row.branch_id,
     customerId: row.customer_id,
     tripId: row.trip_id,
+    vehicleId: row.vehicle_id,
     sourceModule: row.source_module,
     categorySlug: mapCategorySlug(row.financial_categories),
     fuelRecordId: row.fuel_record_id,
@@ -370,6 +372,72 @@ export async function fetchOperationalDreExpenses(
   if (error) {
     throw new Error(mapDatabaseError(error));
   }
+
+  return ((data ?? []) as unknown as ExpenseRawRow[]).map(mapExpenseRow);
+}
+
+/**
+ * Viagens concluídas dos veículos no período — base de KM para rateio.
+ * Independente do filtro de rota/cliente (denominador do veículo).
+ */
+export async function fetchOperationalDreTripsForVehicles(
+  supabase: SupabaseClient,
+  companyId: string,
+  vehicleIds: string[],
+  filters: Pick<OperationalDreFilters, 'dateFrom' | 'dateTo' | 'branchId'> = {},
+): Promise<OperationalDreTripRow[]> {
+  const uniqueIds = Array.from(new Set(vehicleIds.filter(Boolean)));
+  if (uniqueIds.length === 0) return [];
+
+  let query = supabase
+    .from('trips')
+    .select(DRE_TRIP_COLUMNS)
+    .eq('company_id', companyId)
+    .eq('trip_status', 'completed')
+    .is('deleted_at', null)
+    .in('vehicle_id', uniqueIds);
+
+  if (filters.branchId) query = query.eq('branch_id', filters.branchId);
+  if (filters.dateFrom) query = query.gte('completed_at', filters.dateFrom);
+  if (filters.dateTo) {
+    query = query.lte('completed_at', `${filters.dateTo}T23:59:59.999Z`);
+  }
+
+  const {data, error} = await query;
+  if (error) throw new Error(mapDatabaseError(error));
+
+  return ((data ?? []) as unknown as TripRawRow[]).map(mapTripRow);
+}
+
+/**
+ * Despesas sem `trip_id` vinculadas aos veículos — candidatas ao rateio por KM.
+ */
+export async function fetchOperationalDreUnlinkedVehicleExpenses(
+  supabase: SupabaseClient,
+  companyId: string,
+  vehicleIds: string[],
+  filters: OperationalDreFilters = {},
+): Promise<OperationalDreExpenseRow[]> {
+  const uniqueIds = Array.from(new Set(vehicleIds.filter(Boolean)));
+  if (uniqueIds.length === 0) return [];
+
+  let query = supabase
+    .from('financial_entries')
+    .select(DRE_EXPENSE_COLUMNS)
+    .eq('company_id', companyId)
+    .eq('entry_type', 'expense')
+    .is('trip_id', null)
+    .is('deleted_at', null)
+    .not('entry_status', 'in', '(cancelled,reversed)')
+    .in('vehicle_id', uniqueIds);
+
+  if (filters.branchId) query = query.eq('branch_id', filters.branchId);
+  if (filters.costCenterId) query = query.eq('cost_center_id', filters.costCenterId);
+  if (filters.dateFrom) query = query.gte('entry_date', filters.dateFrom);
+  if (filters.dateTo) query = query.lte('entry_date', filters.dateTo);
+
+  const {data, error} = await query;
+  if (error) throw new Error(mapDatabaseError(error));
 
   return ((data ?? []) as unknown as ExpenseRawRow[]).map(mapExpenseRow);
 }

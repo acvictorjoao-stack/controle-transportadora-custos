@@ -1,3 +1,4 @@
+import {allocateOperationalCostsByMileage} from '@/features/financial/services/allocate-operational-costs-by-mileage';
 import {getTripFreightValue} from '@/features/trips/utils/trip-lifecycle';
 
 import type {
@@ -79,7 +80,7 @@ export function resolveTripDimensionKey(
 
 /**
  * Custo de uma viagem = soma das despesas com `tripId` igual ao id da viagem.
- * Despesas sem viagem não entram no detalhe por rota (não atribuíveis).
+ * Preferir `buildTripCostByIdMap` quando houver rateio por KM.
  */
 export function sumTripCosts(
   tripId: string,
@@ -91,15 +92,42 @@ export function sumTripCosts(
   }, 0);
 }
 
+/**
+ * Mapa tripId → custo (vínculo direto + rateio por KM).
+ * `allocationBaseTrips` deve ser o conjunto completo de viagens do veículo no
+ * período (denominador do rateio), não apenas o recorte de rota/cliente.
+ */
+export function buildTripCostByIdMap(
+  expenses: OperationalDreExpenseRow[],
+  allocationBaseTrips: OperationalDreTripRow[],
+): Map<string, number> {
+  const allocation = allocateOperationalCostsByMileage(
+    expenses.map((expense) => ({
+      id: expense.id,
+      amount: expense.amount,
+      tripId: expense.tripId,
+      vehicleId: expense.vehicleId,
+    })),
+    allocationBaseTrips.map((trip) => ({
+      tripId: trip.id,
+      vehicleId: trip.vehicleId,
+      distanceKm: trip.distanceKm,
+    })),
+  );
+  return allocation.totalsByTripId;
+}
+
 export function buildTripMetrics(
   trip: OperationalDreTripRow | OperationalDreTripDetailRow,
   expenses: OperationalDreExpenseRow[],
+  costOverride?: number,
 ): OperationalDreTripMetrics {
   const revenue = getTripFreightValue({
     contractedFreightValue: trip.contractedFreightValue,
     actualFreightValue: trip.actualFreightValue,
   });
-  const cost = sumTripCosts(trip.id, expenses);
+  const cost =
+    costOverride !== undefined ? asFinite(costOverride) : sumTripCosts(trip.id, expenses);
   const profit = revenue - cost;
   const detail = trip as OperationalDreTripDetailRow;
 
@@ -127,11 +155,22 @@ export interface GroupOperationalDreByDimensionOptions {
    * No load agregado deve ser false (lazy load na expansão).
    */
   includeTrips?: boolean;
+  /**
+   * Viagens usadas como base de KM do rateio (tipicamente todas do veículo
+   * no período). Quando omitido, usa `trips` do agrupamento.
+   */
+  allocationBaseTrips?: OperationalDreTripRow[];
+  /**
+   * Despesas adicionais sem `trip_id` (veículo + período) para rateio.
+   * Já devem estar filtradas por período/empresa.
+   */
+  unlinkedVehicleExpenses?: OperationalDreExpenseRow[];
 }
 
 /**
  * Agrupa viagens/despesas da DRE por uma dimensão analítica.
- * Reutiliza o escopo de despesas da DRE (`filterExpensesForScope`).
+ * Reutiliza o escopo de despesas da DRE (`filterExpensesForScope`) e aplica
+ * rateio por KM para custos compartilhados do veículo.
  * Ordena pelo maior custo total.
  */
 export function groupOperationalDreByDimension(
@@ -140,16 +179,23 @@ export function groupOperationalDreByDimension(
   filters: OperationalDreFilters = {},
   options: GroupOperationalDreByDimensionOptions,
 ): OperationalDreDimensionGroup[] {
-  const {dimension, labels = new Map(), includeTrips = false} = options;
+  const {
+    dimension,
+    labels = new Map(),
+    includeTrips = false,
+    allocationBaseTrips,
+    unlinkedVehicleExpenses = [],
+  } = options;
   const scopedExpenses = filterExpensesForScope(expenses, filters, trips);
-  const expensesByTrip = new Map<string, OperationalDreExpenseRow[]>();
-
-  for (const expense of scopedExpenses) {
-    if (!expense.tripId) continue;
-    const list = expensesByTrip.get(expense.tripId) ?? [];
-    list.push(expense);
-    expensesByTrip.set(expense.tripId, list);
+  const expenseById = new Map<string, OperationalDreExpenseRow>();
+  for (const expense of [...scopedExpenses, ...unlinkedVehicleExpenses]) {
+    expenseById.set(expense.id, expense);
   }
+  const allocationExpenses = Array.from(expenseById.values());
+  const costByTripId = buildTripCostByIdMap(
+    allocationExpenses,
+    allocationBaseTrips ?? trips,
+  );
 
   type Acc = {
     dimensionKey: string;
@@ -165,8 +211,11 @@ export function groupOperationalDreByDimension(
 
   for (const trip of trips) {
     const dimensionKey = resolveTripDimensionKey(trip, dimension);
-    const tripExpenses = expensesByTrip.get(trip.id) ?? [];
-    const metrics = buildTripMetrics(trip, tripExpenses);
+    const metrics = buildTripMetrics(
+      trip,
+      allocationExpenses,
+      costByTripId.get(trip.id) ?? 0,
+    );
     const existing = groups.get(dimensionKey);
 
     if (existing) {
@@ -223,6 +272,11 @@ export function groupOperationalDreByDimension(
   return result.sort((a, b) => b.totalCost - a.totalCost);
 }
 
+export interface CalculateOperationalDreByRouteOptions {
+  allocationBaseTrips?: OperationalDreTripRow[];
+  unlinkedVehicleExpenses?: OperationalDreExpenseRow[];
+}
+
 /**
  * Consolida custos por rota a partir das mesmas linhas da DRE.
  * `trips` permanece vazio — detalhe via lazy load.
@@ -232,11 +286,14 @@ export function calculateOperationalDreByRoute(
   expenses: OperationalDreExpenseRow[],
   filters: OperationalDreFilters = {},
   routeLabels: Map<string, string> = new Map(),
+  options: CalculateOperationalDreByRouteOptions = {},
 ): OperationalDreRouteGroup[] {
   return groupOperationalDreByDimension(trips, expenses, filters, {
     dimension: 'route',
     labels: routeLabels,
     includeTrips: false,
+    allocationBaseTrips: options.allocationBaseTrips,
+    unlinkedVehicleExpenses: options.unlinkedVehicleExpenses,
   }).map((group) => ({
     ...group,
     dimensionType: 'route' as const,
@@ -257,10 +314,13 @@ export function calculateOperationalDreRouteTrips(
   trips: Array<OperationalDreTripRow | OperationalDreTripDetailRow>,
   expenses: OperationalDreExpenseRow[],
   filters: OperationalDreFilters = {},
+  options: CalculateOperationalDreByRouteOptions = {},
 ): OperationalDreTripMetrics[] {
   const groups = groupOperationalDreByDimension(trips, expenses, filters, {
     dimension: 'route',
     includeTrips: true,
+    allocationBaseTrips: options.allocationBaseTrips,
+    unlinkedVehicleExpenses: options.unlinkedVehicleExpenses,
   });
 
   return groups.flatMap((group) => group.trips);

@@ -7,13 +7,19 @@ import {
 } from '@/lib/auth/company';
 
 import {getTripFinancialBreakdown} from '../loaders/trip-financial-breakdown-loader';
-import type {TripFinancialBreakdownData} from '../types/trip-financial-breakdown';
+import type {
+  TripFinancialBreakdownData,
+  TripFinancialBreakdownPeriod,
+} from '../types/trip-financial-breakdown';
 
 /**
  * Lazy load do detalhamento financeiro ao expandir uma viagem.
+ * Aceita período da DRE para rateio de custos compartilhados.
  */
 export async function loadTripFinancialBreakdownAction(input: {
   tripId: string;
+  dateFrom?: string;
+  dateTo?: string;
 }): Promise<ActionResult<TripFinancialBreakdownData>> {
   const supabase = await getServerSupabaseClient();
   const companyId = await getCurrentCompanyId(supabase);
@@ -26,11 +32,17 @@ export async function loadTripFinancialBreakdownAction(input: {
     return {success: false, error: 'Viagem não informada.'};
   }
 
+  const period: TripFinancialBreakdownPeriod = {
+    dateFrom: input.dateFrom || undefined,
+    dateTo: input.dateTo || undefined,
+  };
+
   try {
     const data = await getTripFinancialBreakdown(
       supabase,
       companyId,
       input.tripId,
+      period,
     );
     return {success: true, data};
   } catch (err) {

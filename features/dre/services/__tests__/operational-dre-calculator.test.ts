@@ -37,6 +37,7 @@ function makeExpense(
     branchId: 'branch-1',
     customerId: null,
     tripId: 'trip-1',
+    vehicleId: null,
     sourceModule: 'manual',
     categorySlug: null,
     fuelRecordId: null,

@@ -64,63 +64,67 @@ describe('categorizeTripFinancialExpense', () => {
 
 describe('buildTripFinancialBreakdown', () => {
   it('calculates revenue, costs by category, profit and margin', () => {
-    const breakdown = buildTripFinancialBreakdown('trip-1', [
-      makeRow({
-        id: 'rev',
-        entryType: 'revenue',
-        amount: 5200,
-        description: 'Receita viagem',
-      }),
-      makeRow({
-        id: 'fuel',
-        amount: 980,
-        categorySlug: 'combustivel',
-        sourceModule: 'fuel',
-        sourceId: 'fuel-1',
-        fuelRecordId: 'fuel-1',
-        supplier: 'Posto Ipiranga',
-        referenceNumber: 'NF 44521',
-        description: 'Diesel S10',
-        entryDate: '2026-07-22',
-      }),
-      makeRow({
-        id: 'maint',
-        amount: 320,
-        categorySlug: 'manutencao',
-        sourceModule: 'maintenance',
-        sourceId: 'maint-1',
-        maintenanceRecordId: 'maint-1',
-        supplier: 'Oficina XPTO',
-        description: 'Troca de óleo',
-      }),
-      makeRow({
-        id: 'tire',
-        amount: 90,
-        categorySlug: 'pneus',
-        sourceModule: 'tires',
-        sourceId: 'tire-1',
-        tireId: 'tire-1',
-        description: 'Michelin X Multi',
-      }),
-      makeRow({
-        id: 'toll',
-        amount: 140,
-        categorySlug: 'pedagio',
-        sourceModule: 'tolls',
-      }),
-      makeRow({
-        id: 'other',
-        amount: 40,
-        categorySlug: 'outros',
-        sourceModule: 'manual',
-      }),
-      makeRow({
-        id: 'cancelled',
-        amount: 999,
-        entryStatus: 'cancelled',
-        categorySlug: 'combustivel',
-      }),
-    ]);
+    const breakdown = buildTripFinancialBreakdown(
+      'trip-1',
+      [
+        makeRow({
+          id: 'rev',
+          entryType: 'revenue',
+          amount: 9999,
+          description: 'Receita lançamento (ignorada quando há frete oficial)',
+        }),
+        makeRow({
+          id: 'fuel',
+          amount: 980,
+          categorySlug: 'combustivel',
+          sourceModule: 'fuel',
+          sourceId: 'fuel-1',
+          fuelRecordId: 'fuel-1',
+          supplier: 'Posto Ipiranga',
+          referenceNumber: 'NF 44521',
+          description: 'Diesel S10',
+          entryDate: '2026-07-22',
+        }),
+        makeRow({
+          id: 'maint',
+          amount: 320,
+          categorySlug: 'manutencao',
+          sourceModule: 'maintenance',
+          sourceId: 'maint-1',
+          maintenanceRecordId: 'maint-1',
+          supplier: 'Oficina XPTO',
+          description: 'Troca de óleo',
+        }),
+        makeRow({
+          id: 'tire',
+          amount: 90,
+          categorySlug: 'pneus',
+          sourceModule: 'tires',
+          sourceId: 'tire-1',
+          tireId: 'tire-1',
+          description: 'Michelin X Multi',
+        }),
+        makeRow({
+          id: 'toll',
+          amount: 140,
+          categorySlug: 'pedagio',
+          sourceModule: 'tolls',
+        }),
+        makeRow({
+          id: 'other',
+          amount: 40,
+          categorySlug: 'outros',
+          sourceModule: 'manual',
+        }),
+        makeRow({
+          id: 'cancelled',
+          amount: 999,
+          entryStatus: 'cancelled',
+          categorySlug: 'combustivel',
+        }),
+      ],
+      {revenue: 5200},
+    );
 
     expect(breakdown.revenue).toBe(5200);
     expect(breakdown.totalCost).toBe(1570);
@@ -157,7 +161,7 @@ describe('buildTripFinancialBreakdown', () => {
         sourceId: 'fuel-b',
         fuelRecordId: 'fuel-b',
       }),
-    ]);
+    ], {revenue: 0});
 
     const entries = getTripFinancialCategoryEntries(breakdown, 'combustivel');
     expect(entries).toHaveLength(2);
@@ -166,10 +170,38 @@ describe('buildTripFinancialBreakdown', () => {
     expect(entries.every((entry) => entry.originHref)).toBe(true);
   });
 
+  it('marks mileage-allocated entries with share metadata', () => {
+    const breakdown = buildTripFinancialBreakdown(
+      'trip-1',
+      [
+        makeRow({
+          id: 'shared-fuel',
+          amount: 400,
+          categorySlug: 'combustivel',
+          sourceModule: 'fuel',
+          allocation: 'mileage',
+          allocationShare: 0.2,
+          originalAmount: 2000,
+        }),
+      ],
+      {revenue: 1000},
+    );
+
+    const entry = getTripFinancialCategoryEntries(breakdown, 'combustivel')[0];
+    expect(entry?.amount).toBe(400);
+    expect(entry?.allocation).toBe('mileage');
+    expect(entry?.allocationShare).toBe(0.2);
+    expect(entry?.originalAmount).toBe(2000);
+    expect(breakdown.totalCost).toBe(400);
+    expect(breakdown.profit).toBe(600);
+  });
+
   it('returns null margin when revenue is zero', () => {
-    const breakdown = buildTripFinancialBreakdown('trip-1', [
-      makeRow({amount: 100, categorySlug: 'outros'}),
-    ]);
+    const breakdown = buildTripFinancialBreakdown(
+      'trip-1',
+      [makeRow({amount: 100, categorySlug: 'outros'})],
+      {revenue: 0},
+    );
     expect(breakdown.revenue).toBe(0);
     expect(breakdown.profit).toBe(-100);
     expect(breakdown.margin).toBeNull();
@@ -238,7 +270,7 @@ describe('resolveTripFinancialOriginHref / label — Abrir origem', () => {
 
 describe('lazy loading contract', () => {
   it('does not invent entries when the source list is empty', () => {
-    const breakdown = buildTripFinancialBreakdown('trip-empty', []);
+    const breakdown = buildTripFinancialBreakdown('trip-empty', [], {revenue: 0});
     expect(breakdown.categories.every((c) => c.entries.length === 0)).toBe(true);
     expect(breakdown.totalCost).toBe(0);
     expect(breakdown.revenue).toBe(0);

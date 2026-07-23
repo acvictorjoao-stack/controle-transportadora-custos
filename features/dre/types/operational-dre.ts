@@ -96,6 +96,7 @@ export interface OperationalDreExpenseRow {
   branchId: string | null;
   customerId: string | null;
   tripId: string | null;
+  vehicleId: string | null;
   sourceModule: string | null;
   categorySlug: string | null;
   fuelRecordId: string | null;

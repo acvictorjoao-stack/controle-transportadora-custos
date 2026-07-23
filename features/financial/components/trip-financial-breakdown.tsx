@@ -33,6 +33,9 @@ export interface TripFinancialBreakdownLazyProps {
   tripLabel?: string;
   className?: string;
   title?: string;
+  /** Período da DRE — sincroniza o rateio por KM. */
+  dateFrom?: string;
+  dateTo?: string;
 }
 
 function resultClass(value: number): string | undefined {
@@ -133,6 +136,15 @@ function CategoryBlock({
                           entry.supplier,
                           entry.document ? `Doc. ${entry.document}` : null,
                           entry.categoryLabel,
+                          entry.allocation === 'mileage'
+                            ? `Rateio ${
+                                entry.allocationShare != null
+                                  ? `${(entry.allocationShare * 100).toLocaleString('pt-BR', {
+                                      maximumFractionDigits: 1,
+                                    })}%`
+                                  : 'por KM'
+                              }`
+                            : null,
                         ]
                           .filter(Boolean)
                           .join(' · ')}
@@ -275,6 +287,8 @@ function TripFinancialBreakdownLazy({
   tripLabel,
   className,
   title,
+  dateFrom,
+  dateTo,
 }: TripFinancialBreakdownLazyProps) {
   const [data, setData] = React.useState<TripFinancialBreakdownData | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -283,21 +297,23 @@ function TripFinancialBreakdownLazy({
   React.useEffect(() => {
     let cancelled = false;
 
-    void loadTripFinancialBreakdownAction({tripId}).then((result) => {
-      if (cancelled) return;
-      if (!result.success) {
-        setError(result.error);
+    void loadTripFinancialBreakdownAction({tripId, dateFrom, dateTo}).then(
+      (result) => {
+        if (cancelled) return;
+        if (!result.success) {
+          setError(result.error);
+          setLoading(false);
+          return;
+        }
+        setData(result.data);
         setLoading(false);
-        return;
-      }
-      setData(result.data);
-      setLoading(false);
-    });
+      },
+    );
 
     return () => {
       cancelled = true;
     };
-  }, [tripId]);
+  }, [tripId, dateFrom, dateTo]);
 
   if (loading) {
     return (

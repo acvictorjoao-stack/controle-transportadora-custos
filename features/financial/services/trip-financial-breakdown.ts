@@ -62,6 +62,7 @@ function mapEntry(
   row: TripFinancialBreakdownSourceRow,
   category: TripFinancialCostCategory,
 ): TripFinancialBreakdownEntry {
+  const amount = asFinite(row.amount);
   return {
     id: row.id,
     date: row.entryDate,
@@ -70,7 +71,7 @@ function mapEntry(
     description: row.description,
     category,
     categoryLabel: TRIP_FINANCIAL_CATEGORY_LABELS[category],
-    amount: asFinite(row.amount),
+    amount,
     sourceModule: row.sourceModule,
     sourceId: row.sourceId,
     fuelRecordId: row.fuelRecordId,
@@ -78,6 +79,10 @@ function mapEntry(
     tireId: row.tireId,
     originHref: resolveTripFinancialOriginHref(row),
     originLabel: resolveTripFinancialOriginLabel(row.sourceModule),
+    allocation: row.allocation ?? 'direct',
+    allocationShare: row.allocationShare ?? (row.allocation === 'mileage' ? null : 1),
+    originalAmount:
+      row.originalAmount != null ? asFinite(row.originalAmount) : amount,
   };
 }
 
@@ -92,9 +97,17 @@ function emptyCategories(): TripFinancialBreakdownCategory[] {
   }));
 }
 
+export interface BuildTripFinancialBreakdownOptions {
+  /**
+   * Receita oficial da viagem (mesma origem da DRE: `getTripFreightValue`).
+   * Quando informada, lançamentos `revenue` são ignorados no total.
+   */
+  revenue?: number;
+}
+
 /**
- * Consolida receita, custos por categoria, lucro e margem a partir de
- * `financial_entries` da viagem. Sem I/O — testável unitariamente.
+ * Consolida receita, custos por categoria, lucro e margem.
+ * Sem I/O — testável unitariamente.
  *
  * `entries` em cada categoria já vêm preenchidos (uma única leitura no loader);
  * a UI expande categorias sem nova consulta.
@@ -102,9 +115,11 @@ function emptyCategories(): TripFinancialBreakdownCategory[] {
 export function buildTripFinancialBreakdown(
   tripId: string,
   rows: TripFinancialBreakdownSourceRow[],
+  options: BuildTripFinancialBreakdownOptions = {},
 ): TripFinancialBreakdownData {
   const active = rows.filter(isActiveEntry);
-  let revenue = 0;
+  const useOfficialRevenue = options.revenue !== undefined;
+  let revenue = useOfficialRevenue ? asFinite(options.revenue!) : 0;
   const categories = emptyCategories();
   const byCategory = new Map(
     categories.map((category) => [category.category, category] as const),
@@ -113,7 +128,7 @@ export function buildTripFinancialBreakdown(
   for (const row of active) {
     const amount = asFinite(row.amount);
     if (row.entryType === 'revenue') {
-      revenue += amount;
+      if (!useOfficialRevenue) revenue += amount;
       continue;
     }
     if (row.entryType !== 'expense') continue;

@@ -55,6 +55,7 @@ function makeExpense(
     branchId: 'branch-1',
     customerId: null,
     tripId: 'trip-1',
+    vehicleId: null,
     sourceModule: 'manual',
     categorySlug: 'combustivel',
     fuelRecordId: null,
@@ -230,6 +231,55 @@ describe('calculateOperationalDreRouteTrips — expansion', () => {
     expect(details[0]?.profit).toBe(2320);
     expect(details[1]?.tripNumber).toBe('VG-002');
     expect(details[1]?.profit).toBe(5100 - 2740);
+  });
+
+  it('allocates shared vehicle costs by mileage across trips', () => {
+    const trips = [
+      makeTripDetail({
+        id: 'trip-a',
+        vehicleId: 'vehicle-1',
+        distanceKm: 200,
+        actualFreightValue: 5000,
+        tripNumber: 'VG-A',
+        completedAt: '2026-07-10T10:00:00.000Z',
+      }),
+      makeTripDetail({
+        id: 'trip-b',
+        vehicleId: 'vehicle-1',
+        distanceKm: 800,
+        actualFreightValue: 8000,
+        tripNumber: 'VG-B',
+        completedAt: '2026-07-11T10:00:00.000Z',
+      }),
+    ];
+    const expenses = [
+      makeExpense({
+        id: 'direct',
+        tripId: 'trip-a',
+        vehicleId: 'vehicle-1',
+        amount: 100,
+      }),
+    ];
+    const unlinked = [
+      makeExpense({
+        id: 'shared-fuel',
+        tripId: null,
+        vehicleId: 'vehicle-1',
+        amount: 2000,
+        categorySlug: 'combustivel',
+      }),
+    ];
+
+    const details = calculateOperationalDreRouteTrips(trips, expenses, {}, {
+      allocationBaseTrips: trips,
+      unlinkedVehicleExpenses: unlinked,
+    });
+
+    const tripA = details.find((row) => row.id === 'trip-a');
+    const tripB = details.find((row) => row.id === 'trip-b');
+
+    expect(tripA?.cost).toBeCloseTo(500, 8); // 100 direct + 400 rateio
+    expect(tripB?.cost).toBeCloseTo(1600, 8); // 1600 rateio
   });
 });
 

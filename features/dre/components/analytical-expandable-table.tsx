@@ -16,7 +16,8 @@ export interface AnalyticalExpandableColumn<T> {
 }
 
 export interface AnalyticalExpandableTableProps<TGroup, TDetail> {
-  title: string;
+  /** Quando vazio, o título externo (ex.: com filtros) controla o cabeçalho. */
+  title?: string;
   groups: TGroup[];
   getGroupKey: (group: TGroup) => string;
   groupColumns: AnalyticalExpandableColumn<TGroup>[];
@@ -267,10 +268,14 @@ function AnalyticalExpandableTable<TGroup, TDetail>({
     });
   };
 
+  const heading = title?.trim() ? (
+    <h3 className="mb-3 text-sm font-medium text-muted-foreground">{title}</h3>
+  ) : null;
+
   if (groups.length === 0) {
     return (
       <div className={className}>
-        <h3 className="mb-3 text-sm font-medium text-muted-foreground">{title}</h3>
+        {heading}
         <EmptyState
           title={emptyTitle}
           description={emptyDescription}
@@ -286,7 +291,7 @@ function AnalyticalExpandableTable<TGroup, TDetail>({
 
   return (
     <div className={className}>
-      <h3 className="mb-3 text-sm font-medium text-muted-foreground">{title}</h3>
+      {heading}
       <div className="overflow-hidden rounded-xl border border-border bg-card">
         <div className="overflow-x-auto">
           <table className="w-full caption-bottom text-sm">

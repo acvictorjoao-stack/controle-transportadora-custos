@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import {useRouter} from 'next/navigation';
 import * as React from 'react';
 
 import {buttonVariants} from '@/components/ui/button';
@@ -12,6 +13,7 @@ import {
   formatDateBr,
   formatPercent,
 } from '@/features/financial/utils/financial-format';
+import {VEHICLE_NATIVE_SELECT_CLASS} from '@/features/vehicles/utils/form-styles';
 import {cn} from '@/lib/utils';
 
 import type {
@@ -20,6 +22,7 @@ import type {
   OperationalDreRouteGroup,
   OperationalDreTripMetrics,
 } from '../types';
+import {buildOperationalDreUrl} from '../utils/list-url';
 import {
   AnalyticalExpandableTable,
   type AnalyticalExpandableColumn,
@@ -44,13 +47,47 @@ function resultClass(value: number): string | undefined {
 }
 
 /**
- * Seção "Custos por Rota" — usa a tabela expansível genérica com dimensão `route`.
+ * Seção "Custos por Rota" — tabela analítica expansível com dimensão `route`.
  * Terceiro nível: TripFinancialBreakdown (lazy) sob cada viagem.
+ * Filtro de período local sincronizado com a DRE (URL).
  */
 function OperationalDreRouteCosts({
   data,
   filters,
 }: OperationalDreRouteCostsProps) {
+  const router = useRouter();
+  const filtersDateKey = `${filters.dateFrom ?? ''}|${filters.dateTo ?? ''}`;
+  const [period, setPeriod] = React.useState({
+    dateFrom: filters.dateFrom ?? '',
+    dateTo: filters.dateTo ?? '',
+  });
+  const [syncedDateKey, setSyncedDateKey] = React.useState(filtersDateKey);
+
+  if (syncedDateKey !== filtersDateKey) {
+    setSyncedDateKey(filtersDateKey);
+    setPeriod({
+      dateFrom: filters.dateFrom ?? '',
+      dateTo: filters.dateTo ?? '',
+    });
+  }
+
+  React.useEffect(() => {
+    const nextFilters: OperationalDreFilters = {
+      ...filters,
+      dateFrom: period.dateFrom || undefined,
+      dateTo: period.dateTo || undefined,
+    };
+    const next = buildOperationalDreUrl(nextFilters);
+    const current = `${window.location.pathname}${window.location.search}`;
+    if (current === next) return;
+
+    const timer = window.setTimeout(() => {
+      router.push(next);
+    }, 300);
+
+    return () => window.clearTimeout(timer);
+  }, [period, filters, router]);
+
   const filtersKey = React.useMemo(
     () =>
       [
@@ -210,30 +247,72 @@ function OperationalDreRouteCosts({
   const renderDetailExpansion = React.useCallback(
     (trip: OperationalDreTripMetrics) => (
       <TripFinancialBreakdownLazy
+        key={`${trip.id}|${filters.dateFrom ?? ''}|${filters.dateTo ?? ''}`}
         tripId={trip.id}
         tripLabel={trip.tripNumber}
+        dateFrom={filters.dateFrom}
+        dateTo={filters.dateTo}
       />
     ),
-    [],
+    [filters.dateFrom, filters.dateTo],
   );
 
   return (
-    <AnalyticalExpandableTable
-      title="Custos por Rota"
-      groups={data.groups}
-      getGroupKey={(group) => group.dimensionKey}
-      groupColumns={groupColumns}
-      detailColumns={detailColumns}
-      getDetailKey={(trip) => trip.id}
-      loadDetails={loadDetails}
-      renderDetailExpansion={renderDetailExpansion}
-      expansionStorageKey="dre-route-expanded"
-      detailExpansionStorageKey="dre-trip-financial-expanded"
-      dataRevision={filtersKey}
-      emptyTitle="Sem custos por rota"
-      emptyDescription="Viagens concluídas no período aparecerão agrupadas por rota."
-      detailEmptyTitle="Nenhuma viagem nesta rota para o filtro atual."
-    />
+    <div className="space-y-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h3 className="text-sm font-medium text-muted-foreground">
+            Custos por Rota
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            Análise detalhada por rota, viagem e lançamentos no período.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-2 sm:w-80">
+          <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+            Data Inicial
+            <input
+              type="date"
+              value={period.dateFrom}
+              onChange={(e) =>
+                setPeriod((prev) => ({...prev, dateFrom: e.target.value}))
+              }
+              className={VEHICLE_NATIVE_SELECT_CLASS}
+              aria-label="Data Inicial"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+            Data Final
+            <input
+              type="date"
+              value={period.dateTo}
+              onChange={(e) =>
+                setPeriod((prev) => ({...prev, dateTo: e.target.value}))
+              }
+              className={VEHICLE_NATIVE_SELECT_CLASS}
+              aria-label="Data Final"
+            />
+          </label>
+        </div>
+      </div>
+
+      <AnalyticalExpandableTable
+        title=""
+        groups={data.groups}
+        getGroupKey={(group) => group.dimensionKey}
+        groupColumns={groupColumns}
+        detailColumns={detailColumns}
+        getDetailKey={(trip) => trip.id}
+        loadDetails={loadDetails}
+        renderDetailExpansion={renderDetailExpansion}
+        expansionStorageKey="dre-route-expanded"
+        detailExpansionStorageKey="dre-trip-financial-expanded"
+        dataRevision={filtersKey}
+        emptyTitle="Sem custos por rota"
+        emptyDescription="Viagens concluídas no período aparecerão agrupadas por rota."
+        detailEmptyTitle="Nenhuma viagem nesta rota para o filtro atual."
+      />
+    </div>
   );
 }
 

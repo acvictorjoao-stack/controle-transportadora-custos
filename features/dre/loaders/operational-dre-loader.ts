@@ -10,6 +10,8 @@ import {
   fetchOperationalDreRouteLabels,
   fetchOperationalDreTripDetails,
   fetchOperationalDreTrips,
+  fetchOperationalDreTripsForVehicles,
+  fetchOperationalDreUnlinkedVehicleExpenses,
 } from '../queries';
 import {
   calculateOperationalDreByRoute,
@@ -20,9 +22,11 @@ import {calculateOperationalDre} from '../services';
 import type {
   OperationalDreByRouteData,
   OperationalDreData,
+  OperationalDreExpenseRow,
   OperationalDreFilterOptions,
   OperationalDreFilters,
   OperationalDreTripMetrics,
+  OperationalDreTripRow,
 } from '../types';
 
 /**
@@ -43,6 +47,55 @@ export async function fetchOperationalDreSource(
 }
 
 /**
+ * Dados auxiliares do rateio por KM (base de viagens do veículo + despesas
+ * sem trip_id). Executado só quando há veículos no recorte.
+ */
+async function fetchMileageAllocationContext(
+  supabase: SupabaseClient,
+  companyId: string,
+  trips: OperationalDreTripRow[],
+  filters: OperationalDreFilters,
+): Promise<{
+  allocationBaseTrips: OperationalDreTripRow[];
+  unlinkedVehicleExpenses: OperationalDreExpenseRow[];
+}> {
+  const vehicleIds = Array.from(
+    new Set(
+      trips
+        .map((trip) => trip.vehicleId)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  );
+
+  if (vehicleIds.length === 0) {
+    return {allocationBaseTrips: trips, unlinkedVehicleExpenses: []};
+  }
+
+  const periodFilters = {
+    dateFrom: filters.dateFrom,
+    dateTo: filters.dateTo,
+    branchId: filters.branchId,
+  };
+
+  const [allocationBaseTrips, unlinkedVehicleExpenses] = await Promise.all([
+    fetchOperationalDreTripsForVehicles(
+      supabase,
+      companyId,
+      vehicleIds,
+      periodFilters,
+    ),
+    fetchOperationalDreUnlinkedVehicleExpenses(
+      supabase,
+      companyId,
+      vehicleIds,
+      filters,
+    ),
+  ]);
+
+  return {allocationBaseTrips, unlinkedVehicleExpenses};
+}
+
+/**
  * Loader da DRE Operacional — único ponto que combina leituras e cálculo.
  * O Dashboard apenas consome `getOperationalDRE()`.
  */
@@ -60,7 +113,7 @@ export async function getOperationalDRE(
 }
 
 /**
- * Custos agregados por rota — reutiliza viagens/despesas da DRE.
+ * Custos agregados por rota — reutiliza viagens/despesas da DRE + rateio por KM.
  * `trips` de cada grupo inicia vazio (lazy load na expansão).
  */
 export async function getOperationalDreByRoute(
@@ -76,14 +129,16 @@ export async function getOperationalDreByRoute(
   const routeIds = trips
     .map((trip) => trip.routeId)
     .filter((id): id is string => Boolean(id));
-  const routeLabels = await fetchOperationalDreRouteLabels(
-    supabase,
-    companyId,
-    routeIds,
-  );
+  const [routeLabels, mileage] = await Promise.all([
+    fetchOperationalDreRouteLabels(supabase, companyId, routeIds),
+    fetchMileageAllocationContext(supabase, companyId, trips, filters),
+  ]);
 
   return {
-    groups: calculateOperationalDreByRoute(trips, expenses, filters, routeLabels),
+    groups: calculateOperationalDreByRoute(trips, expenses, filters, routeLabels, {
+      allocationBaseTrips: mileage.allocationBaseTrips,
+      unlinkedVehicleExpenses: mileage.unlinkedVehicleExpenses,
+    }),
     filters,
   };
 }
@@ -107,11 +162,10 @@ export async function getOperationalDreBundle(
   const routeIds = trips
     .map((trip) => trip.routeId)
     .filter((id): id is string => Boolean(id));
-  const routeLabels = await fetchOperationalDreRouteLabels(
-    supabase,
-    companyId,
-    routeIds,
-  );
+  const [routeLabels, mileage] = await Promise.all([
+    fetchOperationalDreRouteLabels(supabase, companyId, routeIds),
+    fetchMileageAllocationContext(supabase, companyId, trips, filters),
+  ]);
 
   return {
     dre: calculateOperationalDre(trips, expenses, filters),
@@ -121,6 +175,10 @@ export async function getOperationalDreBundle(
         expenses,
         filters,
         routeLabels,
+        {
+          allocationBaseTrips: mileage.allocationBaseTrips,
+          unlinkedVehicleExpenses: mileage.unlinkedVehicleExpenses,
+        },
       ),
       filters,
     },
@@ -155,8 +213,17 @@ export async function getOperationalDreRouteTripDetails(
     filters: scopedFilters,
     tripIds: trips.map((trip) => trip.id),
   });
+  const mileage = await fetchMileageAllocationContext(
+    supabase,
+    companyId,
+    trips,
+    scopedFilters,
+  );
 
-  return calculateOperationalDreRouteTrips(trips, expenses, scopedFilters);
+  return calculateOperationalDreRouteTrips(trips, expenses, scopedFilters, {
+    allocationBaseTrips: mileage.allocationBaseTrips,
+    unlinkedVehicleExpenses: mileage.unlinkedVehicleExpenses,
+  });
 }
 
 export async function getOperationalDreFilterOptions(
