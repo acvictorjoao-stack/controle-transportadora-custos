@@ -3,21 +3,15 @@
 import {Loader2} from 'lucide-react';
 import * as React from 'react';
 
-import {FormField} from '@/components/master/shared/form-field';
 import {Modal} from '@/components/master/shared/modal';
 import {Alert, AlertDescription} from '@/components/ui/alert';
 import {Button} from '@/components/ui/button';
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
-import {Input} from '@/components/ui/input';
 import {Textarea} from '@/components/ui/textarea';
 import {useToast} from '@/contexts/feedback/toast-context';
 import {MSG} from '@/lib/feedback/messages';
 
-import {
-  cancelTripAction,
-  completeTripAction,
-  startTripAction,
-} from '../actions';
+import {cancelTripAction, startTripAction} from '../actions';
 import type {Trip} from '../types';
 import {TRIP_STATUS_INDICATORS, TRIP_STATUS_LABELS} from '../types';
 import {
@@ -25,11 +19,8 @@ import {
   canCompleteTrip,
   canStartTrip,
 } from '../utils/trip-lifecycle';
-import {
-  formatDateTimeBr,
-  fromDatetimeLocalValue,
-  toDatetimeLocalValue,
-} from '../utils/trip-status';
+import {formatDateTimeBr} from '../utils/trip-status';
+import {TripCompleteModal} from './trip-complete-modal';
 
 export interface TripLifecycleCardProps {
   trip: Trip;
@@ -38,20 +29,9 @@ export interface TripLifecycleCardProps {
 
 function TripLifecycleCard({trip, onChanged}: TripLifecycleCardProps) {
   const toast = useToast();
-  const [loading, setLoading] = React.useState<'start' | 'complete' | 'cancel' | null>(
-    null,
-  );
+  const [loading, setLoading] = React.useState<'start' | 'cancel' | null>(null);
   const [cancelOpen, setCancelOpen] = React.useState(false);
   const [completeOpen, setCompleteOpen] = React.useState(false);
-  const [finalOdometerKm, setFinalOdometerKm] = React.useState(
-    trip.finalOdometerKm?.toString() ?? '',
-  );
-  const [completedAt, setCompletedAt] = React.useState(() =>
-    toDatetimeLocalValue(new Date().toISOString()),
-  );
-  const [completeError, setCompleteError] = React.useState<string | null>(null);
-  const [completedAtError, setCompletedAtError] = React.useState<string | null>(null);
-  const [finalOdometerError, setFinalOdometerError] = React.useState<string | null>(null);
   const [cancellationNotes, setCancellationNotes] = React.useState('');
   const [cancelError, setCancelError] = React.useState<string | null>(null);
 
@@ -66,43 +46,6 @@ function TripLifecycleCard({trip, onChanged}: TripLifecycleCardProps) {
       toast.error(result.error ?? MSG.operationFailed);
     } else {
       toast.success('Viagem iniciada com sucesso.');
-      onChanged();
-    }
-    setLoading(null);
-  }
-
-  async function handleComplete() {
-    const completedAtIso = fromDatetimeLocalValue(completedAt);
-    if (!completedAtIso) {
-      setCompletedAtError('Informe a data e hora da conclusão.');
-      return;
-    }
-
-    const finalKm = Number(finalOdometerKm.replace(',', '.'));
-    if (!finalOdometerKm.trim() || !Number.isFinite(finalKm) || finalKm < 0) {
-      setFinalOdometerError('Informe o KM final da viagem.');
-      return;
-    }
-    if (trip.initialOdometerKm !== null && finalKm < trip.initialOdometerKm) {
-      setFinalOdometerError('O KM final deve ser maior ou igual ao KM inicial.');
-      return;
-    }
-
-    setLoading('complete');
-    setCompleteError(null);
-    setCompletedAtError(null);
-    setFinalOdometerError(null);
-    const result = await completeTripAction(trip.id, {
-      completedAt: completedAtIso,
-      finalOdometerKm: finalKm,
-    });
-    if (!result.success) {
-      setCompleteError(result.error ?? 'Não foi possível concluir a viagem.');
-      setCompletedAtError(result.fieldErrors?.completedAt ?? null);
-      setFinalOdometerError(result.fieldErrors?.finalOdometerKm ?? null);
-    } else {
-      toast.success('Viagem concluída com sucesso.');
-      setCompleteOpen(false);
       onChanged();
     }
     setLoading(null);
@@ -178,22 +121,16 @@ function TripLifecycleCard({trip, onChanged}: TripLifecycleCardProps) {
               {showStart && (
                 <Button size="sm" onClick={handleStart} disabled={loading !== null}>
                   {loading === 'start' && <Loader2 className="size-4 animate-spin" />}
-                  Iniciar
+                  Iniciar viagem
                 </Button>
               )}
               {showComplete && (
                 <Button
                   size="sm"
-                  onClick={() => {
-                    setCompleteError(null);
-                    setCompletedAtError(null);
-                    setFinalOdometerError(null);
-                    setCompletedAt(toDatetimeLocalValue(new Date().toISOString()));
-                    setCompleteOpen(true);
-                  }}
+                  onClick={() => setCompleteOpen(true)}
                   disabled={loading !== null}
                 >
-                  Concluir
+                  Concluir viagem
                 </Button>
               )}
               {showCancel && (
@@ -214,85 +151,12 @@ function TripLifecycleCard({trip, onChanged}: TripLifecycleCardProps) {
         </CardContent>
       </Card>
 
-      <Modal
+      <TripCompleteModal
+        trip={trip}
         open={completeOpen}
-        onClose={() => {
-          if (loading === 'complete') return;
-          setCompleteOpen(false);
-        }}
-        title="Concluir viagem"
-        description="Confirme a data, a hora e o hodômetro final da viagem."
-        size="md"
-      >
-        <div className="space-y-4">
-          {completeError && (
-            <Alert variant="destructive">
-              <AlertDescription>{completeError}</AlertDescription>
-            </Alert>
-          )}
-          <FormField
-            label="Data/Hora da conclusão"
-            htmlFor="complete-trip-completed-at"
-            required
-            error={completedAtError ?? undefined}
-          >
-            <Input
-              id="complete-trip-completed-at"
-              type="datetime-local"
-              value={completedAt}
-              onChange={(event) => {
-                setCompletedAt(event.target.value);
-                setCompletedAtError(null);
-              }}
-              disabled={loading === 'complete'}
-            />
-          </FormField>
-          <FormField
-            label="KM final"
-            htmlFor="complete-trip-final-odometer"
-            required
-            error={finalOdometerError ?? undefined}
-            hint={
-              trip.initialOdometerKm !== null
-                ? `KM inicial: ${trip.initialOdometerKm.toLocaleString('pt-BR')} km`
-                : undefined
-            }
-          >
-            <Input
-              id="complete-trip-final-odometer"
-              type="number"
-              min={trip.initialOdometerKm ?? 0}
-              step="0.01"
-              value={finalOdometerKm}
-              onChange={(event) => {
-                setFinalOdometerKm(event.target.value);
-                setFinalOdometerError(null);
-              }}
-              disabled={loading === 'complete'}
-            />
-          </FormField>
-          <div className="flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setCompleteOpen(false)}
-              disabled={loading === 'complete'}
-            >
-              Voltar
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              onClick={handleComplete}
-              disabled={loading === 'complete'}
-            >
-              {loading === 'complete' && <Loader2 className="size-4 animate-spin" />}
-              Confirmar conclusão
-            </Button>
-          </div>
-        </div>
-      </Modal>
+        onClose={() => setCompleteOpen(false)}
+        onCompleted={onChanged}
+      />
 
       <Modal
         open={cancelOpen}

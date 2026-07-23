@@ -1,6 +1,6 @@
 'use client';
 
-import {Eye, Pencil, Plus, Trash2} from 'lucide-react';
+import {CheckCircle2, Eye, Pencil, Play, Plus, Trash2} from 'lucide-react';
 import Link from 'next/link';
 import {useRouter} from 'next/navigation';
 import * as React from 'react';
@@ -24,7 +24,7 @@ import type {RouteFilterOptions, RouteSelectOption} from '@/features/routes/type
 import type {VehicleSelectOption} from '@/features/vehicles/types';
 import {MSG} from '@/lib/feedback/messages';
 
-import {deleteTripAction} from '../actions';
+import {deleteTripAction, startTripAction} from '../actions';
 import type {
   PaginatedTrips,
   Trip,
@@ -33,10 +33,15 @@ import type {
   TripSortOptions,
 } from '../types';
 import {TRIP_STATUS_INDICATORS, TRIP_STATUS_LABELS} from '../types';
-import {getTripFreightValue} from '../utils/trip-lifecycle';
+import {
+  canCompleteTrip,
+  canStartTrip,
+  getTripFreightValue,
+} from '../utils/trip-lifecycle';
 import {buildTripsListUrl} from '../utils/list-url';
 import {getTripRouteLabel} from '../utils/route-planning';
 import {getTripStatusVariant} from '../utils/trip-status';
+import {TripCompleteModal} from './trip-complete-modal';
 import {TripFilters} from './trip-filters';
 import {TripFormModal} from './trip-form-modal';
 
@@ -82,6 +87,7 @@ function TripsList({
   const [actionError, setActionError] = React.useState<string | null>(initialError);
   const [actionLoading, setActionLoading] = React.useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = React.useState<string | null>(null);
+  const [completingTrip, setCompletingTrip] = React.useState<Trip | null>(null);
 
   const data = initialData;
 
@@ -128,6 +134,26 @@ function TripsList({
     }
     setActionLoading(null);
     setOpenMenuId(null);
+  }
+
+  async function handleStart(trip: Trip) {
+    setActionLoading(trip.id);
+    setActionError(null);
+    setOpenMenuId(null);
+
+    const result = await startTripAction(trip.id);
+    if (!result.success) {
+      toast.error(result.error ?? MSG.operationFailed);
+    } else {
+      toast.success('Viagem iniciada com sucesso.');
+      router.refresh();
+    }
+    setActionLoading(null);
+  }
+
+  function handleOpenComplete(trip: Trip) {
+    setOpenMenuId(null);
+    setCompletingTrip(trip);
   }
 
   function handleSaved() {
@@ -201,6 +227,16 @@ function TripsList({
           >
             <Eye className="size-4" /> Ver detalhes
           </Link>
+          {canStartTrip(row.tripStatus) && (
+            <RowActionsMenuItem onClick={() => handleStart(row)}>
+              <Play className="size-4" /> Iniciar viagem
+            </RowActionsMenuItem>
+          )}
+          {canCompleteTrip(row.tripStatus) && (
+            <RowActionsMenuItem onClick={() => handleOpenComplete(row)}>
+              <CheckCircle2 className="size-4" /> Concluir viagem
+            </RowActionsMenuItem>
+          )}
           <RowActionsMenuItem
             onClick={() => {
               openEdit(row);
@@ -286,6 +322,13 @@ function TripsList({
         routes={routes}
         resourceAvailability={resourceAvailability}
         onSaved={handleSaved}
+      />
+
+      <TripCompleteModal
+        trip={completingTrip}
+        open={completingTrip !== null}
+        onClose={() => setCompletingTrip(null)}
+        onCompleted={handleSaved}
       />
     </PageTemplate>
   );

@@ -40,8 +40,17 @@ async function loadIntegrationSections(
     return base;
   }
 
+  // Cada loader de integração é isolado: uma falha em um módulo (ex.: financeiro)
+  // não deve impedir a exibição do pneu nem as demais seções já carregadas.
   const results = await Promise.all(
-    integrationLoaders.map((loader) => loader(supabase, companyId, tireId)),
+    integrationLoaders.map(async (loader) => {
+      try {
+        return await loader(supabase, companyId, tireId);
+      } catch (error) {
+        console.error('Falha ao carregar integração do detalhe do pneu:', error);
+        return {};
+      }
+    }),
   );
 
   return results.reduce<TireIntegrationSections>(

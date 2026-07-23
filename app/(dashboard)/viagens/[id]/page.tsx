@@ -39,32 +39,33 @@ export default async function ViagemDetailPage({params}: ViagemDetailPageProps) 
     redirect(ROUTES.dashboard);
   }
 
-  let data: TripDetailData | null;
-  let branches: BranchSelectOption[];
-  let drivers: DriverSelectOption[];
-  let vehicles: VehicleSelectOption[];
-  let customers: Customer[];
-  let routes: RouteSelectOption[];
-  let resourceAvailability: TripResourceAvailability;
-
-  try {
-    [data, branches, drivers, vehicles, customers, routes, resourceAvailability] =
-      await Promise.all([
-        getTripDetail(supabase, companyId, id),
-        listBranchesForSelect(supabase, companyId),
-        listDriversForSelect(supabase, companyId),
-        listVehiclesForSelect(supabase, companyId),
-        listCustomersForSelect(supabase, companyId),
-        listRoutesForSelect(supabase, companyId, 200),
-        listTripResourceAvailability(supabase, companyId),
-      ]);
-  } catch {
-    notFound();
-  }
+  // Busca a viagem isoladamente: só um resultado nulo (viagem inexistente) deve
+  // gerar 404. Erros reais de infraestrutura devem propagar para o error boundary
+  // da rota em vez de serem mascarados como "viagem não encontrada".
+  const data: TripDetailData | null = await getTripDetail(supabase, companyId, id);
 
   if (!data) {
     notFound();
   }
+
+  // Dados auxiliares (para os selects do formulário) são carregados fora do
+  // fluxo que decide o 404: uma falha aqui não deve impedir a visualização da
+  // viagem já carregada.
+  const [branches, drivers, vehicles, customers, routes, resourceAvailability]: [
+    BranchSelectOption[],
+    DriverSelectOption[],
+    VehicleSelectOption[],
+    Customer[],
+    RouteSelectOption[],
+    TripResourceAvailability,
+  ] = await Promise.all([
+    listBranchesForSelect(supabase, companyId),
+    listDriversForSelect(supabase, companyId),
+    listVehiclesForSelect(supabase, companyId),
+    listCustomersForSelect(supabase, companyId),
+    listRoutesForSelect(supabase, companyId, 200),
+    listTripResourceAvailability(supabase, companyId),
+  ]);
 
   return (
     <TripDetailView

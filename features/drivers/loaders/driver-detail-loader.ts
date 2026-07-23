@@ -35,8 +35,17 @@ async function loadIntegrationSections(
     return base;
   }
 
+  // Cada loader de integração é isolado: uma falha em um módulo (ex.: financeiro)
+  // não deve impedir a exibição do motorista nem as demais seções já carregadas.
   const results = await Promise.all(
-    integrationLoaders.map((loader) => loader(supabase, companyId, driverId)),
+    integrationLoaders.map(async (loader) => {
+      try {
+        return await loader(supabase, companyId, driverId);
+      } catch (error) {
+        console.error('Falha ao carregar integração do detalhe do motorista:', error);
+        return {};
+      }
+    }),
   );
 
   return results.reduce<DriverIntegrationSections>(

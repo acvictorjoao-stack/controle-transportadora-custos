@@ -6,10 +6,11 @@ const requiredString = z
   .min(1, 'Campo obrigatório.')
   .transform((v) => v.toUpperCase());
 
+// Campo opcional aceita null (formulário envia null para vazio).
 const optionalString = z
   .string()
   .trim()
-  .optional()
+  .nullish()
   .transform((v) => (v?.length ? v.toUpperCase() : null));
 
 const optionalUuid = z

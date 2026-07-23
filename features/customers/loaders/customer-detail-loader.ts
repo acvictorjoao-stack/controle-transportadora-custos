@@ -35,8 +35,17 @@ async function loadIntegrationSections(
 
   if (integrationLoaders.length === 0) return base;
 
+  // Cada loader de integração é isolado: uma falha em um módulo (ex.: financeiro)
+  // não deve impedir a exibição do cliente nem as demais seções já carregadas.
   const results = await Promise.all(
-    integrationLoaders.map((loader) => loader(supabase, companyId, customerId)),
+    integrationLoaders.map(async (loader) => {
+      try {
+        return await loader(supabase, companyId, customerId);
+      } catch (error) {
+        console.error('Falha ao carregar integração do detalhe do cliente:', error);
+        return {};
+      }
+    }),
   );
 
   return results.reduce<CustomerIntegrationSections>(

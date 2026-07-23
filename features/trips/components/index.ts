@@ -3,3 +3,5 @@ export {TripDetailView} from './trip-detail-view';
 export {TripFilters} from './trip-filters';
 export {TripFormModal} from './trip-form-modal';
 export {TripFileUpload} from './trip-file-upload';
+export {TripCompleteModal} from './trip-complete-modal';
+export {TripLifecycleCard} from './trip-lifecycle-card';

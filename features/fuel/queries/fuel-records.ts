@@ -131,20 +131,15 @@ async function resolveMetrics(
 }
 
 async function fetchVehicleTankCapacity(
-  supabase: SupabaseClient,
-  companyId: string,
-  vehicleId: string,
+  _supabase: SupabaseClient,
+  _companyId: string,
+  _vehicleId: string,
 ): Promise<number | null> {
-  const {data} = await supabase
-    .from('vehicles')
-    .select('tank_capacity_liters')
-    .eq('id', vehicleId)
-    .eq('company_id', companyId)
-    .is('deleted_at', null)
-    .maybeSingle();
-
-  if (!data?.tank_capacity_liters) return null;
-  return Number(data.tank_capacity_liters);
+  // A tabela public.vehicles não possui coluna de capacidade de tanque
+  // (ver supabase/migrations/026_vehicles.sql). Mantido como no-op para
+  // preservar a assinatura usada por create/updateFuelRecord sem consultar
+  // uma coluna inexistente.
+  return null;
 }
 
 function buildFuelPayload(

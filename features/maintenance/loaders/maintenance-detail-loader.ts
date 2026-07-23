@@ -40,8 +40,17 @@ async function loadIntegrationSections(
     return base;
   }
 
+  // Cada loader de integração é isolado: uma falha em um módulo (ex.: financeiro)
+  // não deve impedir a exibição da manutenção nem as demais seções já carregadas.
   const results = await Promise.all(
-    integrationLoaders.map((loader) => loader(supabase, companyId, maintenanceRecordId)),
+    integrationLoaders.map(async (loader) => {
+      try {
+        return await loader(supabase, companyId, maintenanceRecordId);
+      } catch (error) {
+        console.error('Falha ao carregar integração do detalhe da manutenção:', error);
+        return {};
+      }
+    }),
   );
 
   return results.reduce<MaintenanceIntegrationSections>(

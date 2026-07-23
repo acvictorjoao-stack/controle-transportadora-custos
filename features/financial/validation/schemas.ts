@@ -6,10 +6,11 @@ import {
   FINANCIAL_ENTRY_TYPES,
 } from '../constants/enums';
 
+// Campo opcional aceita null (formulário envia null para vazio).
 const optionalString = z
   .string()
   .trim()
-  .optional()
+  .nullish()
   .transform((v) => (v?.length ? v : null));
 
 const optionalUuid = z

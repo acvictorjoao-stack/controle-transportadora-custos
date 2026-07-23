@@ -2,15 +2,16 @@ import {z} from 'zod';
 
 import {FUEL_DOCUMENT_TYPES, FUEL_TYPES} from '../constants/enums';
 
+// Campos opcionais aceitam null (formulários enviam null para vazio).
 const optionalString = z
   .string()
   .trim()
-  .optional()
+  .nullish()
   .transform((v) => (v?.length ? v : null));
 
 const optionalNumber = z
   .union([z.number(), z.string()])
-  .optional()
+  .nullish()
   .transform((v) => {
     if (v === undefined || v === null || v === '') return null;
     const n = typeof v === 'number' ? v : Number(String(v).replace(',', '.'));

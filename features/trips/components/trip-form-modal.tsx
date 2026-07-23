@@ -723,7 +723,8 @@ function TripFormContent({
               readOnly
             />
             <p className="mt-1 text-xs text-muted-foreground">
-              Use Iniciar, Concluir ou Cancelar na tela de detalhes.
+              Use Iniciar viagem ou Concluir viagem na lista ou na tela de detalhes.
+              Cancelar permanece disponível no detalhe.
             </p>
           </FormField>
         )}

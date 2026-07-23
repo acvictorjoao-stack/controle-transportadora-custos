@@ -40,8 +40,17 @@ async function loadIntegrationSections(
     return base;
   }
 
+  // Cada loader de integração é isolado: uma falha em um módulo (ex.: financeiro)
+  // não deve impedir a exibição da viagem nem as demais seções já carregadas.
   const results = await Promise.all(
-    integrationLoaders.map((loader) => loader(supabase, companyId, tripId)),
+    integrationLoaders.map(async (loader) => {
+      try {
+        return await loader(supabase, companyId, tripId);
+      } catch (error) {
+        console.error('Falha ao carregar integração do detalhe da viagem:', error);
+        return {};
+      }
+    }),
   );
 
   return results.reduce<TripIntegrationSections>(
@@ -68,6 +77,23 @@ function buildTimeline(trip: Trip, history: TripDetailData['history']) {
   }));
 }
 
+/**
+ * Isolates a core detail section so one failing query cannot blank the whole
+ * trip page. Returns `fallback` and logs the error when the loader throws.
+ */
+async function loadSectionSafe<T>(
+  label: string,
+  loader: () => Promise<T>,
+  fallback: T,
+): Promise<T> {
+  try {
+    return await loader();
+  } catch (error) {
+    console.error(`Falha ao carregar seção "${label}" do detalhe da viagem:`, error);
+    return fallback;
+  }
+}
+
 export async function composeTripDetail(
   supabase: SupabaseClient,
   companyId: string,
@@ -86,13 +112,17 @@ export async function composeTripDetail(
     locations,
     integrations,
   ] = await Promise.all([
-    listTripHistory(supabase, companyId, tripId),
-    listTripDocuments(supabase, companyId, tripId),
-    getTripChecklist(supabase, companyId, tripId),
-    listTripStops(supabase, companyId, tripId),
-    listTripOccurrences(supabase, companyId, tripId),
-    listTripExpenses(supabase, companyId, tripId),
-    listTripLocations(supabase, companyId, tripId),
+    loadSectionSafe('history', () => listTripHistory(supabase, companyId, tripId), []),
+    loadSectionSafe('documents', () => listTripDocuments(supabase, companyId, tripId), []),
+    loadSectionSafe('checklist', () => getTripChecklist(supabase, companyId, tripId), null),
+    loadSectionSafe('stops', () => listTripStops(supabase, companyId, tripId), []),
+    loadSectionSafe(
+      'occurrences',
+      () => listTripOccurrences(supabase, companyId, tripId),
+      [],
+    ),
+    loadSectionSafe('expenses', () => listTripExpenses(supabase, companyId, tripId), []),
+    loadSectionSafe('locations', () => listTripLocations(supabase, companyId, tripId), []),
     loadIntegrationSections(supabase, companyId, tripId),
   ]);
 
