@@ -6,6 +6,7 @@ import * as React from 'react';
 import {buttonVariants} from '@/components/ui/button';
 import {ROUTES} from '@/constants/routes/paths';
 import {loadOperationalDreRouteTripsAction} from '@/features/dre/actions';
+import {TripFinancialBreakdownLazy} from '@/features/financial/components/trip-financial-breakdown';
 import {
   formatCurrencyBr,
   formatDateBr,
@@ -44,6 +45,7 @@ function resultClass(value: number): string | undefined {
 
 /**
  * Seção "Custos por Rota" — usa a tabela expansível genérica com dimensão `route`.
+ * Terceiro nível: TripFinancialBreakdown (lazy) sob cada viagem.
  */
 function OperationalDreRouteCosts({
   data,
@@ -205,6 +207,16 @@ function OperationalDreRouteCosts({
     [filters],
   );
 
+  const renderDetailExpansion = React.useCallback(
+    (trip: OperationalDreTripMetrics) => (
+      <TripFinancialBreakdownLazy
+        tripId={trip.id}
+        tripLabel={trip.tripNumber}
+      />
+    ),
+    [],
+  );
+
   return (
     <AnalyticalExpandableTable
       title="Custos por Rota"
@@ -214,7 +226,9 @@ function OperationalDreRouteCosts({
       detailColumns={detailColumns}
       getDetailKey={(trip) => trip.id}
       loadDetails={loadDetails}
+      renderDetailExpansion={renderDetailExpansion}
       expansionStorageKey="dre-route-expanded"
+      detailExpansionStorageKey="dre-trip-financial-expanded"
       dataRevision={filtersKey}
       emptyTitle="Sem custos por rota"
       emptyDescription="Viagens concluídas no período aparecerão agrupadas por rota."

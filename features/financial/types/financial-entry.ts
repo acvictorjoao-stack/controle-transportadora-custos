@@ -82,6 +82,8 @@ export interface FinancialEntry {
   customerName: string | null;
   categoryId: string | null;
   categoryName: string | null;
+  /** Slug da categoria financeira (ex.: combustivel, pedagio). */
+  categorySlug: string | null;
   costCenterId: string | null;
   costCenterName: string | null;
   entryType: FinancialEntryType;

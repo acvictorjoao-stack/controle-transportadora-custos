@@ -43,6 +43,7 @@ export function mapFinancialEntryRow(row: FinancialEntryRow): FinancialEntry {
     customerName: customer?.trade_name ?? customer?.legal_name ?? null,
     categoryId: row.category_id,
     categoryName: category?.name ?? null,
+    categorySlug: category?.slug ?? null,
     costCenterId: row.cost_center_id,
     costCenterName: costCenter?.name ?? null,
     entryType: row.entry_type,

@@ -92,6 +92,7 @@ function toAggregateEntry(row: AggregateRow): FinancialEntry {
     customerName: null,
     categoryId: null,
     categoryName: null,
+    categorySlug: null,
     costCenterId: null,
     costCenterName: null,
     entryType: row.entry_type,

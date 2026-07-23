@@ -292,14 +292,22 @@ export async function listFinancialEntriesByRelation(
     customerId?: string;
     customerContractId?: string;
   },
+  options: {limit?: number; excludeCancelled?: boolean} = {},
 ): Promise<FinancialEntry[]> {
+  const limit = options.limit ?? 50;
+  const excludeCancelled = options.excludeCancelled ?? false;
+
   let query = supabase
     .from('financial_entries')
     .select(FINANCIAL_LIST_COLUMNS)
     .eq('company_id', companyId)
     .is('deleted_at', null)
     .order('entry_date', {ascending: false})
-    .limit(50);
+    .limit(limit);
+
+  if (excludeCancelled) {
+    query = query.not('entry_status', 'in', '(cancelled,reversed)');
+  }
 
   if (relation.vehicleId) query = query.eq('vehicle_id', relation.vehicleId);
   if (relation.driverId) query = query.eq('driver_id', relation.driverId);

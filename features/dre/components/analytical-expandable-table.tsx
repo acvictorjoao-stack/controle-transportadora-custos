@@ -27,8 +27,15 @@ export interface AnalyticalExpandableTableProps<TGroup, TDetail> {
    * Retorna as linhas de detalhe (ex.: viagens da rota).
    */
   loadDetails: (group: TGroup) => Promise<TDetail[]>;
+  /**
+   * Terceiro nível opcional (ex.: breakdown financeiro da viagem).
+   * Não altera o contrato de grupos — apenas renderiza painel sob a linha.
+   */
+  renderDetailExpansion?: (detail: TDetail) => React.ReactNode;
   /** Chave de persistência do estado de expansão (sessionStorage). */
   expansionStorageKey?: string;
+  /** Persistência das linhas de detalhe expandidas (nível 3). */
+  detailExpansionStorageKey?: string;
   /**
    * Quando muda (ex.: filtros), limpa o cache de detalhes e
    * recarrega as linhas ainda expandidas.
@@ -75,7 +82,9 @@ function AnalyticalExpandableTable<TGroup, TDetail>({
   detailColumns,
   getDetailKey,
   loadDetails,
+  renderDetailExpansion,
   expansionStorageKey,
+  detailExpansionStorageKey,
   dataRevision,
   emptyTitle = 'Nenhum registro encontrado',
   emptyDescription = 'Não há dados para exibir no momento.',
@@ -85,12 +94,16 @@ function AnalyticalExpandableTable<TGroup, TDetail>({
   const [expandedKeys, setExpandedKeys] = React.useState<Set<string>>(
     () => new Set(),
   );
+  const [expandedDetailKeys, setExpandedDetailKeys] = React.useState<Set<string>>(
+    () => new Set(),
+  );
   const [detailsByKey, setDetailsByKey] = React.useState<
     Record<string, TDetail[]>
   >({});
   const [loadingKeys, setLoadingKeys] = React.useState<Set<string>>(new Set());
   const [errorByKey, setErrorByKey] = React.useState<Record<string, string>>({});
   const hydratedRef = React.useRef(false);
+  const detailHydratedRef = React.useRef(false);
   const loadDetailsRef = React.useRef(loadDetails);
   loadDetailsRef.current = loadDetails;
 
@@ -102,9 +115,21 @@ function AnalyticalExpandableTable<TGroup, TDetail>({
   }, [expansionStorageKey]);
 
   React.useEffect(() => {
+    const stored = readStoredKeys(detailExpansionStorageKey);
+    detailHydratedRef.current = true;
+    if (stored.size === 0) return;
+    setExpandedDetailKeys(stored);
+  }, [detailExpansionStorageKey]);
+
+  React.useEffect(() => {
     if (!hydratedRef.current) return;
     writeStoredKeys(expansionStorageKey, expandedKeys);
   }, [expandedKeys, expansionStorageKey]);
+
+  React.useEffect(() => {
+    if (!detailHydratedRef.current) return;
+    writeStoredKeys(detailExpansionStorageKey, expandedDetailKeys);
+  }, [expandedDetailKeys, detailExpansionStorageKey]);
 
   // Invalida cache de detalhes quando filtros/dados mudam.
   React.useEffect(() => {
@@ -134,6 +159,34 @@ function AnalyticalExpandableTable<TGroup, TDetail>({
       return next;
     });
   }, [groupKeySet]);
+
+  const detailKeySet = React.useMemo(() => {
+    const keys = new Set<string>();
+    for (const list of Object.values(detailsByKey)) {
+      for (const detail of list) {
+        keys.add(getDetailKey(detail));
+      }
+    }
+    return keys;
+  }, [detailsByKey, getDetailKey]);
+
+  React.useEffect(() => {
+    setExpandedDetailKeys((prev) => {
+      let changed = false;
+      const next = new Set<string>();
+      for (const key of prev) {
+        if (detailKeySet.has(key)) {
+          next.add(key);
+        } else if (detailKeySet.size > 0) {
+          changed = true;
+        } else {
+          next.add(key);
+        }
+      }
+      if (!changed && next.size === prev.size) return prev;
+      return next;
+    });
+  }, [detailKeySet]);
 
   const loadGroupDetails = React.useCallback(async (group: TGroup) => {
     const key = getGroupKey(group);
@@ -204,6 +257,16 @@ function AnalyticalExpandableTable<TGroup, TDetail>({
     });
   };
 
+  const toggleDetail = (detail: TDetail) => {
+    const key = getDetailKey(detail);
+    setExpandedDetailKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
   if (groups.length === 0) {
     return (
       <div className={className}>
@@ -217,7 +280,9 @@ function AnalyticalExpandableTable<TGroup, TDetail>({
     );
   }
 
+  const hasDetailExpansion = Boolean(renderDetailExpansion);
   const colSpan = groupColumns.length + 1;
+  const detailColSpan = detailColumns.length + (hasDetailExpansion ? 1 : 0);
 
   return (
     <div className={className}>
@@ -299,6 +364,12 @@ function AnalyticalExpandableTable<TGroup, TDetail>({
                                 <table className="w-full text-sm">
                                   <thead>
                                     <tr className="border-b border-border bg-muted/30">
+                                      {hasDetailExpansion ? (
+                                        <th
+                                          className="h-9 w-10 px-2 text-left align-middle"
+                                          aria-label="Expandir viagem"
+                                        />
+                                      ) : null}
                                       {detailColumns.map((column) => (
                                         <th
                                           key={column.id}
@@ -313,24 +384,60 @@ function AnalyticalExpandableTable<TGroup, TDetail>({
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    {details.map((detail) => (
-                                      <tr
-                                        key={getDetailKey(detail)}
-                                        className="border-b border-border last:border-0"
-                                      >
-                                        {detailColumns.map((column) => (
-                                          <td
-                                            key={column.id}
-                                            className={cn(
-                                              'px-3 py-2.5 align-middle',
-                                              column.className,
-                                            )}
-                                          >
-                                            {column.cell(detail)}
-                                          </td>
-                                        ))}
-                                      </tr>
-                                    ))}
+                                    {details.map((detail) => {
+                                      const detailKey = getDetailKey(detail);
+                                      const detailExpanded =
+                                        expandedDetailKeys.has(detailKey);
+
+                                      return (
+                                        <React.Fragment key={detailKey}>
+                                          <tr className="border-b border-border last:border-0">
+                                            {hasDetailExpansion ? (
+                                              <td className="px-2 py-2.5 align-middle">
+                                                <button
+                                                  type="button"
+                                                  onClick={() => toggleDetail(detail)}
+                                                  className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                                                  aria-expanded={detailExpanded}
+                                                  aria-label={
+                                                    detailExpanded
+                                                      ? 'Recolher financeiro'
+                                                      : 'Expandir financeiro'
+                                                  }
+                                                >
+                                                  {detailExpanded ? (
+                                                    <ChevronDown className="size-4" />
+                                                  ) : (
+                                                    <ChevronRight className="size-4" />
+                                                  )}
+                                                </button>
+                                              </td>
+                                            ) : null}
+                                            {detailColumns.map((column) => (
+                                              <td
+                                                key={column.id}
+                                                className={cn(
+                                                  'px-3 py-2.5 align-middle',
+                                                  column.className,
+                                                )}
+                                              >
+                                                {column.cell(detail)}
+                                              </td>
+                                            ))}
+                                          </tr>
+                                          {hasDetailExpansion && detailExpanded ? (
+                                            <tr className="border-b border-border bg-muted/10 last:border-0">
+                                              <td
+                                                colSpan={detailColSpan}
+                                                className="px-3 py-3"
+                                              >
+                                                {renderDetailExpansion?.(detail)}
+                                              </td>
+                                            </tr>
+                                          ) : null}
+                                        </React.Fragment>
+                                      );
+                                    })}
                                   </tbody>
                                 </table>
                               </div>
