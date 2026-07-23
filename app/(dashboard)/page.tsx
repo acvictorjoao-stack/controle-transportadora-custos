@@ -1,5 +1,6 @@
 import {redirect} from 'next/navigation';
 
+import {DashboardHashScroll} from '@/components/layout/dashboard-hash-scroll';
 import {PageTemplate} from '@/components/layout/page-template';
 import {OperationalDreView} from '@/features/dre/components';
 import {
@@ -124,15 +125,20 @@ export default async function DashboardPage({searchParams}: DashboardPageProps) 
         description="Visão rápida da operação: viagens, fretes, frota e cadastros."
         showBreadcrumb={false}
       >
+        <DashboardHashScroll />
         <div className="flex flex-col gap-8">
-          <OperationalDashboard data={dashboardData} />
-          <OperationalDreView
-            data={dreData}
-            byRoute={dreByRoute}
-            filterOptions={dreFilterOptions}
-            initialFilters={dreFilters}
-            error={dreError}
-          />
+          <div id="visao-geral" className="scroll-mt-4">
+            <OperationalDashboard data={dashboardData} />
+          </div>
+          <div id="dre" className="scroll-mt-4">
+            <OperationalDreView
+              data={dreData}
+              byRoute={dreByRoute}
+              filterOptions={dreFilterOptions}
+              initialFilters={dreFilters}
+              error={dreError}
+            />
+          </div>
         </div>
       </PageTemplate>
     </>

@@ -11,15 +11,19 @@ export interface NavItem {
   icon: LucideIcon;
   permission?: Permission;
   disabled?: boolean;
-  badge?: string;
+  /** Badge textual (ex.: "Em breve") ou contagem numérica futura */
+  badge?: string | number;
   children?: NavItem[];
 }
 
 export interface NavGroup {
   id: string;
   label: string;
+  icon?: LucideIcon;
   items: NavItem[];
   permission?: Permission;
+  /** Aberto por padrão quando não há estado em localStorage */
+  defaultOpen?: boolean;
 }
 
 export interface BreadcrumbItem {

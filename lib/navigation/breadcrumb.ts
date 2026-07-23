@@ -20,8 +20,10 @@ const segmentLabels: Record<string, string> = {
   'contas-a-pagar': 'Contas a Pagar',
   'contas-a-receber': 'Contas a Receber',
   manutencao: 'Manutenções',
+  manutencoes: 'Manutenções',
   pneus: 'Pneus',
   abastecimentos: 'Abastecimentos',
+  'centros-de-custo': 'Centros de Custo',
   relatorios: 'Relatórios',
   bi: 'Business Intelligence',
   ia: 'Inteligência Artificial',
@@ -91,9 +93,64 @@ export function buildBreadcrumbs(pathname: string): BreadcrumbItem[] {
 }
 
 /**
- * Verifica se um href está ativo com base no pathname atual.
+ * Separa path e hash de um href de navegação (ex.: `/#dre` → path `/`, hash `dre`).
  */
-export function isNavItemActive(pathname: string, href: string): boolean {
-  if (href === '/') return pathname === '/';
-  return pathname === href || pathname.startsWith(`${href}/`);
+export function splitNavHref(href: string): {path: string; hash: string | null} {
+  const hashIndex = href.indexOf('#');
+  if (hashIndex === -1) {
+    return {path: href || '/', hash: null};
+  }
+
+  const path = href.slice(0, hashIndex) || '/';
+  const hash = href.slice(hashIndex + 1) || null;
+  return {path, hash};
+}
+
+/**
+ * Verifica se um href está ativo com base no pathname e hash atuais.
+ * Itens com hash (ex.: `/#dre`) só ficam ativos quando o hash coincide.
+ * Itens sem hash na home (`/` ou `/#visao-geral`) ficam ativos sem hash ou com `#visao-geral`.
+ */
+export function isNavItemActive(
+  pathname: string,
+  href: string,
+  currentHash = '',
+): boolean {
+  const {path, hash: hrefHash} = splitNavHref(href);
+  const normalizedHash = currentHash.replace(/^#/, '');
+
+  if (hrefHash) {
+    if (hrefHash === 'visao-geral') {
+      return (
+        pathname === path &&
+        (normalizedHash === '' || normalizedHash === 'visao-geral')
+      );
+    }
+    return pathname === path && normalizedHash === hrefHash;
+  }
+
+  if (path === '/') {
+    return (
+      pathname === '/' &&
+      (normalizedHash === '' || normalizedHash === 'visao-geral')
+    );
+  }
+
+  return pathname === path || pathname.startsWith(`${path}/`);
+}
+
+/** Indica se algum item do grupo (ou filho) está ativo na rota atual. */
+export function isNavGroupActive(
+  pathname: string,
+  items: {href: string; children?: {href: string}[]}[],
+  currentHash = '',
+): boolean {
+  return items.some((item) => {
+    if (isNavItemActive(pathname, item.href, currentHash)) return true;
+    return (
+      item.children?.some((child) =>
+        isNavItemActive(pathname, child.href, currentHash),
+      ) ?? false
+    );
+  });
 }
