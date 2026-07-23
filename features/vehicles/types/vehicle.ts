@@ -102,6 +102,7 @@ export type VehicleSelectOption = Pick<
   | 'loadCapacityKg'
   | 'currentOdometerKm'
   | 'assetStatus'
+  | 'branchId'
 >;
 
 export interface VehicleHistoryRow {

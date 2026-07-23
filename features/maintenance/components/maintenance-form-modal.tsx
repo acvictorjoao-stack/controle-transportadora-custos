@@ -14,10 +14,7 @@ import {
   OPERATION_PAYMENT_TYPE_LABELS,
   OPERATION_PAYMENT_TYPES,
 } from '@/features/financial/constants/operation-financial';
-import type {BranchSelectOption} from '@/features/organization/branches/types';
-import type {DriverSelectOption} from '@/features/drivers/types';
 import type {VehicleSelectOption} from '@/features/vehicles/types';
-import type {TripSelectOption} from '@/features/trips/types';
 
 import {createMaintenanceRecordAction, updateMaintenanceRecordAction} from '../actions';
 import {
@@ -38,10 +35,7 @@ export interface MaintenanceFormModalProps {
   open: boolean;
   onClose: () => void;
   record?: MaintenanceRecord | null;
-  branches: BranchSelectOption[];
-  drivers: DriverSelectOption[];
   vehicles: VehicleSelectOption[];
-  trips?: TripSelectOption[];
   onSaved: (record: MaintenanceRecord) => void;
 }
 
@@ -55,14 +49,18 @@ function toLocalDateTimeValue(iso: string | null | undefined): string {
   return local.toISOString().slice(0, 16);
 }
 
+function resolveBranchIdFromVehicle(
+  vehicles: VehicleSelectOption[],
+  vehicleId: string,
+): string | null {
+  return vehicles.find((v) => v.id === vehicleId)?.branchId ?? null;
+}
+
 function MaintenanceFormModal({
   open,
   onClose,
   record,
-  branches,
-  drivers,
   vehicles,
-  trips = [],
   onSaved,
 }: MaintenanceFormModalProps) {
   const isEdit = Boolean(record);
@@ -82,10 +80,7 @@ function MaintenanceFormModal({
         key={formKey}
         record={record}
         isEdit={isEdit}
-        branches={branches}
-        drivers={drivers}
         vehicles={vehicles}
-        trips={trips}
         onClose={onClose}
         onSaved={onSaved}
       />
@@ -96,27 +91,22 @@ function MaintenanceFormModal({
 function MaintenanceFormContent({
   record,
   isEdit,
-  branches,
-  drivers,
   vehicles,
-  trips,
   onClose,
   onSaved,
 }: {
   record?: MaintenanceRecord | null;
   isEdit: boolean;
-  branches: BranchSelectOption[];
-  drivers: DriverSelectOption[];
   vehicles: VehicleSelectOption[];
-  trips: TripSelectOption[];
   onClose: () => void;
   onSaved: (record: MaintenanceRecord) => void;
 }) {
+  const initialVehicleId = record?.vehicleId ?? vehicles[0]?.id ?? '';
+
   const [formData, setFormData] = React.useState<CreateMaintenanceRecordInput>(() => ({
-    vehicleId: record?.vehicleId ?? vehicles[0]?.id ?? '',
-    driverId: record?.driverId ?? null,
-    tripId: record?.tripId ?? null,
-    branchId: record?.branchId ?? null,
+    vehicleId: initialVehicleId,
+    branchId:
+      record?.branchId ?? resolveBranchIdFromVehicle(vehicles, initialVehicleId),
     maintenanceType: record?.maintenanceType ?? 'corrective',
     priority: record?.priority ?? 'medium',
     maintenanceStatus: record?.maintenanceStatus ?? 'open',
@@ -152,6 +142,19 @@ function MaintenanceFormContent({
     setFieldErrors((prev) => ({...prev, [key]: undefined}));
   }
 
+  function handleVehicleChange(vehicleId: string) {
+    setFormData((prev) => ({
+      ...prev,
+      vehicleId,
+      branchId: resolveBranchIdFromVehicle(vehicles, vehicleId),
+    }));
+    setFieldErrors((prev) => ({
+      ...prev,
+      vehicleId: undefined,
+      branchId: undefined,
+    }));
+  }
+
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setLoading(true);
@@ -160,6 +163,9 @@ function MaintenanceFormContent({
 
     const payload = {
       ...formData,
+      branchId:
+        formData.branchId ??
+        resolveBranchIdFromVehicle(vehicles, formData.vehicleId),
       openedAt: formData.openedAt.includes('T')
         ? new Date(formData.openedAt).toISOString()
         : formData.openedAt,
@@ -198,55 +204,13 @@ function MaintenanceFormContent({
           <select
             id="maint-vehicle"
             value={formData.vehicleId}
-            onChange={(e) => updateField('vehicleId', e.target.value)}
+            onChange={(e) => handleVehicleChange(e.target.value)}
             className={MAINTENANCE_NATIVE_SELECT_CLASS}
             required
           >
             <option value="">Selecione</option>
             {vehicles.map((v) => (
               <option key={v.id} value={v.id}>{v.plate}</option>
-            ))}
-          </select>
-        </FormField>
-
-        <FormField label="Motorista" htmlFor="maint-driver" error={fieldErrors.driverId}>
-          <select
-            id="maint-driver"
-            value={formData.driverId ?? ''}
-            onChange={(e) => updateField('driverId', e.target.value || null)}
-            className={MAINTENANCE_NATIVE_SELECT_CLASS}
-          >
-            <option value="">Nenhum</option>
-            {drivers.map((d) => (
-              <option key={d.id} value={d.id}>{d.name}</option>
-            ))}
-          </select>
-        </FormField>
-
-        <FormField label="Viagem" htmlFor="maint-trip" error={fieldErrors.tripId}>
-          <select
-            id="maint-trip"
-            value={formData.tripId ?? ''}
-            onChange={(e) => updateField('tripId', e.target.value || null)}
-            className={MAINTENANCE_NATIVE_SELECT_CLASS}
-          >
-            <option value="">Nenhuma</option>
-            {trips.map((t) => (
-              <option key={t.id} value={t.id}>{t.tripNumber}</option>
-            ))}
-          </select>
-        </FormField>
-
-        <FormField label="Filial" htmlFor="maint-branch" error={fieldErrors.branchId}>
-          <select
-            id="maint-branch"
-            value={formData.branchId ?? ''}
-            onChange={(e) => updateField('branchId', e.target.value || null)}
-            className={MAINTENANCE_NATIVE_SELECT_CLASS}
-          >
-            <option value="">Nenhuma</option>
-            {branches.map((b) => (
-              <option key={b.id} value={b.id}>{b.name}</option>
             ))}
           </select>
         </FormField>
@@ -263,6 +227,22 @@ function MaintenanceFormContent({
               <option key={type} value={type}>{MAINTENANCE_TYPE_LABELS[type]}</option>
             ))}
           </select>
+        </FormField>
+
+        <FormField label="Fornecedor" htmlFor="maint-supplier" error={fieldErrors.supplier}>
+          <Input
+            id="maint-supplier"
+            value={formData.supplier ?? ''}
+            onChange={(e) => updateField('supplier', e.target.value || null)}
+          />
+        </FormField>
+
+        <FormField label="Oficina" htmlFor="maint-workshop" error={fieldErrors.workshop}>
+          <Input
+            id="maint-workshop"
+            value={formData.workshop ?? ''}
+            onChange={(e) => updateField('workshop', e.target.value || null)}
+          />
         </FormField>
 
         <FormField label="Prioridade" htmlFor="maint-priority" error={fieldErrors.priority}>
@@ -291,22 +271,6 @@ function MaintenanceFormContent({
           </select>
         </FormField>
 
-        <FormField label="Fornecedor" htmlFor="maint-supplier" error={fieldErrors.supplier}>
-          <Input
-            id="maint-supplier"
-            value={formData.supplier ?? ''}
-            onChange={(e) => updateField('supplier', e.target.value || null)}
-          />
-        </FormField>
-
-        <FormField label="Oficina" htmlFor="maint-workshop" error={fieldErrors.workshop}>
-          <Input
-            id="maint-workshop"
-            value={formData.workshop ?? ''}
-            onChange={(e) => updateField('workshop', e.target.value || null)}
-          />
-        </FormField>
-
         <FormField label="Data abertura" htmlFor="maint-opened" error={fieldErrors.openedAt} required>
           <Input
             id="maint-opened"
@@ -317,52 +281,26 @@ function MaintenanceFormContent({
           />
         </FormField>
 
-        <FormField label="Data conclusão" htmlFor="maint-completed" error={fieldErrors.completedAt}>
-          <Input
-            id="maint-completed"
-            type="datetime-local"
-            value={formData.completedAt ?? ''}
-            onChange={(e) => updateField('completedAt', e.target.value || null)}
-          />
-        </FormField>
-
-        <FormField label="Odômetro (km)" htmlFor="maint-odometer" error={fieldErrors.odometerKm}>
-          <Input
-            id="maint-odometer"
-            type="number"
-            step="0.01"
-            value={formData.odometerKm ?? ''}
-            onChange={(e) => updateField('odometerKm', e.target.value ? Number(e.target.value) : null)}
-          />
-        </FormField>
-
-        <FormField label="Horímetro" htmlFor="maint-hour" error={fieldErrors.hourMeter}>
-          <Input
-            id="maint-hour"
-            type="number"
-            step="0.01"
-            value={formData.hourMeter ?? ''}
-            onChange={(e) => updateField('hourMeter', e.target.value ? Number(e.target.value) : null)}
-          />
-        </FormField>
-
-        <FormField label="Valor estimado" htmlFor="maint-estimated" error={fieldErrors.estimatedAmount}>
-          <Input
-            id="maint-estimated"
-            type="number"
-            step="0.01"
-            value={formData.estimatedAmount ?? ''}
-            onChange={(e) => updateField('estimatedAmount', e.target.value ? Number(e.target.value) : null)}
-          />
-        </FormField>
-
-        <FormField label="Valor final" htmlFor="maint-final" error={fieldErrors.finalAmount}>
+        <FormField label="Valor" htmlFor="maint-final" error={fieldErrors.finalAmount}>
           <Input
             id="maint-final"
             type="number"
             step="0.01"
+            min="0"
             value={formData.finalAmount ?? ''}
-            onChange={(e) => updateField('finalAmount', e.target.value ? Number(e.target.value) : null)}
+            onChange={(e) => {
+              const value = e.target.value ? Number(e.target.value) : null;
+              setFormData((prev) => ({
+                ...prev,
+                finalAmount: value,
+                estimatedAmount: value,
+              }));
+              setFieldErrors((prev) => ({
+                ...prev,
+                finalAmount: undefined,
+                estimatedAmount: undefined,
+              }));
+            }}
           />
         </FormField>
 
@@ -405,14 +343,6 @@ function MaintenanceFormContent({
             />
           </FormField>
         )}
-
-        <FormField label="Responsável" htmlFor="maint-responsible" error={fieldErrors.responsible}>
-          <Input
-            id="maint-responsible"
-            value={formData.responsible ?? ''}
-            onChange={(e) => updateField('responsible', e.target.value || null)}
-          />
-        </FormField>
       </div>
 
       <FormField label="Descrição" htmlFor="maint-description" error={fieldErrors.description}>
@@ -420,30 +350,6 @@ function MaintenanceFormContent({
           id="maint-description"
           value={formData.description ?? ''}
           onChange={(e) => updateField('description', e.target.value || null)}
-        />
-      </FormField>
-
-      <FormField label="Diagnóstico" htmlFor="maint-diagnosis" error={fieldErrors.diagnosis}>
-        <Textarea
-          id="maint-diagnosis"
-          value={formData.diagnosis ?? ''}
-          onChange={(e) => updateField('diagnosis', e.target.value || null)}
-        />
-      </FormField>
-
-      <FormField label="Solução" htmlFor="maint-solution" error={fieldErrors.solution}>
-        <Textarea
-          id="maint-solution"
-          value={formData.solution ?? ''}
-          onChange={(e) => updateField('solution', e.target.value || null)}
-        />
-      </FormField>
-
-      <FormField label="Observações" htmlFor="maint-notes" error={fieldErrors.notes}>
-        <Textarea
-          id="maint-notes"
-          value={formData.notes ?? ''}
-          onChange={(e) => updateField('notes', e.target.value || null)}
         />
       </FormField>
 

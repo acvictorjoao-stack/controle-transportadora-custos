@@ -117,8 +117,9 @@ export async function onMaintenanceRecordCreated(
       supplier: record.supplier,
       branchId: record.branchId,
       vehicleId: record.vehicleId,
-      driverId: record.driverId,
-      tripId: record.tripId,
+      // RC 27.1 — custo de manutenção rateado por KM do veículo (sem vínculo de viagem)
+      driverId: null,
+      tripId: null,
       referenceNumber: record.externalId,
       notes: record.notes,
       paidAt: record.completedAt ?? record.openedAt,

@@ -13,11 +13,7 @@ import {Button} from '@/components/ui/button';
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
 import {Input} from '@/components/ui/input';
 import {ROUTES} from '@/constants/routes/paths';
-import type {BranchSelectOption} from '@/features/organization/branches/types';
-import type {DriverSelectOption} from '@/features/drivers/types';
 import type {VehicleSelectOption} from '@/features/vehicles/types';
-import type {TripSelectOption} from '@/features/trips/types';
-import {TRIP_STATUS_LABELS} from '@/features/trips/types';
 
 import {
   createMaintenancePartAction,
@@ -48,10 +44,7 @@ import {MaintenanceFormModal} from './maintenance-form-modal';
 export interface MaintenanceDetailViewProps {
   companyId: string;
   data: MaintenanceDetailData;
-  branches: BranchSelectOption[];
-  drivers: DriverSelectOption[];
   vehicles: VehicleSelectOption[];
-  trips: TripSelectOption[];
 }
 
 const TABS = [
@@ -71,10 +64,7 @@ type TabId = (typeof TABS)[number]['id'];
 function MaintenanceDetailView({
   companyId,
   data,
-  branches,
-  drivers,
   vehicles,
-  trips,
 }: MaintenanceDetailViewProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = React.useState<TabId>('resumo');
@@ -142,8 +132,6 @@ function MaintenanceDetailView({
 
   const infoRows = [
     ['Veículo', record.vehiclePlate ?? '—'],
-    ['Motorista', record.driverName ?? '—'],
-    ['Viagem', record.tripNumber ?? '—'],
     ['Filial', record.branchName ?? '—'],
     ['Tipo', MAINTENANCE_TYPE_LABELS[record.maintenanceType]],
     ['Prioridade', MAINTENANCE_PRIORITY_LABELS[record.priority]],
@@ -391,17 +379,6 @@ function MaintenanceDetailView({
               </CardContent>
             </Card>
           ))}
-          {data.linkedTrip && (
-            <Card>
-              <CardHeader><CardTitle className="text-base">Viagem vinculada</CardTitle></CardHeader>
-              <CardContent className="text-sm">
-                <p>{data.linkedTrip.tripNumber} — {data.linkedTrip.origin} → {data.linkedTrip.destination}</p>
-                {data.linkedTrip.tripStatus && (
-                  <p className="text-muted-foreground">{TRIP_STATUS_LABELS[data.linkedTrip.tripStatus as keyof typeof TRIP_STATUS_LABELS] ?? data.linkedTrip.tripStatus}</p>
-                )}
-              </CardContent>
-            </Card>
-          )}
         </div>
       )}
 
@@ -409,10 +386,7 @@ function MaintenanceDetailView({
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         record={record}
-        branches={branches}
-        drivers={drivers}
         vehicles={vehicles}
-        trips={trips}
         onSaved={handleRefresh}
       />
     </PageTemplate>

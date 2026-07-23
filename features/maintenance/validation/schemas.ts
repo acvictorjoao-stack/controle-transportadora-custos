@@ -41,18 +41,7 @@ export const maintenanceStatusSchema = z.enum(MAINTENANCE_STATUSES);
 const maintenanceBaseSchema = z
   .object({
     vehicleId: z.string().uuid('Veículo inválido.'),
-    driverId: z
-      .string()
-      .uuid('Motorista inválido.')
-      .nullable()
-      .optional()
-      .transform((v) => v ?? null),
-    tripId: z
-      .string()
-      .uuid('Viagem inválida.')
-      .nullable()
-      .optional()
-      .transform((v) => v ?? null),
+    /** Derivado do veículo; não é mais informado no formulário. */
     branchId: z
       .string()
       .uuid('Filial inválida.')

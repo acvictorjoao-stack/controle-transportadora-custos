@@ -82,8 +82,8 @@ async function getRecordContext(companyId: string, maintenanceRecordId: string) 
   return {
     branchId: record.branchId,
     vehicleId: record.vehicleId,
-    driverId: record.driverId,
-    tripId: record.tripId,
+    driverId: null,
+    tripId: null,
   };
 }
 
@@ -219,8 +219,8 @@ export async function registerMaintenanceFileAction(
         fileSize: parsed.data.fileSize,
         branchId: record.branchId,
         vehicleId: record.vehicleId,
-        driverId: record.driverId,
-        tripId: record.tripId,
+        driverId: null,
+        tripId: null,
       },
       resolved.data.profileId,
     );

@@ -161,7 +161,7 @@ export async function listVehiclesForSelect(
   const {data, error} = await supabase
     .from('vehicles')
     .select(
-      'id, plate, model, vehicle_type, body_type, brand, load_capacity_kg, current_odometer_km, asset_status',
+      'id, plate, model, vehicle_type, body_type, brand, load_capacity_kg, current_odometer_km, asset_status, branch_id',
     )
     .eq('company_id', companyId)
     .is('deleted_at', null)
@@ -182,6 +182,7 @@ export async function listVehiclesForSelect(
     loadCapacityKg: row.load_capacity_kg,
     currentOdometerKm: Number(row.current_odometer_km),
     assetStatus: row.asset_status,
+    branchId: row.branch_id,
   }));
 }
 

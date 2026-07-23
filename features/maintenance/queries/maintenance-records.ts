@@ -71,8 +71,9 @@ function buildMaintenancePayload(
 ): Record<string, unknown> {
   const payload: Record<string, unknown> = {
     vehicle_id: input.vehicleId,
-    driver_id: input.driverId,
-    trip_id: input.tripId,
+    // RC 27.1 — manutenção pertence ao veículo; rateio por KM (sem vínculo manual)
+    driver_id: null,
+    trip_id: null,
     branch_id: input.branchId,
     maintenance_type: input.maintenanceType,
     priority: input.priority,
