@@ -11,25 +11,28 @@ export interface SidebarBadgeProps {
 }
 
 /**
- * Badge reutilizável da sidebar (texto ou contagem futura).
- * Nesta RC não há integração com APIs de contagem.
+ * Badge padronizado da sidebar (RC 28.0.3).
+ * Labels como "Em breve" usam estilo secundário compacto.
  */
 function SidebarBadge({value, className, tone = 'label'}: SidebarBadgeProps) {
   if (value === null || value === undefined || value === '') return null;
 
   const isCount = tone === 'count' || typeof value === 'number';
+  const isComingSoon =
+    !isCount && String(value).trim().toLowerCase() === 'em breve';
 
   return (
     <Badge
       data-slot="sidebar-badge"
       variant={isCount ? 'default' : 'secondary'}
       className={cn(
-        'shrink-0 px-1.5 py-0 text-[10px] font-medium leading-4',
+        'shrink-0 rounded-md px-1.5 py-0 text-[10px] font-medium leading-4 tracking-wide',
         isCount && 'min-w-5 justify-center tabular-nums',
+        isComingSoon && 'bg-muted text-muted-foreground',
         className,
       )}
     >
-      {value}
+      {isComingSoon ? 'Em breve' : value}
     </Badge>
   );
 }

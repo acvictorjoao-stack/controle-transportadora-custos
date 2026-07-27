@@ -5,92 +5,119 @@ import * as React from 'react';
 import {SIDEBAR_ACCORDION_STORAGE_KEY} from '@/constants/app/sidebar';
 import type {NavGroup} from '@/types/global/navigation';
 
-type AccordionState = Record<string, boolean>;
+/**
+ * Lê o grupo aberto do localStorage.
+ * Aceita formato novo (string id) e legado (mapa JSON de booleans).
+ */
+export function readOpenGroupId(
+  groups: NavGroup[],
+  storageValue: string | null,
+): string | null {
+  const validIds = new Set(groups.map((group) => group.id));
+  const defaultId =
+    groups.find((group) => group.defaultOpen)?.id ?? groups[0]?.id ?? null;
 
-function readAccordionState(groups: NavGroup[]): AccordionState {
-  const defaults: AccordionState = {};
-  for (const group of groups) {
-    defaults[group.id] = group.defaultOpen ?? false;
-  }
-
-  if (typeof window === 'undefined') return defaults;
+  if (!storageValue) return defaultId;
 
   try {
-    const raw = localStorage.getItem(SIDEBAR_ACCORDION_STORAGE_KEY);
-    if (!raw) return defaults;
-    const parsed = JSON.parse(raw) as AccordionState;
-    return {...defaults, ...parsed};
+    const parsed: unknown = JSON.parse(storageValue);
+
+    if (typeof parsed === 'string') {
+      return validIds.has(parsed) ? parsed : defaultId;
+    }
+
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      const map = parsed as Record<string, boolean>;
+      const openIds = Object.entries(map)
+        .filter(([, open]) => open)
+        .map(([id]) => id)
+        .filter((id) => validIds.has(id));
+
+      if (openIds.length === 0) return null;
+      // Preferência: grupo defaultOpen se estiver aberto; senão o primeiro.
+      const preferred = groups.find(
+        (group) => group.defaultOpen && openIds.includes(group.id),
+      );
+      return preferred?.id ?? openIds[0] ?? null;
+    }
   } catch {
-    return defaults;
+    // Valor legado simples (id sem JSON)
+    if (validIds.has(storageValue)) return storageValue;
   }
+
+  return defaultId;
 }
 
-function persistAccordionState(state: AccordionState) {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(SIDEBAR_ACCORDION_STORAGE_KEY, JSON.stringify(state));
+export function nextExclusiveOpenId(
+  currentOpenId: string | null,
+  toggledGroupId: string,
+): string | null {
+  return currentOpenId === toggledGroupId ? null : toggledGroupId;
 }
 
 /**
- * Estado aberto/fechado dos grupos da sidebar, persistido em localStorage.
- * Grupos com rota ativa são forçados a abrir quando a rota muda.
+ * Accordion exclusivo: apenas um grupo aberto por vez.
+ * Persiste o grupo aberto em localStorage e abre o grupo da rota ativa.
  */
 export function useSidebarAccordion(
   groups: NavGroup[],
   activeGroupIds: string[],
 ) {
-  const [openMap, setOpenMap] = React.useState<AccordionState>(() =>
-    readAccordionState(groups),
-  );
+  const [openGroupId, setOpenGroupId] = React.useState<string | null>(() => {
+    const routeGroupId = activeGroupIds[0] ?? null;
+    if (routeGroupId) return routeGroupId;
+
+    if (typeof window === 'undefined') {
+      return (
+        groups.find((group) => group.defaultOpen)?.id ?? groups[0]?.id ?? null
+      );
+    }
+
+    return readOpenGroupId(
+      groups,
+      localStorage.getItem(SIDEBAR_ACCORDION_STORAGE_KEY),
+    );
+  });
 
   const activeKey = activeGroupIds.slice().sort().join(',');
   const [prevActiveKey, setPrevActiveKey] = React.useState(activeKey);
 
   if (activeKey !== prevActiveKey) {
     setPrevActiveKey(activeKey);
-    setOpenMap((prev) => {
-      let changed = false;
-      const next = {...prev};
-
-      for (const group of groups) {
-        if (!(group.id in next)) {
-          next[group.id] = group.defaultOpen ?? false;
-          changed = true;
-        }
-      }
-
-      for (const id of activeGroupIds) {
-        if (!next[id]) {
-          next[id] = true;
-          changed = true;
-        }
-      }
-
-      return changed ? next : prev;
-    });
+    const routeGroupId = activeGroupIds[0] ?? null;
+    if (routeGroupId && openGroupId !== routeGroupId) {
+      setOpenGroupId(routeGroupId);
+    }
   }
 
   React.useEffect(() => {
-    persistAccordionState(openMap);
-  }, [openMap]);
+    if (typeof window === 'undefined') return;
+    if (openGroupId == null) {
+      localStorage.removeItem(SIDEBAR_ACCORDION_STORAGE_KEY);
+      return;
+    }
+    localStorage.setItem(
+      SIDEBAR_ACCORDION_STORAGE_KEY,
+      JSON.stringify(openGroupId),
+    );
+  }, [openGroupId]);
 
   const isOpen = React.useCallback(
-    (groupId: string) => openMap[groupId] ?? false,
-    [openMap],
+    (groupId: string) => openGroupId === groupId,
+    [openGroupId],
   );
 
   const toggle = React.useCallback((groupId: string) => {
-    setOpenMap((prev) => {
-      const next = {...prev, [groupId]: !prev[groupId]};
-      return next;
-    });
+    setOpenGroupId((prev) => nextExclusiveOpenId(prev, groupId));
   }, []);
 
   const setOpen = React.useCallback((groupId: string, open: boolean) => {
-    setOpenMap((prev) => {
-      if (prev[groupId] === open) return prev;
-      return {...prev, [groupId]: open};
+    setOpenGroupId((prev) => {
+      if (open) return groupId;
+      if (prev === groupId) return null;
+      return prev;
     });
   }, []);
 
-  return {isOpen, toggle, setOpen};
+  return {isOpen, toggle, setOpen, openGroupId};
 }

@@ -30,10 +30,16 @@ function SidebarGroup({
 }: SidebarGroupProps) {
   const {collapsed} = useSidebar();
   const GroupIcon = group.icon;
+  const panelId = `sidebar-group-panel-${group.id}`;
+  const headerId = `sidebar-group-header-${group.id}`;
 
   if (collapsed) {
     return (
-      <div data-slot="sidebar-group" data-collapsed="true" className="space-y-0.5">
+      <div
+        data-slot="sidebar-group"
+        data-collapsed="true"
+        className="space-y-0.5"
+      >
         {items.map((item) => (
           <SidebarItem
             key={item.id}
@@ -51,43 +57,47 @@ function SidebarGroup({
       data-slot="sidebar-group"
       data-open={open || undefined}
       data-active={active || undefined}
-      className={cn(
-        'relative overflow-hidden rounded-lg transition-colors duration-200',
-        open && 'bg-sidebar-accent/40',
-        active && 'bg-sidebar-accent/55',
-      )}
+      className="relative"
     >
-      {active && (
-        <span
-          aria-hidden="true"
-          className="absolute inset-y-1 left-0 w-0.5 rounded-full bg-primary"
-        />
-      )}
-
       <button
+        id={headerId}
         type="button"
         onClick={onToggle}
         aria-expanded={open}
+        aria-controls={panelId}
         className={cn(
-          'flex w-full items-center gap-2 px-3 py-2 text-left transition-colors duration-200',
+          'flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-left transition-colors duration-200',
           active
             ? 'text-sidebar-accent-foreground'
-            : 'text-sidebar-foreground/80 hover:text-sidebar-accent-foreground',
+            : 'text-sidebar-foreground/75 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground',
         )}
       >
-        {GroupIcon && <GroupIcon className="size-4 shrink-0 opacity-80" />}
-        <span className="min-w-0 flex-1 truncate text-xs font-semibold uppercase tracking-wider">
+        {GroupIcon ? (
+          <GroupIcon
+            className={cn(
+              'size-4 shrink-0',
+              active ? 'text-primary' : 'opacity-70',
+            )}
+            aria-hidden="true"
+          />
+        ) : null}
+        <span className="min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-wider">
           {group.label}
         </span>
         <ChevronDown
+          aria-hidden="true"
           className={cn(
-            'size-4 shrink-0 opacity-50 transition-transform duration-200',
+            'size-3.5 shrink-0 opacity-50 transition-transform ease-out',
             open && 'rotate-180',
           )}
+          style={{transitionDuration: `${SIDEBAR_ACCORDION_DURATION_MS}ms`}}
         />
       </button>
 
       <div
+        id={panelId}
+        role="region"
+        aria-labelledby={headerId}
         className="grid transition-[grid-template-rows] ease-out"
         style={{
           gridTemplateRows: open ? '1fr' : '0fr',
@@ -95,7 +105,7 @@ function SidebarGroup({
         }}
       >
         <div className="min-h-0 overflow-hidden">
-          <div className="space-y-0.5 px-1.5 pb-1.5">
+          <div className="space-y-0.5 pb-1 pl-1 pr-0.5 pt-0.5">
             {items.map((item) => (
               <SidebarItem
                 key={item.id}

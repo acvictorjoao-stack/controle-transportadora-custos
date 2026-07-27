@@ -26,10 +26,18 @@ function SidebarItem({item, pathname, hash = '', depth = 0}: SidebarItemProps) {
 
   const content = (
     <>
-      <Icon className="size-4 shrink-0" />
+      <Icon
+        className={cn(
+          'size-4 shrink-0 transition-colors duration-200',
+          isActive ? 'text-primary' : 'opacity-80',
+        )}
+        aria-hidden="true"
+      />
       {!collapsed && (
         <span className="flex min-w-0 flex-1 items-center gap-2">
-          <span className="truncate">{item.title}</span>
+          <span className={cn('truncate', isActive && 'font-semibold')}>
+            {item.title}
+          </span>
           <SidebarBadge value={item.badge} tone={badgeTone} />
         </span>
       )}
@@ -37,10 +45,10 @@ function SidebarItem({item, pathname, hash = '', depth = 0}: SidebarItemProps) {
   );
 
   const className = cn(
-    'flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-200',
+    'relative flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm transition-colors duration-200',
     isActive
       ? 'bg-primary/10 text-primary'
-      : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground',
+      : 'font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground',
     collapsed && 'justify-center px-2',
     depth > 0 && 'py-1.5 text-[13px]',
     item.disabled &&
@@ -54,7 +62,6 @@ function SidebarItem({item, pathname, hash = '', depth = 0}: SidebarItemProps) {
       const {path, hash: targetHash} = splitNavHref(item.href);
       if (!targetHash || path !== pathname) return;
 
-      // Mesma rota: força hash + scroll (Next.js nem sempre dispara hashchange)
       event.preventDefault();
       const nextHash = `#${targetHash}`;
       if (window.location.hash !== nextHash) {
@@ -67,6 +74,13 @@ function SidebarItem({item, pathname, hash = '', depth = 0}: SidebarItemProps) {
     [item.href, pathname, setMobileOpen],
   );
 
+  const activeBar = isActive ? (
+    <span
+      aria-hidden="true"
+      className="absolute inset-y-1 left-0 w-0.5 rounded-full bg-primary"
+    />
+  ) : null;
+
   if (item.disabled) {
     return (
       <span
@@ -77,6 +91,7 @@ function SidebarItem({item, pathname, hash = '', depth = 0}: SidebarItemProps) {
         className={className}
         aria-disabled="true"
       >
+        {activeBar}
         {content}
       </span>
     );
@@ -88,9 +103,11 @@ function SidebarItem({item, pathname, hash = '', depth = 0}: SidebarItemProps) {
       data-active={isActive || undefined}
       href={item.href}
       title={collapsed ? item.title : undefined}
+      aria-current={isActive ? 'page' : undefined}
       className={className}
       onClick={handleClick}
     >
+      {activeBar}
       {content}
     </Link>
   );

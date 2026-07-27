@@ -4,10 +4,12 @@ import {usePathname} from 'next/navigation';
 import * as React from 'react';
 
 import {navigationGroups} from '@/config/navigation';
+import {useSidebar} from '@/contexts/shell/use-sidebar';
 import {useSidebarAccordion} from '@/hooks/use-sidebar-accordion';
 import {hasPermission, useNavPermissions} from '@/hooks/use-nav-permissions';
 import {filterNavByPermissions} from '@/lib/navigation/filter-nav';
 import {isNavGroupActive} from '@/lib/navigation/breadcrumb';
+import {cn} from '@/lib/utils';
 
 import {SidebarGroup} from './sidebar-group';
 
@@ -39,6 +41,7 @@ function useLocationHash() {
 function SidebarNav() {
   const pathname = usePathname();
   const hash = useLocationHash();
+  const {collapsed} = useSidebar();
   const permissions = useNavPermissions();
   const groups = filterNavByPermissions(navigationGroups, permissions);
 
@@ -66,7 +69,11 @@ function SidebarNav() {
   return (
     <nav
       data-slot="sidebar-nav"
-      className="flex-1 space-y-1 overflow-y-auto px-2 py-3"
+      aria-label="Navegação principal"
+      className={cn(
+        'flex-1 overflow-y-auto px-2 py-3',
+        collapsed ? 'space-y-1' : 'space-y-3',
+      )}
     >
       {visibleGroups.map((group) => {
         const active = activeGroupIds.includes(group.id);
