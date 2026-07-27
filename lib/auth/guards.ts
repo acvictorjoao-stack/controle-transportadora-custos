@@ -72,13 +72,13 @@ export async function guardPortalOwner(): Promise<boolean> {
 
 /**
  * Exige papel OWNER do Portal Master (RPC is_portal_owner).
- * Redireciona usuários sem permissão para o dashboard do tenant.
+ * Redireciona usuários sem permissão para a Home do tenant.
  */
 export async function requireOwner(returnTo?: string) {
   const user = await requireAuth(returnTo);
 
   if (!(await guardPortalOwner())) {
-    redirect(ROUTES.dashboard);
+    redirect(ROUTES.home);
   }
 
   return user;

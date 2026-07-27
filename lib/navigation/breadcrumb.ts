@@ -7,6 +7,7 @@ const navItems = flattenNavItems(navigationGroups);
 
 /** Segmentos de rota com labels customizados */
 const segmentLabels: Record<string, string> = {
+  home: 'Início',
   dashboard: 'Dashboard',
   dre: 'DRE',
   rentabilidade: 'Rentabilidade',

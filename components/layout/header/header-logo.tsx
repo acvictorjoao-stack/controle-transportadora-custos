@@ -13,7 +13,7 @@ export interface HeaderLogoProps {
 function HeaderLogo({collapsed = false, className}: HeaderLogoProps) {
   return (
     <Link
-      href={ROUTES.dashboard}
+      href={ROUTES.home}
       className={cn(
         'flex items-center gap-2.5 font-semibold tracking-tight transition-opacity hover:opacity-80',
         className,

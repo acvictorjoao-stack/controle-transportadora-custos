@@ -1,6 +1,7 @@
 import {ROUTES} from '@/constants/routes/paths';
 
 export type ModulePageId =
+  | 'home'
   | 'dashboard'
   | 'dashboard-executivo'
   | 'dashboard-dre'
@@ -42,6 +43,12 @@ export interface ModulePageMeta {
  * Sincronizado com ROUTES e config/navigation/modules.ts.
  */
 export const modulePageRegistry: Record<ModulePageId, ModulePageMeta> = {
+  home: {
+    id: 'home',
+    title: 'Início',
+    description: 'Portal de navegação e acesso rápido aos módulos.',
+    href: ROUTES.home,
+  },
   dashboard: {
     id: 'dashboard',
     title: 'Dashboard',

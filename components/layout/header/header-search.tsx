@@ -1,8 +1,6 @@
 'use client';
 
-import {Search} from 'lucide-react';
-
-import {SearchInput} from '@/components/forms/search-input';
+import {HomeModuleSearch} from '@/features/home-portal';
 import {cn} from '@/lib/utils';
 
 export interface HeaderSearchProps {
@@ -12,13 +10,10 @@ export interface HeaderSearchProps {
 function HeaderSearch({className}: HeaderSearchProps) {
   return (
     <div className={cn('relative w-full max-w-md', className)}>
-      <SearchInput
-        placeholder="Busca global (em breve)..."
-        disabled
-        className="w-full opacity-70"
-        aria-label="Pesquisa global — disponível em breve"
+      <HomeModuleSearch
+        className="max-w-none"
+        placeholder="Buscar módulo..."
       />
-      <Search className="sr-only" />
     </div>
   );
 }

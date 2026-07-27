@@ -4,7 +4,9 @@
  */
 
 export const ROUTES = {
+  /** Portal de navegação (central de acesso aos módulos). */
   home: '/',
+  homeAlias: '/home',
 
   // Dashboard e módulos analíticos
   dashboard: '/dashboard',

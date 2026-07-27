@@ -38,7 +38,10 @@ export default async function DashboardPage() {
       <PageTemplate
         title="Dashboard Executivo"
         description="Indicadores, rankings e alertas para tomada de decisão."
-        breadcrumbItems={[{label: 'Dashboard'}]}
+        breadcrumbItems={[
+          {label: 'Dashboard', href: ROUTES.dashboard},
+          {label: 'Visão Geral'},
+        ]}
       >
         <ExecutiveDashboard data={executiveData} />
       </PageTemplate>

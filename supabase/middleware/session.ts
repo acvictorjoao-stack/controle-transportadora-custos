@@ -185,7 +185,7 @@ export async function updateSession(request: NextRequest) {
       return buildRedirectWithCookies(
         request,
         supabaseResponse,
-        ROUTES.dashboard,
+        ROUTES.home,
       );
     }
   }
