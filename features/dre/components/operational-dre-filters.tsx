@@ -3,6 +3,7 @@
 import {useRouter} from 'next/navigation';
 import * as React from 'react';
 
+import {ROUTES} from '@/constants/routes/paths';
 import {VEHICLE_NATIVE_SELECT_CLASS} from '@/features/vehicles/utils/form-styles';
 
 import type {OperationalDreFilterOptions, OperationalDreFilters} from '../types';
@@ -11,24 +12,27 @@ import {buildOperationalDreUrl} from '../utils/list-url';
 export interface OperationalDreFiltersProps {
   options: OperationalDreFilterOptions;
   initialFilters: OperationalDreFilters;
+  /** Base path for filter URL sync (default: DRE page). */
+  basePath?: string;
 }
 
 function OperationalDreFiltersBar({
   options,
   initialFilters,
+  basePath = ROUTES.dashboardDre,
 }: OperationalDreFiltersProps) {
   const router = useRouter();
   const [filters, setFilters] = React.useState(initialFilters);
 
   React.useEffect(() => {
     const timer = window.setTimeout(() => {
-      const next = buildOperationalDreUrl(filters);
+      const next = buildOperationalDreUrl(filters, basePath);
       const current = `${window.location.pathname}${window.location.search}`;
       if (current !== next) router.push(next);
     }, 300);
 
     return () => window.clearTimeout(timer);
-  }, [filters, router]);
+  }, [basePath, filters, router]);
 
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">

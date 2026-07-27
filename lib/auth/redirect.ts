@@ -6,7 +6,7 @@ export const AUTH_ROUTES = [ROUTES.login, ROUTES.recuperarSenha] as const;
 /** Rotas acessíveis sem sessão. */
 export const PUBLIC_ROUTES = ['/api/health'] as const;
 
-export const DEFAULT_POST_LOGIN_REDIRECT = ROUTES.home;
+export const DEFAULT_POST_LOGIN_REDIRECT = ROUTES.dashboard;
 export const DEFAULT_POST_LOGOUT_REDIRECT = ROUTES.login;
 
 export const TENANT_ACCESS_DENIED_REASON = 'tenant_invalid';

@@ -1,5 +1,6 @@
 import {flattenNavItems, navigationGroups} from '@/config/navigation';
 import {siteConfig} from '@/config/site/index';
+import {ROUTES} from '@/constants/routes/paths';
 import type {BreadcrumbItem} from '@/types/global/navigation';
 
 const navItems = flattenNavItems(navigationGroups);
@@ -7,14 +8,17 @@ const navItems = flattenNavItems(navigationGroups);
 /** Segmentos de rota com labels customizados */
 const segmentLabels: Record<string, string> = {
   dashboard: 'Dashboard',
-  empresas: 'Empresas',
-  filiais: 'Filiais',
+  dre: 'DRE',
+  rentabilidade: 'Rentabilidade',
+  rotas: 'Rotas',
   clientes: 'Clientes',
-  fornecedores: 'Fornecedores',
-  contratos: 'Contratos',
   veiculos: 'Veículos',
   motoristas: 'Motoristas',
-  rotas: 'Rotas',
+  inteligencia: 'Inteligência Operacional',
+  empresas: 'Empresas',
+  filiais: 'Filiais',
+  fornecedores: 'Fornecedores',
+  contratos: 'Contratos',
   viagens: 'Viagens',
   financeiro: 'Financeiro',
   'fluxo-de-caixa': 'Fluxo de Caixa',
@@ -60,11 +64,11 @@ export function buildBreadcrumbs(pathname: string): BreadcrumbItem[] {
   const segments = pathname.split('/').filter(Boolean);
 
   if (segments.length === 0) {
-    return [{label: siteConfig.name, href: '/'}];
+    return [{label: siteConfig.name, href: ROUTES.home}];
   }
 
   const crumbs: BreadcrumbItem[] = [
-    {label: siteConfig.name, href: '/'},
+    {label: siteConfig.name, href: ROUTES.home},
   ];
 
   let currentPath = '';
@@ -94,7 +98,7 @@ export function buildBreadcrumbs(pathname: string): BreadcrumbItem[] {
 }
 
 /**
- * Separa path e hash de um href de navegação (ex.: `/#dre` → path `/`, hash `dre`).
+ * Separa path e hash de um href de navegação (compatibilidade legada).
  */
 export function splitNavHref(href: string): {path: string; hash: string | null} {
   const hashIndex = href.indexOf('#');
@@ -108,36 +112,25 @@ export function splitNavHref(href: string): {path: string; hash: string | null} 
 }
 
 /**
- * Verifica se um href está ativo com base no pathname e hash atuais.
- * Itens com hash (ex.: `/#dre`) só ficam ativos quando o hash coincide.
- * Itens sem hash na home (`/` ou `/#visao-geral`) ficam ativos sem hash ou com `#visao-geral`.
+ * Verifica se um href está ativo com base no pathname.
+ * A Visão Geral (`/dashboard`) só fica ativa na rota exata.
+ * Demais itens usam match exato ou prefixo para páginas de detalhe.
  */
 export function isNavItemActive(
   pathname: string,
   href: string,
-  currentHash = '',
+  _currentHash = '',
 ): boolean {
-  const {path, hash: hrefHash} = splitNavHref(href);
-  const normalizedHash = currentHash.replace(/^#/, '');
+  const {path} = splitNavHref(href);
 
-  if (hrefHash) {
-    if (hrefHash === 'visao-geral') {
-      return (
-        pathname === path &&
-        (normalizedHash === '' || normalizedHash === 'visao-geral')
-      );
-    }
-    return pathname === path && normalizedHash === hrefHash;
+  if (pathname === path) return true;
+
+  // Visão Geral não deve destacar em `/dashboard/dre`, `/dashboard/rentabilidade/...`
+  if (path === ROUTES.dashboard) {
+    return false;
   }
 
-  if (path === '/') {
-    return (
-      pathname === '/' &&
-      (normalizedHash === '' || normalizedHash === 'visao-geral')
-    );
-  }
-
-  return pathname === path || pathname.startsWith(`${path}/`);
+  return pathname.startsWith(`${path}/`);
 }
 
 /** Indica se algum item do grupo (ou filho) está ativo na rota atual. */

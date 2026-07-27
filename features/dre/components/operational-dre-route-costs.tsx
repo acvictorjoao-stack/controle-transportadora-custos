@@ -31,6 +31,8 @@ import {
 export interface OperationalDreRouteCostsProps {
   data: OperationalDreByRouteData;
   filters: OperationalDreFilters;
+  /** Base path for period filter URL sync (default: DRE page). */
+  basePath?: string;
 }
 
 function formatMoney(value: number): string {
@@ -54,6 +56,7 @@ function resultClass(value: number): string | undefined {
 function OperationalDreRouteCosts({
   data,
   filters,
+  basePath = ROUTES.dashboardDre,
 }: OperationalDreRouteCostsProps) {
   const router = useRouter();
   const filtersDateKey = `${filters.dateFrom ?? ''}|${filters.dateTo ?? ''}`;
@@ -77,7 +80,7 @@ function OperationalDreRouteCosts({
       dateFrom: period.dateFrom || undefined,
       dateTo: period.dateTo || undefined,
     };
-    const next = buildOperationalDreUrl(nextFilters);
+    const next = buildOperationalDreUrl(nextFilters, basePath);
     const current = `${window.location.pathname}${window.location.search}`;
     if (current === next) return;
 
@@ -86,7 +89,7 @@ function OperationalDreRouteCosts({
     }, 300);
 
     return () => window.clearTimeout(timer);
-  }, [period, filters, router]);
+  }, [basePath, period, filters, router]);
 
   const filtersKey = React.useMemo(
     () =>

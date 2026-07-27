@@ -89,11 +89,13 @@ Features futuras importam componentes de layout — nunca o contrário.
 
 | Grupo | Módulos |
 |-------|---------|
-| Dashboard | Visão Geral, DRE, Rentabilidade por Rota, Rentabilidade por Cliente *(Em breve)*, Rentabilidade por Veículo *(Em breve)*, Rentabilidade por Motorista *(Em breve)*, Inteligência Operacional *(Em breve)* |
+| Dashboard | Visão Geral (`/dashboard`), DRE (`/dashboard/dre`), Rentabilidade por Rota (`/dashboard/rentabilidade/rotas`), Rentabilidade por Cliente *(Em breve)*, Rentabilidade por Veículo *(Em breve)*, Rentabilidade por Motorista *(Em breve)*, Inteligência Operacional *(Em breve)* |
 | Cadastros | Empresas, Filiais, Clientes, Fornecedores, Contratos, Centros de Custo |
 | Operações | Veículos, Motoristas, Rotas, Viagens, Abastecimentos, Manutenções, Pneus |
 | Financeiro | Contas a Pagar, Contas a Receber, Fluxo de Caixa |
 | Administração | Usuários, Perfis, Configurações |
+
+A home (`/`) redireciona para `/dashboard`. A navegação do Dashboard usa rotas próprias — sem âncoras `#`.
 
 ### Permissões (preparado)
 
@@ -132,7 +134,7 @@ O hook `useNavPermissions()` retorna `['*']` até RBAC ser implementado.
 | Recolhível | Toggle desktop, persistência em `localStorage` (`fleetcontrol-sidebar-collapsed`) |
 | Accordion | Grupos expansíveis; animação CSS grid; duração `SIDEBAR_ACCORDION_DURATION_MS` |
 | Persistência accordion | Chave `fleetcontrol-sidebar-accordion` |
-| Estado ativo | `isNavItemActive()` baseado em `pathname` + `hash` |
+| Estado ativo | `isNavItemActive()` baseado em `pathname` (Visão Geral só na rota exata `/dashboard`) |
 | Permissões | Filtragem via `hasPermission()` / `filterNavByPermissions()` |
 
 ### Context

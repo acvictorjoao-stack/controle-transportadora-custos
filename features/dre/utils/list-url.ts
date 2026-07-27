@@ -2,7 +2,10 @@ import {ROUTES} from '@/constants/routes/paths';
 
 import type {OperationalDreFilters} from '../types';
 
-export function buildOperationalDreUrl(filters: OperationalDreFilters = {}): string {
+export function buildOperationalDreUrl(
+  filters: OperationalDreFilters = {},
+  basePath: string = ROUTES.dashboardDre,
+): string {
   const params = new URLSearchParams();
 
   if (filters.branchId) params.set('empresa', filters.branchId);
@@ -13,7 +16,7 @@ export function buildOperationalDreUrl(filters: OperationalDreFilters = {}): str
   if (filters.dateTo) params.set('ate', filters.dateTo);
 
   const query = params.toString();
-  return query ? `${ROUTES.dashboard}?${query}` : ROUTES.dashboard;
+  return query ? `${basePath}?${query}` : basePath;
 }
 
 export function parseOperationalDreFilters(params: {

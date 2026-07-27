@@ -6,8 +6,14 @@
 export const ROUTES = {
   home: '/',
 
-  // Dashboard (home oficial)
-  dashboard: '/',
+  // Dashboard e módulos analíticos
+  dashboard: '/dashboard',
+  dashboardDre: '/dashboard/dre',
+  dashboardRentabilidadeRotas: '/dashboard/rentabilidade/rotas',
+  dashboardRentabilidadeClientes: '/dashboard/rentabilidade/clientes',
+  dashboardRentabilidadeVeiculos: '/dashboard/rentabilidade/veiculos',
+  dashboardRentabilidadeMotoristas: '/dashboard/rentabilidade/motoristas',
+  dashboardInteligencia: '/dashboard/inteligencia',
 
   // Cadastros
   empresas: '/empresas',

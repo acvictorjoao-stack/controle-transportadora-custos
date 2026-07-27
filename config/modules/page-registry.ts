@@ -2,6 +2,12 @@ import {ROUTES} from '@/constants/routes/paths';
 
 export type ModulePageId =
   | 'dashboard'
+  | 'dashboard-dre'
+  | 'dashboard-rentabilidade-rotas'
+  | 'dashboard-rentabilidade-clientes'
+  | 'dashboard-rentabilidade-veiculos'
+  | 'dashboard-rentabilidade-motoristas'
+  | 'dashboard-inteligencia'
   | 'empresas'
   | 'filiais'
   | 'clientes'
@@ -40,6 +46,42 @@ export const modulePageRegistry: Record<ModulePageId, ModulePageMeta> = {
     title: 'Dashboard',
     description: 'Visão geral da operação e indicadores principais.',
     href: ROUTES.dashboard,
+  },
+  'dashboard-dre': {
+    id: 'dashboard-dre',
+    title: 'DRE Operacional',
+    description: 'Demonstrativo de receitas, custos e resultado operacional.',
+    href: ROUTES.dashboardDre,
+  },
+  'dashboard-rentabilidade-rotas': {
+    id: 'dashboard-rentabilidade-rotas',
+    title: 'Rentabilidade por Rota',
+    description: 'Análise de rentabilidade e custos por rota.',
+    href: ROUTES.dashboardRentabilidadeRotas,
+  },
+  'dashboard-rentabilidade-clientes': {
+    id: 'dashboard-rentabilidade-clientes',
+    title: 'Rentabilidade por Cliente',
+    description: 'Análise de rentabilidade por cliente.',
+    href: ROUTES.dashboardRentabilidadeClientes,
+  },
+  'dashboard-rentabilidade-veiculos': {
+    id: 'dashboard-rentabilidade-veiculos',
+    title: 'Rentabilidade por Veículo',
+    description: 'Análise de rentabilidade por veículo.',
+    href: ROUTES.dashboardRentabilidadeVeiculos,
+  },
+  'dashboard-rentabilidade-motoristas': {
+    id: 'dashboard-rentabilidade-motoristas',
+    title: 'Rentabilidade por Motorista',
+    description: 'Análise de rentabilidade por motorista.',
+    href: ROUTES.dashboardRentabilidadeMotoristas,
+  },
+  'dashboard-inteligencia': {
+    id: 'dashboard-inteligencia',
+    title: 'Inteligência Operacional',
+    description: 'Insights e recomendações da operação.',
+    href: ROUTES.dashboardInteligencia,
   },
   empresas: {
     id: 'empresas',

@@ -4,6 +4,7 @@ import {TableContainer} from '@/components/data-display/table-container';
 import {Section} from '@/components/layout/section';
 import {Alert, AlertDescription} from '@/components/ui/alert';
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
+import {ROUTES} from '@/constants/routes/paths';
 import {
   formatCurrencyBr,
   formatPercent,
@@ -117,6 +118,7 @@ function OperationalDreView({
         <OperationalDreFiltersBar
           options={filterOptions}
           initialFilters={initialFilters}
+          basePath={ROUTES.dashboardDre}
         />
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
@@ -335,7 +337,11 @@ function OperationalDreView({
           </TableContainer>
         </div>
 
-        <OperationalDreRouteCosts data={byRoute} filters={initialFilters} />
+        <OperationalDreRouteCosts
+          data={byRoute}
+          filters={initialFilters}
+          basePath={ROUTES.dashboardDre}
+        />
       </div>
     </Section>
   );

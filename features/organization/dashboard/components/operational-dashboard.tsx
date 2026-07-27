@@ -19,6 +19,10 @@ import type {
   OperationalDashboardData,
   OperationalTripSummaryRow,
 } from '../types/operational-dashboard';
+import {
+  DashboardAlertsPanel,
+  DashboardAnalyticalLinks,
+} from './dashboard-analytical-links';
 
 function formatMoney(value: number): string {
   return value.toLocaleString('pt-BR', {
@@ -107,6 +111,10 @@ function OperationalDashboard({data}: OperationalDashboardProps) {
           </Link>
         </div>
       </Section>
+
+      <DashboardAnalyticalLinks />
+
+      <DashboardAlertsPanel />
 
       <Section title="Viagens">
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
