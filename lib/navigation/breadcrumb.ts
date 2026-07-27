@@ -10,7 +10,7 @@ const segmentLabels: Record<string, string> = {
   dashboard: 'Dashboard',
   dre: 'DRE',
   rentabilidade: 'Rentabilidade',
-  rotas: 'Rotas',
+  rotas: 'Por Rota',
   clientes: 'Clientes',
   veiculos: 'Veículos',
   motoristas: 'Motoristas',

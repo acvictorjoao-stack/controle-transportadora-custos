@@ -26,11 +26,15 @@ import {ROUTES} from '@/constants/routes/paths';
 interface DashboardDrePageProps {
   searchParams: Promise<{
     empresa?: string;
+    filial?: string;
     cliente?: string;
     rota?: string;
+    veiculo?: string;
+    motorista?: string;
     centro?: string;
     de?: string;
     ate?: string;
+    periodo?: string;
   }>;
 }
 
@@ -76,6 +80,10 @@ export default async function DashboardDrePage({
     <PageTemplate
       title="DRE Operacional"
       description="Receitas, custos, indicadores e análise por rota."
+      breadcrumbItems={[
+        {label: 'Dashboard', href: ROUTES.dashboard},
+        {label: 'DRE'},
+      ]}
     >
       <OperationalDreView
         data={dreData}

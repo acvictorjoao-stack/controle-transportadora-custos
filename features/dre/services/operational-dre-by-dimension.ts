@@ -2,6 +2,7 @@ import {allocateOperationalCostsByMileage} from '@/features/financial/services/a
 import {getTripFreightValue} from '@/features/trips/utils/trip-lifecycle';
 
 import type {
+  OperationalDreCustomerGroup,
   OperationalDreDimensionGroup,
   OperationalDreExpenseRow,
   OperationalDreFilters,
@@ -10,6 +11,7 @@ import type {
   OperationalDreTripDetailRow,
   OperationalDreTripMetrics,
   OperationalDreTripRow,
+  OperationalDreVehicleGroup,
 } from '../types';
 import {formatOperationalDreRouteLabel} from '../utils/route-label';
 import {filterExpensesForScope} from './operational-dre-calculator';
@@ -307,6 +309,74 @@ export function calculateOperationalDreByRoute(
   }));
 }
 
+export type CalculateOperationalDreByCustomerOptions =
+  CalculateOperationalDreByRouteOptions;
+
+/**
+ * Consolida custos por cliente a partir das mesmas linhas da DRE.
+ * `trips` permanece vazio — detalhe via lazy load.
+ */
+export function calculateOperationalDreByCustomer(
+  trips: OperationalDreTripRow[],
+  expenses: OperationalDreExpenseRow[],
+  filters: OperationalDreFilters = {},
+  customerLabels: Map<string, string> = new Map(),
+  options: CalculateOperationalDreByCustomerOptions = {},
+): OperationalDreCustomerGroup[] {
+  return groupOperationalDreByDimension(trips, expenses, filters, {
+    dimension: 'customer',
+    labels: customerLabels,
+    includeTrips: false,
+    allocationBaseTrips: options.allocationBaseTrips,
+    unlinkedVehicleExpenses: options.unlinkedVehicleExpenses,
+  })
+    .filter(
+      (group) => group.dimensionKey !== OPERATIONAL_DRE_UNASSIGNED_DIMENSION_KEY,
+    )
+    .map((group) => ({
+      ...group,
+      dimensionType: 'customer' as const,
+      customer: {
+        id: group.dimensionKey,
+        label: group.label,
+      },
+    }));
+}
+
+export type CalculateOperationalDreByVehicleOptions =
+  CalculateOperationalDreByRouteOptions;
+
+/**
+ * Consolida custos por veículo a partir das mesmas linhas da DRE.
+ * `trips` permanece vazio — detalhe via lazy load.
+ */
+export function calculateOperationalDreByVehicle(
+  trips: OperationalDreTripRow[],
+  expenses: OperationalDreExpenseRow[],
+  filters: OperationalDreFilters = {},
+  vehicleLabels: Map<string, string> = new Map(),
+  options: CalculateOperationalDreByVehicleOptions = {},
+): OperationalDreVehicleGroup[] {
+  return groupOperationalDreByDimension(trips, expenses, filters, {
+    dimension: 'vehicle',
+    labels: vehicleLabels,
+    includeTrips: false,
+    allocationBaseTrips: options.allocationBaseTrips,
+    unlinkedVehicleExpenses: options.unlinkedVehicleExpenses,
+  })
+    .filter(
+      (group) => group.dimensionKey !== OPERATIONAL_DRE_UNASSIGNED_DIMENSION_KEY,
+    )
+    .map((group) => ({
+      ...group,
+      dimensionType: 'vehicle' as const,
+      vehicle: {
+        id: group.dimensionKey,
+        label: group.label,
+      },
+    }));
+}
+
 /**
  * Detalha viagens de um único grupo (rota), com métricas por viagem.
  */
@@ -316,8 +386,25 @@ export function calculateOperationalDreRouteTrips(
   filters: OperationalDreFilters = {},
   options: CalculateOperationalDreByRouteOptions = {},
 ): OperationalDreTripMetrics[] {
-  const groups = groupOperationalDreByDimension(trips, expenses, filters, {
+  return calculateOperationalDreDimensionTrips(trips, expenses, filters, {
     dimension: 'route',
+    ...options,
+  });
+}
+
+/**
+ * Detalha viagens de um grupo (qualquer dimensão), com métricas por viagem.
+ */
+export function calculateOperationalDreDimensionTrips(
+  trips: Array<OperationalDreTripRow | OperationalDreTripDetailRow>,
+  expenses: OperationalDreExpenseRow[],
+  filters: OperationalDreFilters = {},
+  options: CalculateOperationalDreByRouteOptions & {
+    dimension?: OperationalDreGroupDimension;
+  } = {},
+): OperationalDreTripMetrics[] {
+  const groups = groupOperationalDreByDimension(trips, expenses, filters, {
+    dimension: options.dimension ?? 'route',
     includeTrips: true,
     allocationBaseTrips: options.allocationBaseTrips,
     unlinkedVehicleExpenses: options.unlinkedVehicleExpenses,

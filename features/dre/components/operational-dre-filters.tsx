@@ -35,16 +35,16 @@ function OperationalDreFiltersBar({
   }, [basePath, filters, router]);
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       <select
         value={filters.branchId ?? ''}
         onChange={(e) =>
           setFilters((prev) => ({...prev, branchId: e.target.value || undefined}))
         }
         className={VEHICLE_NATIVE_SELECT_CLASS}
-        aria-label="Empresa"
+        aria-label="Filial"
       >
-        <option value="">Todas as empresas</option>
+        <option value="">Todas as filiais</option>
         {options.branches.map((branch) => (
           <option key={branch.id} value={branch.id}>
             {branch.name}
@@ -88,6 +88,44 @@ function OperationalDreFiltersBar({
       </select>
 
       <select
+        value={filters.vehicleId ?? ''}
+        onChange={(e) =>
+          setFilters((prev) => ({
+            ...prev,
+            vehicleId: e.target.value || undefined,
+          }))
+        }
+        className={VEHICLE_NATIVE_SELECT_CLASS}
+        aria-label="Veículo"
+      >
+        <option value="">Todos os veículos</option>
+        {(options.vehicles ?? []).map((vehicle) => (
+          <option key={vehicle.id} value={vehicle.id}>
+            {vehicle.label}
+          </option>
+        ))}
+      </select>
+
+      <select
+        value={filters.driverId ?? ''}
+        onChange={(e) =>
+          setFilters((prev) => ({
+            ...prev,
+            driverId: e.target.value || undefined,
+          }))
+        }
+        className={VEHICLE_NATIVE_SELECT_CLASS}
+        aria-label="Motorista"
+      >
+        <option value="">Todos os motoristas</option>
+        {(options.drivers ?? []).map((driver) => (
+          <option key={driver.id} value={driver.id}>
+            {driver.name}
+          </option>
+        ))}
+      </select>
+
+      <select
         value={filters.costCenterId ?? ''}
         onChange={(e) =>
           setFilters((prev) => ({
@@ -106,7 +144,7 @@ function OperationalDreFiltersBar({
         ))}
       </select>
 
-      <div className="grid grid-cols-2 gap-2 xl:col-span-2">
+      <div className="grid grid-cols-2 gap-2 sm:col-span-2">
         <input
           type="date"
           value={filters.dateFrom ?? ''}

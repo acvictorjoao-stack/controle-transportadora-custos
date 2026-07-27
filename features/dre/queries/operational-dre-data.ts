@@ -1,6 +1,7 @@
 import type {SupabaseClient} from '@supabase/supabase-js';
 
 import {mapDatabaseError} from '@/features/master/companies/utils/database-error';
+import {formatPlate} from '@/features/vehicles/utils/vehicle-format';
 
 import type {
   OperationalDreExpenseRow,
@@ -142,6 +143,10 @@ function mapExpenseRow(row: ExpenseRawRow): OperationalDreExpenseRow {
 export interface FetchOperationalDreTripsOptions {
   /** Quando true, restringe a viagens sem `route_id` (grupo "Sem rota"). */
   unassignedRouteOnly?: boolean;
+  /** Quando true, restringe a viagens sem `customer_id` (grupo "Sem cliente"). */
+  unassignedCustomerOnly?: boolean;
+  /** Quando true, restringe a viagens sem `vehicle_id` (grupo "Sem veículo"). */
+  unassignedVehicleOnly?: boolean;
 }
 
 function mapTripDistance(row: TripRawRow): number {
@@ -183,11 +188,23 @@ function applyTripFilters<T extends {
 ): T {
   let next = query;
   if (filters.branchId) next = next.eq('branch_id', filters.branchId);
-  if (filters.customerId) next = next.eq('customer_id', filters.customerId);
+  if (options.unassignedCustomerOnly) {
+    next = next.is('customer_id', null);
+  } else if (filters.customerId) {
+    next = next.eq('customer_id', filters.customerId);
+  }
   if (options.unassignedRouteOnly) {
     next = next.is('route_id', null);
   } else if (filters.routeId) {
     next = next.eq('route_id', filters.routeId);
+  }
+  if (options.unassignedVehicleOnly) {
+    next = next.is('vehicle_id', null);
+  } else if (filters.vehicleId) {
+    next = next.eq('vehicle_id', filters.vehicleId);
+  }
+  if (filters.driverId) {
+    next = next.eq('driver_id', filters.driverId);
   }
   if (filters.dateFrom) next = next.gte('completed_at', filters.dateFrom);
   if (filters.dateTo) {
@@ -256,6 +273,35 @@ export async function fetchOperationalDreRouteLabels(
         name: row.name,
       }),
     );
+  }
+
+  return labels;
+}
+
+/**
+ * Rótulos de veículo (placa formatada) em uma única query.
+ */
+export async function fetchOperationalDreVehicleLabels(
+  supabase: SupabaseClient,
+  companyId: string,
+  vehicleIds: string[],
+): Promise<Map<string, string>> {
+  const uniqueIds = Array.from(new Set(vehicleIds.filter(Boolean)));
+  const labels = new Map<string, string>();
+  if (uniqueIds.length === 0) return labels;
+
+  const {data, error} = await supabase
+    .from('vehicles')
+    .select('id, plate')
+    .eq('company_id', companyId)
+    .in('id', uniqueIds);
+
+  if (error) {
+    throw new Error(mapDatabaseError(error));
+  }
+
+  for (const row of data ?? []) {
+    labels.set(row.id, formatPlate(row.plate));
   }
 
   return labels;
@@ -334,11 +380,18 @@ export async function fetchOperationalDreExpenses(
 ): Promise<OperationalDreExpenseRow[]> {
   const filters = options.filters ?? {};
   const tripIds = options.tripIds ?? [];
-  const hasDimensionFilter = Boolean(filters.customerId || filters.routeId);
+  const hasDimensionFilter = Boolean(
+    filters.customerId || filters.routeId || filters.vehicleId,
+  );
 
-  // Com cliente/rota e nenhuma viagem no recorte, não há custos atribuíveis
-  // (exceto despesas diretas do cliente — tratadas abaixo).
-  if (hasDimensionFilter && tripIds.length === 0 && !filters.customerId) {
+  // Com dimensão e nenhuma viagem no recorte, só segue se houver vínculo direto
+  // (cliente ou veículo) para despesas sem trip_id.
+  if (
+    hasDimensionFilter &&
+    tripIds.length === 0 &&
+    !filters.customerId &&
+    !filters.vehicleId
+  ) {
     return [];
   }
 
@@ -362,6 +415,9 @@ export async function fetchOperationalDreExpenses(
     }
     if (filters.customerId) {
       orParts.push(`customer_id.eq.${filters.customerId}`);
+    }
+    if (filters.vehicleId) {
+      orParts.push(`vehicle_id.eq.${filters.vehicleId}`);
     }
     if (orParts.length === 0) return [];
     query = query.or(orParts.join(','));

@@ -37,6 +37,10 @@ export interface TripRow {
   route_id: string | null;
   planned_distance_km: number | null;
   planned_departure_at: string | null;
+  lead_time_minutes: number | null;
+  unload_time_minutes: number | null;
+  planned_arrival_at: string | null;
+  planned_completion_at: string | null;
   initial_odometer_km: number | null;
   final_odometer_km: number | null;
   initial_hour_meter: number | null;
@@ -75,6 +79,8 @@ export interface TripRow {
         origin: string;
         destination: string;
         planned_distance_km: number | null;
+        lead_time_minutes?: number | null;
+        unload_time_minutes?: number | null;
       }
     | {
         id: string;
@@ -83,6 +89,8 @@ export interface TripRow {
         origin: string;
         destination: string;
         planned_distance_km: number | null;
+        lead_time_minutes?: number | null;
+        unload_time_minutes?: number | null;
       }[]
     | null;
 }
@@ -116,6 +124,10 @@ export interface Trip {
   routeCode: string | null;
   plannedDistanceKm: number | null;
   plannedDepartureAt: string | null;
+  leadTimeMinutes: number | null;
+  unloadTimeMinutes: number | null;
+  plannedArrivalAt: string | null;
+  plannedCompletionAt: string | null;
   initialOdometerKm: number | null;
   finalOdometerKm: number | null;
   initialHourMeter: number | null;
@@ -214,6 +226,7 @@ export interface TripOccurrenceRow {
 export interface TripOccurrence {
   id: string;
   tripId: string;
+  branchId: string | null;
   occurrenceType: TripOccurrenceType;
   description: string | null;
   occurredAt: string;

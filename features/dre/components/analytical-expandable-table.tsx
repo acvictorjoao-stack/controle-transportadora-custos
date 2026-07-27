@@ -46,6 +46,11 @@ export interface AnalyticalExpandableTableProps<TGroup, TDetail> {
   emptyDescription?: string;
   detailEmptyTitle?: string;
   className?: string;
+  /** Notifica o trail ativo (grupo/detalhe) para breadcrumbs de drill-down. */
+  onActiveTrailChange?: (trail: {
+    group: TGroup | null;
+    detail: TDetail | null;
+  }) => void;
 }
 
 function readStoredKeys(storageKey: string | undefined): Set<string> {
@@ -91,6 +96,7 @@ function AnalyticalExpandableTable<TGroup, TDetail>({
   emptyDescription = 'Não há dados para exibir no momento.',
   detailEmptyTitle = 'Sem detalhes',
   className,
+  onActiveTrailChange,
 }: AnalyticalExpandableTableProps<TGroup, TDetail>) {
   const [expandedKeys, setExpandedKeys] = React.useState<Set<string>>(
     () => new Set(),
@@ -267,6 +273,34 @@ function AnalyticalExpandableTable<TGroup, TDetail>({
       return next;
     });
   };
+
+  React.useEffect(() => {
+    if (!onActiveTrailChange) return;
+
+    const activeGroupKey = Array.from(expandedKeys).at(-1) ?? null;
+    const activeGroup =
+      activeGroupKey == null
+        ? null
+        : (groups.find((group) => getGroupKey(group) === activeGroupKey) ?? null);
+
+    const activeDetailKey = Array.from(expandedDetailKeys).at(-1) ?? null;
+    let activeDetail: TDetail | null = null;
+    if (activeDetailKey && activeGroupKey) {
+      const details = detailsByKey[activeGroupKey] ?? [];
+      activeDetail =
+        details.find((detail) => getDetailKey(detail) === activeDetailKey) ?? null;
+    }
+
+    onActiveTrailChange({group: activeGroup, detail: activeDetail});
+  }, [
+    expandedKeys,
+    expandedDetailKeys,
+    detailsByKey,
+    groups,
+    getGroupKey,
+    getDetailKey,
+    onActiveTrailChange,
+  ]);
 
   const heading = title?.trim() ? (
     <h3 className="mb-3 text-sm font-medium text-muted-foreground">{title}</h3>

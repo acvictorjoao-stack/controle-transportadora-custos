@@ -1105,6 +1105,36 @@ export async function listTripOccurrences(
   );
 }
 
+/**
+ * Ocorrências da empresa no recorte (reutiliza `trip_occurrences`).
+ * Usado pela Inteligência Operacional — sem tabelas novas.
+ */
+export async function listCompanyTripOccurrences(
+  supabase: SupabaseClient,
+  companyId: string,
+  options: {dateFrom?: string; limit?: number} = {},
+): Promise<TripOccurrence[]> {
+  const limit = options.limit ?? 500;
+  let query = supabase
+    .from('trip_occurrences')
+    .select('*')
+    .eq('company_id', companyId)
+    .is('deleted_at', null)
+    .order('occurred_at', {ascending: false})
+    .limit(limit);
+
+  if (options.dateFrom) {
+    query = query.gte('occurred_at', options.dateFrom);
+  }
+
+  const {data, error} = await query;
+  if (error) throw new Error(mapDatabaseError(error));
+
+  return (data ?? []).map((row) =>
+    mapTripOccurrenceRow(row as Parameters<typeof mapTripOccurrenceRow>[0]),
+  );
+}
+
 export async function createTripOccurrence(
   supabase: SupabaseClient,
   companyId: string,

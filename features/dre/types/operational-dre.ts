@@ -1,8 +1,11 @@
 export interface OperationalDreFilters {
-  /** Unidade operacional (filial) — filtro "Empresa" na UI. */
+  /** Unidade operacional (filial) — query `empresa` / `filial`. */
   branchId?: string;
   customerId?: string;
   routeId?: string;
+  vehicleId?: string;
+  /** Preservado na URL compartilhada (`motorista`); usado na navegação cruzada. */
+  driverId?: string;
   costCenterId?: string;
   dateFrom?: string;
   dateTo?: string;
@@ -12,6 +15,8 @@ export interface OperationalDreFilterOptions {
   branches: {id: string; name: string; code: string}[];
   customers: {id: string; name: string}[];
   routes: {id: string; name: string; code: string | null}[];
+  vehicles: {id: string; label: string}[];
+  drivers: {id: string; name: string}[];
   costCenters: {id: string; name: string; code: string}[];
 }
 
@@ -185,6 +190,34 @@ export interface OperationalDreRouteGroup extends OperationalDreDimensionGroup {
 
 export interface OperationalDreByRouteData {
   groups: OperationalDreRouteGroup[];
+  filters: OperationalDreFilters;
+}
+
+/** Alias tipado do agrupamento por cliente (RC 27.4). */
+export interface OperationalDreCustomerGroup extends OperationalDreDimensionGroup {
+  dimensionType: 'customer';
+  customer: {
+    id: string | null;
+    label: string;
+  };
+}
+
+export interface OperationalDreByCustomerData {
+  groups: OperationalDreCustomerGroup[];
+  filters: OperationalDreFilters;
+}
+
+/** Alias tipado do agrupamento por veículo (RC 27.4.1). */
+export interface OperationalDreVehicleGroup extends OperationalDreDimensionGroup {
+  dimensionType: 'vehicle';
+  vehicle: {
+    id: string | null;
+    label: string;
+  };
+}
+
+export interface OperationalDreByVehicleData {
+  groups: OperationalDreVehicleGroup[];
   filters: OperationalDreFilters;
 }
 

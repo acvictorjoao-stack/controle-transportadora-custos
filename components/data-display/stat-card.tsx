@@ -5,7 +5,7 @@ import {cn} from '@/lib/utils';
 export interface StatCardProps extends React.HTMLAttributes<HTMLDivElement> {
   title: string;
   value: React.ReactNode;
-  subtitle?: string;
+  subtitle?: React.ReactNode;
   footer?: React.ReactNode;
 }
 

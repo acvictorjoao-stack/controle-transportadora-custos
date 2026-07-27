@@ -4,13 +4,14 @@ export const TRIP_LIST_COLUMNS = `
   freight_table, contracted_freight_value, actual_freight_value, freight_margin,
   origin, destination, route, route_id,
   planned_distance_km, planned_departure_at,
+  lead_time_minutes, unload_time_minutes, planned_arrival_at, planned_completion_at,
   departed_at, arrived_at, started_at, completed_at, cancelled_at, cancellation_notes,
   initial_odometer_km, final_odometer_km, responsible, status, created_at, updated_at,
   branches:branch_id (id, name, code),
   drivers:driver_id (id, name),
   vehicles:vehicle_id (id, plate, fleet_number),
   customers:customer_id (id, legal_name, trade_name),
-  routes:route_id (id, name, code, origin, destination, planned_distance_km)
+  routes:route_id (id, name, code, origin, destination, planned_distance_km, lead_time_minutes, unload_time_minutes)
 `;
 
 export const TRIP_DETAIL_COLUMNS = `
@@ -19,6 +20,7 @@ export const TRIP_DETAIL_COLUMNS = `
   freight_table, contracted_freight_value, actual_freight_value, freight_margin,
   origin, destination, route, route_id,
   planned_distance_km, planned_departure_at,
+  lead_time_minutes, unload_time_minutes, planned_arrival_at, planned_completion_at,
   initial_odometer_km, final_odometer_km, initial_hour_meter, final_hour_meter,
   departed_at, arrived_at, started_at, completed_at, cancelled_at, cancellation_notes,
   weight_kg, volume_m3, cargo_type, notes, responsible,
@@ -28,7 +30,7 @@ export const TRIP_DETAIL_COLUMNS = `
   drivers:driver_id (id, name, cpf),
   vehicles:vehicle_id (id, plate, fleet_number, brand, model),
   customers:customer_id (id, legal_name, trade_name),
-  routes:route_id (id, name, code, origin, destination, planned_distance_km)
+  routes:route_id (id, name, code, origin, destination, planned_distance_km, lead_time_minutes, unload_time_minutes)
 `;
 
 export const TRIPS_PAGE_SIZE = 10;

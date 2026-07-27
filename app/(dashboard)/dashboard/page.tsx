@@ -1,8 +1,10 @@
 import {redirect} from 'next/navigation';
 
 import {PageTemplate} from '@/components/layout/page-template';
-import {OperationalDashboard} from '@/features/organization/dashboard/components/operational-dashboard';
-import {getOperationalDashboardData} from '@/features/organization/dashboard/queries/operational-dashboard';
+import {ROUTES} from '@/constants/routes/paths';
+import {ExecutiveDashboard} from '@/features/organization/dashboard/components/executive-dashboard';
+import {getExecutiveDashboardData} from '@/features/organization/dashboard/loaders/executive-dashboard-loader';
+import {currentMonthFilters} from '@/features/organization/dashboard/utils/period';
 import {getCurrentCompanyProfile, needsOnboarding} from '@/features/organization/companies/queries';
 import {listBranches} from '@/features/organization/branches/queries';
 import {OnboardingWizard} from '@/features/organization/onboarding/components';
@@ -10,7 +12,6 @@ import {
   getCurrentCompanyId,
   getServerSupabaseClient,
 } from '@/lib/auth/company';
-import {ROUTES} from '@/constants/routes/paths';
 
 export default async function DashboardPage() {
   const supabase = await getServerSupabaseClient();
@@ -20,9 +21,9 @@ export default async function DashboardPage() {
     redirect(ROUTES.login);
   }
 
-  const [company, dashboardData] = await Promise.all([
+  const [company, executiveData] = await Promise.all([
     getCurrentCompanyProfile(supabase, companyId),
-    getOperationalDashboardData(supabase, companyId),
+    getExecutiveDashboardData(supabase, companyId, currentMonthFilters()),
   ]);
   const showOnboarding = company ? needsOnboarding(company) : false;
   const branches = showOnboarding
@@ -35,11 +36,11 @@ export default async function DashboardPage() {
         <OnboardingWizard company={company} branches={branches} />
       )}
       <PageTemplate
-        title="Dashboard Operacional"
-        description="Visão rápida da operação: KPIs, indicadores e atalhos analíticos."
-        showBreadcrumb={false}
+        title="Dashboard Executivo"
+        description="Indicadores, rankings e alertas para tomada de decisão."
+        breadcrumbItems={[{label: 'Dashboard'}]}
       >
-        <OperationalDashboard data={dashboardData} />
+        <ExecutiveDashboard data={executiveData} />
       </PageTemplate>
     </>
   );

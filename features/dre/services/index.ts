@@ -12,7 +12,10 @@ export {
 } from './operational-dre-calculator';
 export {
   buildTripMetrics,
+  calculateOperationalDreByCustomer,
   calculateOperationalDreByRoute,
+  calculateOperationalDreByVehicle,
+  calculateOperationalDreDimensionTrips,
   calculateOperationalDreRouteTrips,
   formatOperationalDreRouteLabel,
   groupOperationalDreByDimension,

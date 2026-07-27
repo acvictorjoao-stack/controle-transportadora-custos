@@ -50,11 +50,42 @@ function computeDistanceKm(
   return diff >= 0 ? diff : null;
 }
 
+function addMinutesIso(iso: string | null, minutes: number | null): string | null {
+  if (!iso || minutes == null || !Number.isFinite(minutes)) return null;
+  const base = new Date(iso);
+  if (Number.isNaN(base.getTime())) return null;
+  return new Date(base.getTime() + minutes * 60_000).toISOString();
+}
+
 export function mapTripRow(row: TripRow): Trip {
   const initialOdometer =
     row.initial_odometer_km !== null ? Number(row.initial_odometer_km) : null;
   const finalOdometer =
     row.final_odometer_km !== null ? Number(row.final_odometer_km) : null;
+  const routeLead =
+    mapJoinField(row.routes, 'lead_time_minutes') != null
+      ? Number(mapJoinField(row.routes, 'lead_time_minutes'))
+      : null;
+  const routeUnload =
+    mapJoinField(row.routes, 'unload_time_minutes') != null
+      ? Number(mapJoinField(row.routes, 'unload_time_minutes'))
+      : null;
+  const leadTimeMinutes =
+    row.lead_time_minutes != null ? Number(row.lead_time_minutes) : routeLead;
+  const unloadTimeMinutes =
+    row.unload_time_minutes != null
+      ? Number(row.unload_time_minutes)
+      : routeUnload;
+  const plannedDepartureAt = row.planned_departure_at ?? null;
+  const plannedArrivalAt =
+    row.planned_arrival_at ??
+    addMinutesIso(plannedDepartureAt, leadTimeMinutes);
+  const plannedCompletionAt =
+    row.planned_completion_at ??
+    addMinutesIso(
+      plannedArrivalAt ?? plannedDepartureAt,
+      plannedArrivalAt ? unloadTimeMinutes : (leadTimeMinutes ?? 0) + (unloadTimeMinutes ?? 0),
+    );
 
   return {
     id: row.id,
@@ -92,7 +123,11 @@ export function mapTripRow(row: TripRow): Trip {
       row.planned_distance_km !== null && row.planned_distance_km !== undefined
         ? Number(row.planned_distance_km)
         : null,
-    plannedDepartureAt: row.planned_departure_at ?? null,
+    plannedDepartureAt,
+    leadTimeMinutes,
+    unloadTimeMinutes,
+    plannedArrivalAt,
+    plannedCompletionAt,
     initialOdometerKm: initialOdometer,
     finalOdometerKm: finalOdometer,
     initialHourMeter:
@@ -151,6 +186,7 @@ export function mapTripOccurrenceRow(row: TripOccurrenceRow): TripOccurrence {
   return {
     id: row.id,
     tripId: row.trip_id,
+    branchId: row.branch_id ?? null,
     occurrenceType: row.occurrence_type,
     description: row.description,
     occurredAt: row.occurred_at,

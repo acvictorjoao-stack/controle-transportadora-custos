@@ -18,6 +18,7 @@ export {
   getTripChecklist,
   upsertTripChecklist,
   listTripOccurrences,
+  listCompanyTripOccurrences,
   createTripOccurrence,
   listTripExpenses,
   createTripExpense,

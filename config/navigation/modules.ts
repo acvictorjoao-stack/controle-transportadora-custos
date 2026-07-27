@@ -44,6 +44,14 @@ export const navigationGroups: NavGroup[] = [
         permission: 'dashboard:read',
       },
       {
+        id: 'central-indicadores',
+        title: 'Central de Indicadores',
+        description: 'Cockpit executivo personalizável',
+        href: ROUTES.dashboardExecutivo,
+        icon: PieChart,
+        permission: 'dashboard:read',
+      },
+      {
         id: 'dashboard-dre',
         title: 'DRE',
         description: 'DRE operacional',
@@ -66,7 +74,6 @@ export const navigationGroups: NavGroup[] = [
         href: ROUTES.dashboardRentabilidadeClientes,
         icon: Users,
         permission: 'dashboard:read',
-        badge: 'Em breve',
       },
       {
         id: 'rentabilidade-veiculo',
@@ -75,7 +82,6 @@ export const navigationGroups: NavGroup[] = [
         href: ROUTES.dashboardRentabilidadeVeiculos,
         icon: Truck,
         permission: 'dashboard:read',
-        badge: 'Em breve',
       },
       {
         id: 'rentabilidade-motorista',
@@ -93,7 +99,6 @@ export const navigationGroups: NavGroup[] = [
         href: ROUTES.dashboardInteligencia,
         icon: LineChart,
         permission: 'dashboard:read',
-        badge: 'Em breve',
       },
     ],
   },

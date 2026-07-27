@@ -2,6 +2,7 @@ import {ROUTES} from '@/constants/routes/paths';
 
 export type ModulePageId =
   | 'dashboard'
+  | 'dashboard-executivo'
   | 'dashboard-dre'
   | 'dashboard-rentabilidade-rotas'
   | 'dashboard-rentabilidade-clientes'
@@ -46,6 +47,12 @@ export const modulePageRegistry: Record<ModulePageId, ModulePageMeta> = {
     title: 'Dashboard',
     description: 'Visão geral da operação e indicadores principais.',
     href: ROUTES.dashboard,
+  },
+  'dashboard-executivo': {
+    id: 'dashboard-executivo',
+    title: 'Central de Indicadores',
+    description: 'Cockpit executivo personalizável para gestão diária.',
+    href: ROUTES.dashboardExecutivo,
   },
   'dashboard-dre': {
     id: 'dashboard-dre',

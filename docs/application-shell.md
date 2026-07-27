@@ -89,13 +89,13 @@ Features futuras importam componentes de layout — nunca o contrário.
 
 | Grupo | Módulos |
 |-------|---------|
-| Dashboard | Visão Geral (`/dashboard`), DRE (`/dashboard/dre`), Rentabilidade por Rota (`/dashboard/rentabilidade/rotas`), Rentabilidade por Cliente *(Em breve)*, Rentabilidade por Veículo *(Em breve)*, Rentabilidade por Motorista *(Em breve)*, Inteligência Operacional *(Em breve)* |
+| Dashboard | Visão executiva (`/dashboard`), DRE (`/dashboard/dre`), Rentabilidade por Rota (`/dashboard/rentabilidade/rotas`), Rentabilidade por Cliente (`/dashboard/rentabilidade/clientes`), Rentabilidade por Veículo (`/dashboard/rentabilidade/veiculos`), Rentabilidade por Motorista *(Em breve)*, Inteligência Operacional (`/dashboard/inteligencia`) |
 | Cadastros | Empresas, Filiais, Clientes, Fornecedores, Contratos, Centros de Custo |
 | Operações | Veículos, Motoristas, Rotas, Viagens, Abastecimentos, Manutenções, Pneus |
 | Financeiro | Contas a Pagar, Contas a Receber, Fluxo de Caixa |
 | Administração | Usuários, Perfis, Configurações |
 
-A home (`/`) redireciona para `/dashboard`. A navegação do Dashboard usa rotas próprias — sem âncoras `#`.
+A home (`/`) redireciona para `/dashboard`. O Dashboard é visão executiva; DRE e Rentabilidade por Rota são módulos analíticos especializados (sem âncoras `#`).
 
 ### Permissões (preparado)
 

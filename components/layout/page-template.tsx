@@ -2,8 +2,10 @@ import * as React from 'react';
 
 import {ActionBar, type ActionBarProps} from '@/components/layout/action-bar';
 import {Breadcrumb} from '@/components/layout/breadcrumb/breadcrumb';
+import {BreadcrumbNavigation} from '@/components/layout/breadcrumb/breadcrumb-navigation';
 import {ContentContainer} from '@/components/layout/content-container';
 import {PageHeader, type PageHeaderProps} from '@/components/layout/page-header';
+import type {BreadcrumbItem} from '@/types/global/navigation';
 
 export interface PageTemplateProps {
   title: string;
@@ -12,6 +14,8 @@ export interface PageTemplateProps {
   actions?: PageHeaderProps['actions'];
   actionBar?: Pick<ActionBarProps, 'leading' | 'trailing' | 'children'>;
   showBreadcrumb?: boolean;
+  /** Quando informado, substitui o breadcrumb automático por pathname. */
+  breadcrumbItems?: BreadcrumbItem[];
   className?: string;
   children: React.ReactNode;
 }
@@ -27,6 +31,7 @@ function PageTemplate({
   actions,
   actionBar,
   showBreadcrumb = true,
+  breadcrumbItems,
   className,
   children,
 }: PageTemplateProps) {
@@ -36,7 +41,12 @@ function PageTemplate({
 
   return (
     <ContentContainer className={className}>
-      {showBreadcrumb && <Breadcrumb />}
+      {showBreadcrumb &&
+        (breadcrumbItems ? (
+          <BreadcrumbNavigation items={breadcrumbItems} />
+        ) : (
+          <Breadcrumb />
+        ))}
       <PageHeader
         title={title}
         description={description}

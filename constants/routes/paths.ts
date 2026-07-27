@@ -8,6 +8,7 @@ export const ROUTES = {
 
   // Dashboard e módulos analíticos
   dashboard: '/dashboard',
+  dashboardExecutivo: '/dashboard/executivo',
   dashboardDre: '/dashboard/dre',
   dashboardRentabilidadeRotas: '/dashboard/rentabilidade/rotas',
   dashboardRentabilidadeClientes: '/dashboard/rentabilidade/clientes',

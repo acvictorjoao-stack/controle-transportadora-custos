@@ -23,6 +23,12 @@ import type {
   OperationalDreTripMetrics,
 } from '../types';
 import {buildOperationalDreUrl} from '../utils/list-url';
+import type {PeriodDelta} from '../utils/period-comparison';
+import {
+  formatDeltaPercent,
+  formatMarginPoints,
+  isFavorableDelta,
+} from '../utils/period-comparison';
 import {
   AnalyticalExpandableTable,
   type AnalyticalExpandableColumn,
@@ -33,6 +39,12 @@ export interface OperationalDreRouteCostsProps {
   filters: OperationalDreFilters;
   /** Base path for period filter URL sync (default: DRE page). */
   basePath?: string;
+  /** Comparativos vs período anterior, indexados por dimensionKey. */
+  comparisons?: Map<string, PeriodDelta>;
+  onActiveTrailChange?: (trail: {
+    group: OperationalDreRouteGroup | null;
+    detail: OperationalDreTripMetrics | null;
+  }) => void;
 }
 
 function formatMoney(value: number): string {
@@ -57,6 +69,8 @@ function OperationalDreRouteCosts({
   data,
   filters,
   basePath = ROUTES.dashboardDre,
+  comparisons,
+  onActiveTrailChange,
 }: OperationalDreRouteCostsProps) {
   const router = useRouter();
   const filtersDateKey = `${filters.dateFrom ?? ''}|${filters.dateTo ?? ''}`;
@@ -111,9 +125,38 @@ function OperationalDreRouteCosts({
       {
         id: 'route',
         header: 'Rota',
-        cell: (row) => (
-          <span className="font-medium">{row.route.label}</span>
-        ),
+        cell: (row) => {
+          const delta = comparisons?.get(row.dimensionKey);
+          return (
+            <div className="space-y-1">
+              <span className="font-medium">{row.route.label}</span>
+              {delta ? (
+                <div className="grid gap-0.5 text-[11px] text-muted-foreground">
+                  <ComparisonLine
+                    label="Receita"
+                    text={formatDeltaPercent(delta.revenuePercent)}
+                    favorable={isFavorableDelta(delta.revenuePercent)}
+                  />
+                  <ComparisonLine
+                    label="Custos"
+                    text={formatDeltaPercent(delta.costPercent)}
+                    favorable={isFavorableDelta(delta.costPercent, true)}
+                  />
+                  <ComparisonLine
+                    label="Lucro"
+                    text={formatDeltaPercent(delta.profitPercent)}
+                    favorable={isFavorableDelta(delta.profitPercent)}
+                  />
+                  <ComparisonLine
+                    label="Margem"
+                    text={formatMarginPoints(delta.marginPoints)}
+                    favorable={isFavorableDelta(delta.marginPoints)}
+                  />
+                </div>
+              ) : null}
+            </div>
+          );
+        },
       },
       {
         id: 'tripCount',
@@ -156,7 +199,7 @@ function OperationalDreRouteCosts({
         cell: (row) => formatRatio(row.revenuePerKm, '/km'),
       },
     ],
-    [],
+    [comparisons],
   );
 
   const detailColumns = React.useMemo<
@@ -314,8 +357,36 @@ function OperationalDreRouteCosts({
         emptyTitle="Sem custos por rota"
         emptyDescription="Viagens concluídas no período aparecerão agrupadas por rota."
         detailEmptyTitle="Nenhuma viagem nesta rota para o filtro atual."
+        onActiveTrailChange={onActiveTrailChange}
       />
     </div>
+  );
+}
+
+function ComparisonLine({
+  label,
+  text,
+  favorable,
+}: {
+  label: string;
+  text: string;
+  favorable: boolean | null;
+}) {
+  return (
+    <p>
+      <span className="font-medium text-foreground/80">{label}: </span>
+      <span
+        className={
+          favorable === true
+            ? 'text-emerald-600'
+            : favorable === false
+              ? 'text-destructive'
+              : undefined
+        }
+      >
+        {text}
+      </span>
+    </p>
   );
 }
 

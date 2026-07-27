@@ -1,5 +1,7 @@
 import type {
+  OperationalDreByCustomerData,
   OperationalDreByRouteData,
+  OperationalDreByVehicleData,
   OperationalDreData,
   OperationalDreFilterOptions,
 } from '../types';
@@ -39,9 +41,21 @@ export const EMPTY_OPERATIONAL_DRE_BY_ROUTE: OperationalDreByRouteData = {
   filters: {},
 };
 
+export const EMPTY_OPERATIONAL_DRE_BY_CUSTOMER: OperationalDreByCustomerData = {
+  groups: [],
+  filters: {},
+};
+
+export const EMPTY_OPERATIONAL_DRE_BY_VEHICLE: OperationalDreByVehicleData = {
+  groups: [],
+  filters: {},
+};
+
 export const EMPTY_OPERATIONAL_DRE_FILTER_OPTIONS: OperationalDreFilterOptions = {
   branches: [],
   customers: [],
   routes: [],
+  vehicles: [],
+  drivers: [],
   costCenters: [],
 };

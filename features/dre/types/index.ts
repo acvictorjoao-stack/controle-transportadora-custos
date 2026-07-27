@@ -1,11 +1,14 @@
 export type {
   OperationalDreAnalyticalCategory,
   OperationalDreAnalyticalRow,
+  OperationalDreByCustomerData,
   OperationalDreByRouteData,
+  OperationalDreByVehicleData,
   OperationalDreCostBucket,
   OperationalDreCostCenterBreakdown,
   OperationalDreCostCenterRow,
   OperationalDreCosts,
+  OperationalDreCustomerGroup,
   OperationalDreData,
   OperationalDreDimensionGroup,
   OperationalDreExpenseRow,
@@ -19,4 +22,5 @@ export type {
   OperationalDreTripDetailRow,
   OperationalDreTripMetrics,
   OperationalDreTripRow,
+  OperationalDreVehicleGroup,
 } from './operational-dre';
