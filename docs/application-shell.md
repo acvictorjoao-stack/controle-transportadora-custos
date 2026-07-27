@@ -89,13 +89,11 @@ Features futuras importam componentes de layout — nunca o contrário.
 
 | Grupo | Módulos |
 |-------|---------|
-| Principal | Dashboard |
-| Cadastros | Empresas, Filiais, Clientes, Contratos |
-| Operações | Veículos, Motoristas, Viagens |
-| Financeiro | Fluxo de Caixa, Contas a Pagar, Contas a Receber |
-| Manutenção | Pneus, Abastecimentos |
-| Análise | Relatórios, BI, IA |
-| Sistema | Configurações |
+| Dashboard | Visão Geral, DRE, Rentabilidade por Rota, Rentabilidade por Cliente *(Em breve)*, Rentabilidade por Veículo *(Em breve)*, Rentabilidade por Motorista *(Em breve)*, Inteligência Operacional *(Em breve)* |
+| Cadastros | Empresas, Filiais, Clientes, Fornecedores, Contratos, Centros de Custo |
+| Operações | Veículos, Motoristas, Rotas, Viagens, Abastecimentos, Manutenções, Pneus |
+| Financeiro | Contas a Pagar, Contas a Receber, Fluxo de Caixa |
+| Administração | Usuários, Perfis, Configurações |
 
 ### Permissões (preparado)
 
@@ -121,8 +119,9 @@ O hook `useNavPermissions()` retorna `['*']` até RBAC ser implementado.
 |------------|--------|
 | `sidebar.tsx` | Container principal, responsivo |
 | `sidebar-header.tsx` | Logo + botão recolher |
-| `sidebar-nav.tsx` | Lista de grupos |
-| `sidebar-nav-item.tsx` | Item com submenu e estado ativo |
+| `sidebar-nav.tsx` | Lista de grupos accordion |
+| `sidebar-group.tsx` | Grupo expansível com animação |
+| `sidebar-item.tsx` | Item com destaque de rota ativa (hash-aware) |
 | `sidebar-footer.tsx` | Empresa, plano, usuário, versão |
 
 ### Funcionalidades
@@ -130,11 +129,11 @@ O hook `useNavPermissions()` retorna `['*']` até RBAC ser implementado.
 | Feature | Implementação |
 |---------|---------------|
 | Responsiva | Drawer overlay em mobile (`< 768px`) |
-| Recolhível | Toggle desktop, persistência em `localStorage` |
-| Submenu | Financeiro e Manutenção com children |
-| Estado ativo | `isNavItemActive()` baseado em `pathname` |
-| Permissões | Filtragem via `hasPermission()` |
-| Persistência | Chave `fleetcontrol-sidebar-collapsed` |
+| Recolhível | Toggle desktop, persistência em `localStorage` (`fleetcontrol-sidebar-collapsed`) |
+| Accordion | Grupos expansíveis; animação CSS grid; duração `SIDEBAR_ACCORDION_DURATION_MS` |
+| Persistência accordion | Chave `fleetcontrol-sidebar-accordion` |
+| Estado ativo | `isNavItemActive()` baseado em `pathname` + `hash` |
+| Permissões | Filtragem via `hasPermission()` / `filterNavByPermissions()` |
 
 ### Context
 
