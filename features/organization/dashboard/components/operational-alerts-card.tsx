@@ -36,7 +36,9 @@ function OperationalAlertsCard({alerts}: OperationalAlertsCardProps) {
       </CardHeader>
       <CardContent className="space-y-3">
         {alerts.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Nenhum alerta operacional.</p>
+          <p className="text-sm text-muted-foreground">
+            Nenhum alerta operacional no momento.
+          </p>
         ) : (
           alerts.map((alert) => {
             const Icon = alertIcons[alert.variant];

@@ -37,7 +37,8 @@ export interface OperationalDreCosts {
 
 export interface OperationalDreResult {
   operatingProfit: number;
-  operatingMarginPercent: number;
+  /** Null quando não há receita no período (sem base para margem). */
+  operatingMarginPercent: number | null;
 }
 
 export interface OperationalDreIndicators {

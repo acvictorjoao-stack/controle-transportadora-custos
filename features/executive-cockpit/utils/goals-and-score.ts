@@ -24,29 +24,23 @@ function scoreFromProgress(progress: number | null): number {
   return clamp(progress);
 }
 
-function scoreSla(sla: number | null): number {
-  if (sla == null) return 40;
+function scoreSla(sla: number | null): number | null {
+  if (sla == null) return null;
   return clamp(sla);
 }
 
-function scoreLeadTime(leadTime: number | null, goal: number | null): number {
-  if (leadTime == null) return 50;
-  if (goal != null && goal > 0) {
-    return clamp((goal / leadTime) * 100);
-  }
-  // Sem meta: ≤4h excelente, ≤6h ok
-  if (leadTime <= 240) return 95;
-  if (leadTime <= 360) return 70;
-  return clamp(100 - (leadTime - 360) / 10);
+function scoreLeadTime(leadTime: number | null, goal: number | null): number | null {
+  if (leadTime == null || goal == null || goal <= 0) return null;
+  return clamp((goal / leadTime) * 100);
 }
 
-function scoreMargin(margin: number): number {
-  // 40% margem → 100; 0% → 0
+function scoreMargin(margin: number | null): number | null {
+  if (margin == null || !Number.isFinite(margin)) return null;
   return clamp(margin * 2.5);
 }
 
-function scoreOccurrences(count: number, tripCount: number): number {
-  if (tripCount <= 0) return count === 0 ? 90 : 50;
+function scoreOccurrences(count: number, tripCount: number): number | null {
+  if (tripCount <= 0) return null;
   const rate = count / tripCount;
   if (rate <= 0.05) return 95;
   if (rate <= 0.15) return 75;
@@ -54,9 +48,9 @@ function scoreOccurrences(count: number, tripCount: number): number {
   return clamp(40 - rate * 40);
 }
 
-function scoreGoalsFulfillment(goals: GoalProgressItem[]): number {
+function scoreGoalsFulfillment(goals: GoalProgressItem[]): number | null {
   const withProgress = goals.filter((goal) => goal.progressPercent != null);
-  if (withProgress.length === 0) return 60;
+  if (withProgress.length === 0) return null;
   const avg =
     withProgress.reduce((sum, goal) => sum + (goal.progressPercent ?? 0), 0) /
     withProgress.length;
@@ -98,6 +92,7 @@ export function buildGoalProgress(
 /**
  * Índice único 0–100.
  * Pesos: SLA 25, Lead Time 15, Margem 25, Ocorrências 15, Metas 20.
+ * Componentes sem base real são excluídos (não inventa nota).
  */
 export function buildOperationalScore(
   snapshot: CockpitMetricSnapshot,
@@ -137,9 +132,18 @@ export function buildOperationalScore(
     },
   ];
 
-  const totalWeight = breakdown.reduce((sum, item) => sum + item.weight, 0);
+  const usable = breakdown.filter((item) => item.score != null);
+  if (usable.length === 0) {
+    return {
+      value: null,
+      label: 'Sem dados',
+      breakdown,
+    };
+  }
+
+  const totalWeight = usable.reduce((sum, item) => sum + item.weight, 0);
   const value = Math.round(
-    breakdown.reduce((sum, item) => sum + item.score * item.weight, 0) /
+    usable.reduce((sum, item) => sum + (item.score as number) * item.weight, 0) /
       totalWeight,
   );
 

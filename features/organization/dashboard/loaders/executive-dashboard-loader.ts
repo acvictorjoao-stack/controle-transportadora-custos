@@ -27,7 +27,7 @@ export interface ExecutiveDashboardKpis {
   totalRevenue: number;
   totalCosts: number;
   operatingProfit: number;
-  operatingMarginPercent: number;
+  operatingMarginPercent: number | null;
   totalKm: number;
   completedTrips: number;
   accountsPayable: number;

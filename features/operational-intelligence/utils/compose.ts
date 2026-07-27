@@ -526,39 +526,49 @@ export function buildOperationalCharts(
     dayKeys.push(localDayKey(day.toISOString()));
   }
 
-  const dailySla: ChartPoint[] = dayKeys.map((key) => {
-    const dayTrips = trips.filter(
-      (trip) => trip.completedAt && localDayKey(trip.completedAt) === key,
-    );
-    return {
+  const dailySla: ChartPoint[] = dayKeys
+    .map((key) => {
+      const dayTrips = trips.filter(
+        (trip) => trip.completedAt && localDayKey(trip.completedAt) === key,
+      );
+      const sla = slaOfTrips(dayTrips);
+      if (sla == null) return null;
+      return {
+        key,
+        label: formatDayLabel(key),
+        value: Math.round(sla),
+      };
+    })
+    .filter((point): point is ChartPoint => point != null);
+
+  const leadTimeByDay: ChartPoint[] = dayKeys
+    .map((key) => {
+      const values = trips
+        .filter((trip) => trip.completedAt && localDayKey(trip.completedAt) === key)
+        .map((trip) => measuredLeadMinutes(trip))
+        .filter((value): value is number => value != null);
+      const avg = average(values);
+      if (avg == null) return null;
+      return {
+        key,
+        label: formatDayLabel(key),
+        value: Math.round(avg),
+      };
+    })
+    .filter((point): point is ChartPoint => point != null);
+
+  const completedDeliveries: ChartPoint[] = dayKeys
+    .map((key) => ({
       key,
       label: formatDayLabel(key),
-      value: Math.round(slaOfTrips(dayTrips) ?? 0),
-    };
-  });
-
-  const leadTimeByDay: ChartPoint[] = dayKeys.map((key) => {
-    const values = trips
-      .filter((trip) => trip.completedAt && localDayKey(trip.completedAt) === key)
-      .map((trip) => measuredLeadMinutes(trip))
-      .filter((value): value is number => value != null);
-    return {
-      key,
-      label: formatDayLabel(key),
-      value: Math.round(average(values) ?? 0),
-    };
-  });
-
-  const completedDeliveries: ChartPoint[] = dayKeys.map((key) => ({
-    key,
-    label: formatDayLabel(key),
-    value: trips.filter(
-      (trip) =>
-        trip.tripStatus === 'completed' &&
-        trip.completedAt &&
-        localDayKey(trip.completedAt) === key,
-    ).length,
-  }));
+      value: trips.filter(
+        (trip) =>
+          trip.tripStatus === 'completed' &&
+          trip.completedAt &&
+          localDayKey(trip.completedAt) === key,
+      ).length,
+    }))
+    .filter((point) => point.value > 0);
 
   const occurrencesByReasonMap = new Map<string, number>();
   for (const item of occurrences) {

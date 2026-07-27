@@ -61,7 +61,9 @@ function GoalsPanel({goals, className, footer}: GoalsPanelProps) {
                       ? 'success'
                       : goal.status === 'atencao'
                         ? 'warning'
-                        : 'destructive'
+                        : goal.status === 'indefinido'
+                          ? 'outline'
+                          : 'destructive'
                   }
                 >
                   {goal.progressPercent}%

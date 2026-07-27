@@ -50,7 +50,9 @@ function TrendsPanel({trends, yearAgoNote, className}: TrendsPanelProps) {
                 <span className="text-sm">{trend.message}</span>
               </div>
               <span className={cn('font-financial text-sm font-medium', tone)}>
-                {formatCompactDelta(trend.deltaPercent)}
+                {trend.deltaPercent == null
+                  ? 'Comparativo indisponível'
+                  : formatCompactDelta(trend.deltaPercent)}
               </span>
             </li>
           );

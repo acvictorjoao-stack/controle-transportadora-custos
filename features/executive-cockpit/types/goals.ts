@@ -55,8 +55,8 @@ export const EXECUTIVE_GOAL_LOWER_IS_BETTER: ReadonlySet<ExecutiveGoalMetric> =
 export const DEFAULT_EXECUTIVE_GOALS: ExecutiveGoals = {
   receita: null,
   lucro: null,
-  margem: 20,
-  sla: 90,
+  margem: null,
+  sla: null,
   leadTime: null,
   custoKm: null,
   receitaKm: null,

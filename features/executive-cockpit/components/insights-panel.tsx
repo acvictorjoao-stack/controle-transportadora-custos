@@ -23,7 +23,7 @@ function InsightsPanel({insights, className}: InsightsPanelProps) {
 
       {insights.length === 0 ? (
         <p className="mt-4 text-sm text-muted-foreground">
-          Nenhum insight crítico no período selecionado.
+          Ainda não há dados suficientes para gerar recomendações.
         </p>
       ) : (
         <ul className="mt-4 space-y-3">

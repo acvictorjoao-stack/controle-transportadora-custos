@@ -72,10 +72,8 @@ export async function getCompanyDashboardData(
     getCustomerStats(supabase, companyId),
   ]);
 
-  const formatTrend = (value: number) => ({
-    value: value >= 0 ? `+${value.toLocaleString('pt-BR')}%` : `${value.toLocaleString('pt-BR')}%`,
-    positive: value >= 0,
-  });
+  /** Sem série histórica neste loader — não inventar variação percentual. */
+  const unavailableTrend = {value: 'Comparativo indisponível', positive: true};
 
   return {
     header: {
@@ -494,86 +492,79 @@ export async function getCompanyDashboardData(
         label: 'Receitas',
         value: formatCurrency(financialStats.revenue, currency),
         description: 'receitas consolidadas',
-        trend: formatTrend(financialStats.marginPercent),
+        trend: unavailableTrend,
       },
       {
         id: 'despesas',
         label: 'Despesas',
         value: formatCurrency(financialStats.expenses, currency),
         description: 'despesas operacionais',
-        trend: {value: '—', positive: false},
+        trend: unavailableTrend,
       },
       {
         id: 'lucro',
         label: 'Lucro Operacional',
         value: formatCurrency(financialStats.operatingProfit, currency),
         description: 'receitas − despesas',
-        trend: formatTrend(financialStats.marginPercent),
+        trend: unavailableTrend,
       },
       {
         id: 'fluxo-caixa',
         label: 'Fluxo de Caixa',
         value: formatCurrency(financialStats.cashFlow, currency),
         description: 'entradas e saídas pagas',
-        trend: {value: '—', positive: financialStats.cashFlow >= 0},
+        trend: unavailableTrend,
       },
       {
         id: 'ebitda',
         label: 'EBITDA',
         value: formatCurrency(financialStats.ebitda, currency),
         description: 'estrutura preparada',
-        trend: {value: '—', positive: financialStats.ebitda >= 0},
+        trend: unavailableTrend,
       },
       {
         id: 'margem',
         label: 'Margem',
-        value: `${financialStats.marginPercent.toLocaleString('pt-BR', {minimumFractionDigits: 1, maximumFractionDigits: 1})}%`,
+        value:
+          financialStats.revenue > 0
+            ? `${financialStats.marginPercent.toLocaleString('pt-BR', {minimumFractionDigits: 1, maximumFractionDigits: 1})}%`
+            : '—',
         description: 'margem operacional',
-        trend: formatTrend(financialStats.marginPercent),
+        trend: unavailableTrend,
       },
       {
         id: 'custo-km',
         label: 'Custo por KM',
-        value: formatCurrency(financialStats.costPerKm, currency),
+        value:
+          tripStats.totalKm > 0
+            ? formatCurrency(financialStats.costPerKm, currency)
+            : '—',
         description: 'custo médio por km rodado',
-        trend: {value: '—', positive: false},
+        trend: unavailableTrend,
       },
       {
         id: 'receita-km',
         label: 'Receita por KM',
-        value: tripStats.totalKm > 0
-          ? formatCurrency(financialStats.revenue / tripStats.totalKm, currency)
-          : formatCurrency(0, currency),
+        value:
+          tripStats.totalKm > 0
+            ? formatCurrency(financialStats.revenue / tripStats.totalKm, currency)
+            : '—',
         description: 'receita / km rodado',
-        trend: {value: '—', positive: true},
+        trend: unavailableTrend,
       },
       {
         id: 'lucro-km',
         label: 'Lucro por KM',
-        value: tripStats.totalKm > 0
-          ? formatCurrency(financialStats.operatingProfit / tripStats.totalKm, currency)
-          : formatCurrency(0, currency),
+        value:
+          tripStats.totalKm > 0
+            ? formatCurrency(financialStats.operatingProfit / tripStats.totalKm, currency)
+            : '—',
         description: 'lucro / km rodado',
-        trend: {value: '—', positive: financialStats.operatingProfit >= 0},
+        trend: unavailableTrend,
       },
     ],
-    charts: [
-      {
-        id: 'receita-despesas',
-        title: 'Receita x Despesas',
-        description: 'Comparativo mensal dos últimos 12 meses',
-      },
-      {
-        id: 'custos-categoria',
-        title: 'Custos por Categoria',
-        description: 'Distribuição de custos operacionais',
-      },
-      {
-        id: 'fluxo-mensal',
-        title: 'Fluxo Mensal',
-        description: 'Entradas e saídas consolidadas por mês',
-      },
-    ],
+    /** Sem séries temporais neste loader — UI exibe empty state. */
+    charts: [],
     alerts: [],
     activities: [],
     upcomingDue: [],

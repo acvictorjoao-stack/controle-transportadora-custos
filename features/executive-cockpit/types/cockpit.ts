@@ -5,14 +5,14 @@ import type {CockpitChartId, ExecutiveCockpitPreferences} from './preferences';
 
 export type CockpitPeriodPreset = 'hoje' | 'semana' | 'mes' | 'ano';
 
-export type SemaphoreStatus = 'acima' | 'atencao' | 'abaixo';
+export type SemaphoreStatus = 'acima' | 'atencao' | 'abaixo' | 'indefinido';
 
 export type TrendDirection = 'up' | 'down' | 'stable';
 
 export interface CockpitMetricSnapshot {
   receita: number;
   lucro: number;
-  margem: number;
+  margem: number | null;
   custos: number;
   sla: number | null;
   leadTime: number | null;
@@ -67,9 +67,14 @@ export interface InsightItem {
 }
 
 export interface OperationalScore {
-  value: number;
+  value: number | null;
   label: string;
-  breakdown: Array<{id: string; label: string; score: number; weight: number}>;
+  breakdown: Array<{
+    id: string;
+    label: string;
+    score: number | null;
+    weight: number;
+  }>;
 }
 
 export interface PeriodComparisonDelta {

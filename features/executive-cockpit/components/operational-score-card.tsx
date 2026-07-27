@@ -9,6 +9,27 @@ export interface OperationalScoreCardProps {
 }
 
 function OperationalScoreCard({score, className}: OperationalScoreCardProps) {
+  if (score.value == null) {
+    return (
+      <div
+        className={cn(
+          'rounded-xl border border-border bg-card p-6 shadow-card',
+          className,
+        )}
+      >
+        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          Score Operacional
+        </p>
+        <p className="mt-2 font-financial text-5xl font-semibold tracking-tight">
+          —
+        </p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Sem dados suficientes para calcular o score.
+        </p>
+      </div>
+    );
+  }
+
   const tone =
     score.value >= 85
       ? 'success'
@@ -48,7 +69,7 @@ function OperationalScoreCard({score, className}: OperationalScoreCardProps) {
                 <span className="ml-1 text-xs">({item.weight}%)</span>
               </span>
               <span className="font-financial font-medium">
-                {Math.round(item.score)}
+                {item.score == null ? '—' : Math.round(item.score)}
               </span>
             </li>
           ))}

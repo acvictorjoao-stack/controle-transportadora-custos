@@ -49,9 +49,11 @@ function FavoriteCharts({charts, className}: FavoriteChartsProps) {
                   style={{width: `${width}%`}}
                 />
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 {formatCompactDelta(delta)} vs período anterior
-                {delta != null && (
+                {delta == null ? (
+                  <span> — Comparativo indisponível</span>
+                ) : (
                   <span className={positive ? ' text-success' : ' text-destructive'}>
                     {positive ? ' ↑' : ' ↓'}
                   </span>

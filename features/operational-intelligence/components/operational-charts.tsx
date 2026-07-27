@@ -37,7 +37,9 @@ function MiniBarChart({
       </CardHeader>
       <CardContent>
         {points.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Sem dados no período.</p>
+          <p className="text-sm text-muted-foreground">
+            Nenhum dado disponível para gerar o gráfico.
+          </p>
         ) : (
           <div className="space-y-3" role="img" aria-label={title}>
             {points.slice(0, 12).map((point) => {

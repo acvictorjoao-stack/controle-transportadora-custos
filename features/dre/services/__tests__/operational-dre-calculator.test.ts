@@ -183,6 +183,13 @@ describe('calculateOperationalDre', () => {
     expect(dre.indicators.vehiclesUsed).toBe(2);
   });
 
+  it('returns null margin when there is no revenue', () => {
+    const dre = calculateOperationalDre([], []);
+    expect(dre.revenues.totalRevenue).toBe(0);
+    expect(dre.result.operatingMarginPercent).toBeNull();
+    expect(dre.indicators.revenuePerKm).toBeNull();
+  });
+
   it('applies customer and route filters to expense scope', () => {
     const trips = [
       makeTrip({id: 't1', customerId: 'customer-1', routeId: 'route-1'}),

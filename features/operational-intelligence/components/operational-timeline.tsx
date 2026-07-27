@@ -39,7 +39,7 @@ function OperationalTimeline({timeline}: OperationalTimelineProps) {
       <CardContent>
         {!timeline ? (
           <p className="text-sm text-muted-foreground">
-            Nenhuma viagem recente para montar a timeline.
+            Nenhuma viagem encontrada para o período.
           </p>
         ) : (
           <ol className="space-y-0">

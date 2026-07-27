@@ -66,21 +66,14 @@ function OperationalDreView({
   const {revenues, costs, result, indicators, analyticalTable, costCenterBreakdown} =
     data;
 
-  const displayCenters = [
-    'OPERACIONAL',
-    'ADMINISTRATIVO',
-    'COMERCIAL',
-    'RH',
-    'TI',
-  ].map((code) => {
-    const row = costCenterBreakdown.ranking.find((item) => item.code === code);
-    return {
-      code,
-      name: row?.name ?? code,
-      value: row?.value ?? costCenterBreakdown.byCode[code] ?? 0,
-      percent: row?.percent ?? null,
-    };
-  });
+  const displayCenters = costCenterBreakdown.ranking.length
+    ? costCenterBreakdown.ranking.map((row) => ({
+        code: row.code,
+        name: row.name,
+        value: row.value,
+        percent: row.percent,
+      }))
+    : [];
 
   const analyticalColumns = [
     {
@@ -182,11 +175,22 @@ function OperationalDreView({
                 <p className="text-xs text-muted-foreground">Margem Operacional</p>
                 <p
                   className={`font-financial text-lg font-semibold ${
-                    resultClass(result.operatingMarginPercent) ?? ''
+                    result.operatingMarginPercent == null
+                      ? ''
+                      : (resultClass(result.operatingMarginPercent) ?? '')
                   }`}
                 >
-                  {formatPercent(result.operatingMarginPercent)}
+                  {result.operatingMarginPercent == null
+                    ? '—'
+                    : formatPercent(result.operatingMarginPercent)}
                 </p>
+                {indicators.tripCount === 0 &&
+                  revenues.totalRevenue === 0 &&
+                  costs.totalOperatingCosts === 0 && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Sem dados para o período selecionado.
+                    </p>
+                  )}
               </div>
             </CardContent>
           </Card>
@@ -254,22 +258,28 @@ function OperationalDreView({
             Custos por Centro
           </h3>
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-            {displayCenters.map((center) => (
-              <StatCard
-                key={center.code}
-                title={center.name}
-                value={
-                  <span className="flex flex-col gap-0.5">
-                    <span>{formatMoney(center.value)}</span>
-                    <span className="text-xs font-normal text-muted-foreground">
-                      {center.percent === null
-                        ? '—'
-                        : formatPercent(center.percent)}
+            {displayCenters.length === 0 ? (
+              <p className="col-span-full text-sm text-muted-foreground">
+                Sem dados para o período selecionado.
+              </p>
+            ) : (
+              displayCenters.map((center) => (
+                <StatCard
+                  key={center.code}
+                  title={center.name}
+                  value={
+                    <span className="flex flex-col gap-0.5">
+                      <span>{formatMoney(center.value)}</span>
+                      <span className="text-xs font-normal text-muted-foreground">
+                        {center.percent === null
+                          ? '—'
+                          : formatPercent(center.percent)}
+                      </span>
                     </span>
-                  </span>
-                }
-              />
-            ))}
+                  }
+                />
+              ))
+            )}
           </div>
         </div>
 

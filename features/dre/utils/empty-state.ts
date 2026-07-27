@@ -17,7 +17,7 @@ export const EMPTY_OPERATIONAL_DRE: OperationalDreData = {
     other: 0,
     totalOperatingCosts: 0,
   },
-  result: {operatingProfit: 0, operatingMarginPercent: 0},
+  result: {operatingProfit: 0, operatingMarginPercent: null},
   indicators: {
     revenuePerKm: null,
     costPerKm: null,

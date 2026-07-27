@@ -47,6 +47,23 @@ describe('buildOperationalScore', () => {
     expect(score.breakdown).toHaveLength(5);
     expect(score.label).toMatch(/Excelente|Bom|Atenção/);
   });
+
+  it('returns null score when there is no measurable base', () => {
+    const empty = snapshot({
+      receita: 0,
+      lucro: 0,
+      margem: null,
+      custos: 0,
+      sla: null,
+      leadTime: null,
+      tripCount: 0,
+      ocorrencias: 0,
+    });
+    const progress = buildGoalProgress(empty, {});
+    const score = buildOperationalScore(empty, progress, {});
+    expect(score.value).toBeNull();
+    expect(score.label).toBe('Sem dados');
+  });
 });
 
 describe('resolveCockpitPeriod', () => {

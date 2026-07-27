@@ -387,7 +387,7 @@ function VehicleProfitabilityDashboard({
             ]}
             data={rankingRows}
             getRowKey={(row) => row.id}
-            emptyTitle="Sem veículos no período"
+            emptyTitle="Nenhum registro encontrado"
             emptyDescription="Ajuste os filtros para visualizar o ranking."
           />
         </TableContainer>

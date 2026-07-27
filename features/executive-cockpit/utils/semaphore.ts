@@ -8,62 +8,43 @@ export const SEMAPHORE_EMOJI: Record<SemaphoreStatus, string> = {
   acima: '🟢',
   atencao: '🟡',
   abaixo: '🔴',
+  indefinido: '⚪',
 };
 
 export const SEMAPHORE_LABELS: Record<SemaphoreStatus, string> = {
   acima: 'Acima da meta',
   atencao: 'Atenção',
   abaixo: 'Abaixo da meta',
-};
-
-/** Limiares padrão quando não há meta configurada. */
-const FALLBACK_THRESHOLDS: Partial<
-  Record<ExecutiveGoalMetric, {good: number; warn: number; lowerIsBetter?: boolean}>
-> = {
-  margem: {good: 20, warn: 5},
-  sla: {good: 90, warn: 75},
-  leadTime: {good: 240, warn: 360, lowerIsBetter: true},
+  indefinido: 'Sem meta',
 };
 
 /**
- * Classifica semáforo vs meta.
- * - Higher-is-better: ≥100% verde, ≥90% amarelo, senão vermelho
- * - Lower-is-better: ≤100% verde, ≤110% amarelo, senão vermelho
+ * Classifica semáforo vs meta configurada.
+ * Sem meta explícita → `indefinido` (não inventa limiares).
  */
 export function classifyAgainstGoal(
   actual: number | null | undefined,
   goal: number | null | undefined,
   metric: ExecutiveGoalMetric,
 ): SemaphoreStatus {
-  if (actual == null || !Number.isFinite(actual)) return 'abaixo';
+  if (actual == null || !Number.isFinite(actual)) return 'indefinido';
+
+  if (goal == null || !Number.isFinite(goal) || goal === 0) {
+    return 'indefinido';
+  }
 
   const lowerIsBetter = EXECUTIVE_GOAL_LOWER_IS_BETTER.has(metric);
 
-  if (goal != null && Number.isFinite(goal) && goal !== 0) {
-    if (lowerIsBetter) {
-      const ratio = actual / goal;
-      if (ratio <= 1) return 'acima';
-      if (ratio <= 1.1) return 'atencao';
-      return 'abaixo';
-    }
-
+  if (lowerIsBetter) {
     const ratio = actual / goal;
-    if (ratio >= 1) return 'acima';
-    if (ratio >= 0.9) return 'atencao';
+    if (ratio <= 1) return 'acima';
+    if (ratio <= 1.1) return 'atencao';
     return 'abaixo';
   }
 
-  const fallback = FALLBACK_THRESHOLDS[metric];
-  if (!fallback) return 'atencao';
-
-  if (fallback.lowerIsBetter) {
-    if (actual <= fallback.good) return 'acima';
-    if (actual <= fallback.warn) return 'atencao';
-    return 'abaixo';
-  }
-
-  if (actual >= fallback.good) return 'acima';
-  if (actual >= fallback.warn) return 'atencao';
+  const ratio = actual / goal;
+  if (ratio >= 1) return 'acima';
+  if (ratio >= 0.9) return 'atencao';
   return 'abaixo';
 }
 
@@ -71,6 +52,7 @@ export function statusLabelFor(
   status: SemaphoreStatus,
   metric: ExecutiveGoalMetric,
 ): string {
+  if (status === 'indefinido') return SEMAPHORE_LABELS.indefinido;
   if (metric === 'sla' && status === 'acima') return 'Excelente';
   if (metric === 'leadTime' && status === 'atencao') return 'Tendência de alta';
   if (metric === 'lucro' && status === 'atencao') return 'Atenção';

@@ -19,10 +19,10 @@ describe('classifyAgainstGoal', () => {
     expect(classifyAgainstGoal(300, 240, 'leadTime')).toBe('abaixo');
   });
 
-  it('falls back to SLA thresholds without goal', () => {
-    expect(classifyAgainstGoal(92, null, 'sla')).toBe('acima');
-    expect(classifyAgainstGoal(80, null, 'sla')).toBe('atencao');
-    expect(classifyAgainstGoal(60, null, 'sla')).toBe('abaixo');
+  it('does not invent thresholds without configured goal', () => {
+    expect(classifyAgainstGoal(92, null, 'sla')).toBe('indefinido');
+    expect(classifyAgainstGoal(80, null, 'sla')).toBe('indefinido');
+    expect(classifyAgainstGoal(20, null, 'margem')).toBe('indefinido');
   });
 });
 
@@ -40,5 +40,6 @@ describe('statusLabelFor', () => {
   it('uses special labels for sla and lead time', () => {
     expect(statusLabelFor('acima', 'sla')).toBe('Excelente');
     expect(statusLabelFor('atencao', 'leadTime')).toBe('Tendência de alta');
+    expect(statusLabelFor('indefinido', 'receita')).toBe('Sem meta');
   });
 });

@@ -317,7 +317,7 @@ export function calculateOperationalDre(
   const costCenterBreakdown = aggregateCostsByCostCenter(scopedExpenses);
   const operatingProfit = totalRevenue - costs.totalOperatingCosts;
   const operatingMarginPercent =
-    totalRevenue > 0 ? (operatingProfit / totalRevenue) * 100 : 0;
+    totalRevenue > 0 ? (operatingProfit / totalRevenue) * 100 : null;
   const dimensions = summarizeTripDimensions(trips);
 
   return {

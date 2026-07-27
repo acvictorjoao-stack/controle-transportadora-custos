@@ -49,6 +49,11 @@ export function buildSmartKpis(
   previous: CockpitMetricSnapshot,
   goals: ExecutiveGoals,
 ): SmartKpiCard[] {
+  const emptyFinancial =
+    snapshot.tripCount === 0 &&
+    snapshot.receita === 0 &&
+    snapshot.custos === 0;
+
   const defs: Array<{
     id: SmartKpiCard['id'];
     metric: 'receita' | 'lucro' | 'margem' | 'sla' | 'leadTime';
@@ -59,14 +64,14 @@ export function buildSmartKpis(
     {
       id: 'receita',
       metric: 'receita',
-      value: snapshot.receita,
+      value: emptyFinancial ? null : snapshot.receita,
       previousValue: previous.receita,
       format: (v) => formatGoalValue('receita', v),
     },
     {
       id: 'lucro',
       metric: 'lucro',
-      value: snapshot.lucro,
+      value: emptyFinancial ? null : snapshot.lucro,
       previousValue: previous.lucro,
       format: (v) => formatGoalValue('lucro', v),
     },
@@ -96,6 +101,10 @@ export function buildSmartKpis(
   return defs.map((def) => {
     const goal = goals[def.metric] ?? null;
     const status = classifyAgainstGoal(def.value, goal, def.metric);
+    const previousComparable =
+      emptyFinancial && (def.metric === 'receita' || def.metric === 'lucro')
+        ? null
+        : def.previousValue;
     return {
       id: def.id,
       label: EXECUTIVE_GOAL_LABELS[def.metric],
@@ -104,7 +113,7 @@ export function buildSmartKpis(
       status,
       statusLabel: statusLabelFor(status, def.metric),
       emoji: SEMAPHORE_EMOJI[status],
-      deltaVsPrevious: percentChange(def.value, def.previousValue),
+      deltaVsPrevious: percentChange(def.value, previousComparable),
       goal,
       progressPercent: progressAgainstGoal(def.value, goal, def.metric),
     };

@@ -407,8 +407,8 @@ function CustomerProfitabilityDashboard({
                 ]}
                 data={rankingRows}
                 getRowKey={(row) => row.id}
-                emptyTitle="Sem clientes no período"
-                emptyDescription="Ajuste os filtros para visualizar o ranking."
+              emptyTitle="Nenhum registro encontrado"
+              emptyDescription="Ajuste os filtros para visualizar o ranking."
               />
             </TableContainer>
           </Section>
