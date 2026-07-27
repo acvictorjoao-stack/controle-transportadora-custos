@@ -31,6 +31,11 @@ export interface RouteFormModalProps {
 
 type FieldErrors = Partial<Record<keyof CreateRouteInput, string>>;
 
+type RouteFormState = Omit<CreateRouteInput, 'leadTimeMinutes' | 'unloadTimeMinutes'> & {
+  leadTimeMinutes: number | null;
+  unloadTimeMinutes: number | null;
+};
+
 function RouteFormModal({open, onClose, route, onSaved}: RouteFormModalProps) {
   const isEdit = Boolean(route);
   const formKey = `${open}-${route?.id ?? 'new'}`;
@@ -69,13 +74,15 @@ function RouteFormContent({
   onClose: () => void;
   onSaved: (route: Route) => void;
 }) {
-  const [formData, setFormData] = React.useState<CreateRouteInput>(() => ({
+  const [formData, setFormData] = React.useState<RouteFormState>(() => ({
     name: route?.name ?? '',
     code: route?.code ?? null,
     origin: route?.origin ?? '',
     destination: route?.destination ?? '',
     routeType: route?.routeType ?? 'delivery',
     plannedDistanceKm: route?.plannedDistanceKm ?? null,
+    leadTimeMinutes: route?.leadTimeMinutes ?? null,
+    unloadTimeMinutes: route?.unloadTimeMinutes ?? null,
     notes: route?.notes ?? null,
     operationalStatus: route?.operationalStatus ?? 'active',
   }));
@@ -84,9 +91,9 @@ function RouteFormContent({
   const [submitting, setSubmitting] = React.useState(false);
   const toast = useToast();
 
-  function updateField<K extends keyof CreateRouteInput>(
+  function updateField<K extends keyof RouteFormState>(
     field: K,
-    value: CreateRouteInput[K],
+    value: RouteFormState[K],
   ) {
     setFormData((prev) => ({...prev, [field]: value}));
     if (fieldErrors[field]) {
@@ -248,6 +255,52 @@ function RouteFormContent({
               )
             }
             placeholder="Ex: 250"
+          />
+        </FormField>
+        <FormField
+          label="Lead Time (minutos)"
+          htmlFor="route-lead-time"
+          required
+          error={fieldErrors.leadTimeMinutes}
+          hint="Tempo previsto entre a saída da origem e a chegada ao destino."
+        >
+          <Input
+            id="route-lead-time"
+            type="number"
+            min={1}
+            step={1}
+            inputMode="numeric"
+            value={formData.leadTimeMinutes ?? ''}
+            onChange={(e) =>
+              updateField(
+                'leadTimeMinutes',
+                e.target.value === '' ? null : Number(e.target.value),
+              )
+            }
+            placeholder="Ex: 240"
+          />
+        </FormField>
+        <FormField
+          label="Tempo de Descarga (minutos)"
+          htmlFor="route-unload-time"
+          required
+          error={fieldErrors.unloadTimeMinutes}
+          hint="Tempo médio previsto para descarregar a carga no destino."
+        >
+          <Input
+            id="route-unload-time"
+            type="number"
+            min={1}
+            step={1}
+            inputMode="numeric"
+            value={formData.unloadTimeMinutes ?? ''}
+            onChange={(e) =>
+              updateField(
+                'unloadTimeMinutes',
+                e.target.value === '' ? null : Number(e.target.value),
+              )
+            }
+            placeholder="Ex: 60"
           />
         </FormField>
       </div>

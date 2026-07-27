@@ -21,6 +21,8 @@ export interface RouteRow {
   destination: string;
   route_type: RouteType;
   planned_distance_km: number | null;
+  lead_time_minutes: number | null;
+  unload_time_minutes: number | null;
   notes: string | null;
   operational_status: RouteOperationalStatus;
   external_id: string | null;
@@ -43,6 +45,8 @@ export interface Route {
   destination: string;
   routeType: RouteType;
   plannedDistanceKm: number | null;
+  leadTimeMinutes: number | null;
+  unloadTimeMinutes: number | null;
   notes: string | null;
   operationalStatus: RouteOperationalStatus;
   externalId: string | null;
@@ -61,6 +65,8 @@ export type RouteSelectOption = Pick<
   | 'origin'
   | 'destination'
   | 'plannedDistanceKm'
+  | 'leadTimeMinutes'
+  | 'unloadTimeMinutes'
 >;
 
 export interface RouteHistoryRow {

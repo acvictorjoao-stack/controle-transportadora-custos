@@ -1,6 +1,7 @@
 import {
   Building2,
   Car,
+  ClipboardCheck,
   CircleDollarSign,
   CreditCard,
   FileText,
@@ -156,6 +157,14 @@ export const navigationGroups: NavGroup[] = [
         href: ROUTES.centrosDeCusto,
         icon: PieChart,
         permission: 'financeiro:read',
+      },
+      {
+        id: 'qualidade-cadastros',
+        title: 'Qualidade dos Cadastros',
+        description: 'Rotas sem lead time e pendências',
+        href: ROUTES.qualidadeCadastros,
+        icon: ClipboardCheck,
+        permission: 'routes:read',
       },
     ],
   },

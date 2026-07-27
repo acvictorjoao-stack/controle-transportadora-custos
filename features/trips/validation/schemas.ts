@@ -30,6 +30,23 @@ const optionalNumber = z
     return Number.isFinite(num) ? num : null;
   });
 
+/** Inteiro positivo (>= 1) opcional — snapshot da rota na viagem. */
+const optionalPositiveIntegerMinutes = z
+  .union([z.string(), z.number()])
+  .nullish()
+  .transform((v, ctx) => {
+    if (v === undefined || v === null || v === '') return null;
+    const num = typeof v === 'number' ? v : Number(String(v).replace(',', '.'));
+    if (!Number.isFinite(num) || !Number.isInteger(num) || num < 1) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Informe um número inteiro maior ou igual a 1.',
+      });
+      return z.NEVER;
+    }
+    return num;
+  });
+
 const optionalOdometer = z
   .union([z.string(), z.number()])
   .nullish()
@@ -105,6 +122,8 @@ const tripBaseSchema = z.object({
   route: optionalUppercaseString,
   plannedDistanceKm: optionalNumber,
   plannedDepartureAt: optionalDateTime,
+  leadTimeMinutes: optionalPositiveIntegerMinutes,
+  unloadTimeMinutes: optionalPositiveIntegerMinutes,
   initialOdometerKm: optionalOdometer,
   finalOdometerKm: optionalOdometer,
   departedAt: optionalDateTime,

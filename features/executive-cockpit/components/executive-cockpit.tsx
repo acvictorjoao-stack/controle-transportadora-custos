@@ -1,6 +1,7 @@
 import {Suspense, type ReactNode} from 'react';
 
 import {Section} from '@/components/layout/section';
+import {RoutesWithoutLeadTimeAlert} from '@/features/cadastro-quality/components';
 
 import type {ExecutiveCockpitData} from '../types';
 import {FavoriteCharts} from './favorite-charts-panel';
@@ -63,6 +64,11 @@ function ExecutiveCockpit({data}: ExecutiveCockpitProps) {
         />
         <WidgetCustomizer preferences={data.preferences} />
       </div>
+
+      <RoutesWithoutLeadTimeAlert
+        routes={data.routesWithoutLeadTime}
+        compact
+      />
 
       {data.preferences.widgetOrder
         .filter((id) => !hidden.has(id))

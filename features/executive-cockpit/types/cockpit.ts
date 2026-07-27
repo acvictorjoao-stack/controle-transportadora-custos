@@ -1,3 +1,4 @@
+import type {CadastroQualityRouteItem} from '@/features/cadastro-quality/types';
 import type {OperationalDreFilters} from '@/features/dre/types';
 
 import type {ExecutiveGoalMetric, ExecutiveGoals} from './goals';
@@ -115,4 +116,5 @@ export interface ExecutiveCockpitData {
   };
   favoriteCharts: FavoriteChartPoint[];
   preferences: ExecutiveCockpitPreferences;
+  routesWithoutLeadTime: CadastroQualityRouteItem[];
 }

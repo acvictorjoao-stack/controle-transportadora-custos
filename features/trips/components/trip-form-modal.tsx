@@ -161,6 +161,8 @@ function TripFormContent({
     plannedDistanceKm: trip?.plannedDistanceKm ?? null,
     // Sprint 26.5 — nova viagem já abre com data/hora atuais
     plannedDepartureAt: trip ? trip.plannedDepartureAt : new Date().toISOString(),
+    leadTimeMinutes: trip?.leadTimeMinutes ?? null,
+    unloadTimeMinutes: trip?.unloadTimeMinutes ?? null,
     initialOdometerKm: trip?.initialOdometerKm ?? null,
     finalOdometerKm: trip?.finalOdometerKm ?? null,
     departedAt: trip?.departedAt ?? null,
@@ -193,10 +195,18 @@ function TripFormContent({
         origin: trip.origin ?? '',
         destination: trip.destination ?? '',
         plannedDistanceKm: trip.plannedDistanceKm,
+        leadTimeMinutes: trip.leadTimeMinutes,
+        unloadTimeMinutes: trip.unloadTimeMinutes,
       },
       ...routes,
     ];
   }, [routes, trip]);
+
+  const canEditRouteTimes =
+    !isEdit ||
+    (trip != null &&
+      trip.tripStatus !== 'completed' &&
+      trip.tripStatus !== 'cancelled');
 
   const selectedVehicle =
     vehicles.find((vehicle) => vehicle.id === formData.vehicleId) ?? null;
@@ -242,6 +252,8 @@ function TripFormContent({
         destination: null,
         route: null,
         plannedDistanceKm: null,
+        leadTimeMinutes: null,
+        unloadTimeMinutes: null,
       }));
       return;
     }
@@ -253,6 +265,8 @@ function TripFormContent({
       destination: route.destination,
       route: route.name,
       plannedDistanceKm: route.plannedDistanceKm,
+      leadTimeMinutes: route.leadTimeMinutes,
+      unloadTimeMinutes: route.unloadTimeMinutes,
     }));
     if (fieldErrors.routeId) {
       setFieldErrors((prev) => {
@@ -442,6 +456,54 @@ function TripFormContent({
             readOnly
             disabled
             placeholder="Preenchida pela rota"
+          />
+        </FormField>
+        <FormField
+          label="Lead Time (minutos)"
+          htmlFor="trip-lead-time"
+          error={fieldErrors.leadTimeMinutes}
+          hint="Preenchido pela rota. Tempo previsto entre saída e chegada."
+        >
+          <Input
+            id="trip-lead-time"
+            type="number"
+            min={1}
+            step={1}
+            inputMode="numeric"
+            value={formData.leadTimeMinutes ?? ''}
+            readOnly={!canEditRouteTimes}
+            disabled={!canEditRouteTimes}
+            onChange={(e) =>
+              updateField(
+                'leadTimeMinutes',
+                e.target.value === '' ? null : Number(e.target.value),
+              )
+            }
+            placeholder="Preenchido pela rota"
+          />
+        </FormField>
+        <FormField
+          label="Tempo de Descarga (minutos)"
+          htmlFor="trip-unload-time"
+          error={fieldErrors.unloadTimeMinutes}
+          hint="Preenchido pela rota. Tempo médio previsto para descarga."
+        >
+          <Input
+            id="trip-unload-time"
+            type="number"
+            min={1}
+            step={1}
+            inputMode="numeric"
+            value={formData.unloadTimeMinutes ?? ''}
+            readOnly={!canEditRouteTimes}
+            disabled={!canEditRouteTimes}
+            onChange={(e) =>
+              updateField(
+                'unloadTimeMinutes',
+                e.target.value === '' ? null : Number(e.target.value),
+              )
+            }
+            placeholder="Preenchido pela rota"
           />
         </FormField>
         <FormField label="Filial" htmlFor="trip-branch" error={fieldErrors.branchId}>

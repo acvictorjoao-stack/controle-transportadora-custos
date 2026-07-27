@@ -96,6 +96,27 @@ function buildTripPayload(
 ): Record<string, unknown> {
   // Campos V1 omitidos no payload (contrato, valor contratado, horímetro, cubagem)
   // para preservar valores antigos no banco em updates.
+  const leadTimeMinutes = input.leadTimeMinutes ?? null;
+  const unloadTimeMinutes = input.unloadTimeMinutes ?? null;
+  const plannedDepartureAt = input.plannedDepartureAt ?? null;
+
+  let plannedArrivalAt: string | null = null;
+  let plannedCompletionAt: string | null = null;
+
+  if (plannedDepartureAt && leadTimeMinutes != null) {
+    const departureMs = new Date(plannedDepartureAt).getTime();
+    if (!Number.isNaN(departureMs)) {
+      plannedArrivalAt = new Date(
+        departureMs + leadTimeMinutes * 60_000,
+      ).toISOString();
+      if (unloadTimeMinutes != null) {
+        plannedCompletionAt = new Date(
+          departureMs + (leadTimeMinutes + unloadTimeMinutes) * 60_000,
+        ).toISOString();
+      }
+    }
+  }
+
   const payload: Record<string, unknown> = {
     branch_id: input.branchId,
     driver_id: input.driverId,
@@ -109,7 +130,11 @@ function buildTripPayload(
     route: input.route,
     route_id: input.routeId,
     planned_distance_km: input.plannedDistanceKm,
-    planned_departure_at: input.plannedDepartureAt,
+    planned_departure_at: plannedDepartureAt,
+    lead_time_minutes: leadTimeMinutes,
+    unload_time_minutes: unloadTimeMinutes,
+    planned_arrival_at: plannedArrivalAt,
+    planned_completion_at: plannedCompletionAt,
     initial_odometer_km: input.initialOdometerKm,
     final_odometer_km: input.finalOdometerKm,
     departed_at: input.departedAt,

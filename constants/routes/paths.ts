@@ -25,6 +25,7 @@ export const ROUTES = {
   fornecedorDetail: (id: string) => `/fornecedores/${id}`,
   contratos: '/contratos',
   centrosDeCusto: '/centros-de-custo',
+  qualidadeCadastros: '/cadastros/qualidade',
 
   // Operações
   veiculos: '/veiculos',

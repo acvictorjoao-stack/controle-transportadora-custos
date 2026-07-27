@@ -7,7 +7,9 @@ export interface OperationalKpiGridProps {
 }
 
 function formatMinutes(value: number | null): string {
-  if (value == null || !Number.isFinite(value)) return '—';
+  if (value == null || !Number.isFinite(value)) {
+    return 'Dados insuficientes para calcular previsão.';
+  }
   if (value < 60) {
     return `${Math.round(value)} min`;
   }

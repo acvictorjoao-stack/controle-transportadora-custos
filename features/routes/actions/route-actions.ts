@@ -35,6 +35,9 @@ type RoutePermission =
 function revalidateRoutePaths(routeId?: string) {
   revalidatePath(ROUTES.rotas);
   revalidatePath(ROUTES.dashboard);
+  revalidatePath(ROUTES.dashboardExecutivo);
+  revalidatePath(ROUTES.dashboardInteligencia);
+  revalidatePath(ROUTES.qualidadeCadastros);
   if (routeId) {
     revalidatePath(ROUTES.rotaDetail(routeId));
   }

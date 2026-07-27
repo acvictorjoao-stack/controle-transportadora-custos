@@ -82,10 +82,11 @@ export function mapTripRow(row: TripRow): Trip {
     addMinutesIso(plannedDepartureAt, leadTimeMinutes);
   const plannedCompletionAt =
     row.planned_completion_at ??
-    addMinutesIso(
-      plannedArrivalAt ?? plannedDepartureAt,
-      plannedArrivalAt ? unloadTimeMinutes : (leadTimeMinutes ?? 0) + (unloadTimeMinutes ?? 0),
-    );
+    (plannedArrivalAt
+      ? addMinutesIso(plannedArrivalAt, unloadTimeMinutes)
+      : leadTimeMinutes != null && unloadTimeMinutes != null
+        ? addMinutesIso(plannedDepartureAt, leadTimeMinutes + unloadTimeMinutes)
+        : null);
 
   return {
     id: row.id,

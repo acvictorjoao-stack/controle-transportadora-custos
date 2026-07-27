@@ -191,7 +191,7 @@ function OperationalRanking({
           <RankingListCard
             title="Maior Lead Time"
             description="Rotas com maior tempo médio"
-            emptyMessage="Sem lead time calculado."
+            emptyMessage="Dados insuficientes para calcular previsão."
             items={routesByLeadTime.map((item) => ({
               id: item.id,
               primary: item.name,

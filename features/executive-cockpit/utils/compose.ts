@@ -5,6 +5,7 @@ import type {
   OperationalDreVehicleGroup,
 } from '@/features/dre/types';
 import type {OperationalDreFilters} from '@/features/dre/types';
+import type {CadastroQualityRouteItem} from '@/features/cadastro-quality/types';
 
 import type {
   CockpitPeriodPreset,
@@ -47,6 +48,7 @@ export interface ComposeCockpitInput {
   yearAgoOpenOccurrences: number;
   goals: ExecutiveGoals;
   preferences: ExecutiveCockpitPreferences;
+  routesWithoutLeadTime?: CadastroQualityRouteItem[];
 }
 
 /**
@@ -89,6 +91,29 @@ export function composeExecutiveCockpit(
 
   const goalsProgress = buildGoalProgress(snapshot, goals);
   const score = buildOperationalScore(snapshot, goalsProgress, goals);
+  const routesWithoutLeadTime = input.routesWithoutLeadTime ?? [];
+
+  const insights = buildExecutiveInsights({
+    dre: input.dre,
+    previousDre: input.previousDre,
+    routes: input.routes,
+    previousRoutes: input.previousRoutes,
+    customers: input.customers,
+    previousCustomers: input.previousCustomers,
+    vehicles: input.vehicles,
+  });
+
+  if (routesWithoutLeadTime.length > 0) {
+    insights.unshift({
+      id: 'routes-missing-lead-time',
+      title: `${routesWithoutLeadTime.length} rota${
+        routesWithoutLeadTime.length === 1 ? '' : 's'
+      } sem Lead Time configurado`,
+      cause: 'Cadastros incompletos afetam SLA, atrasos e score operacional.',
+      suggestion: 'Abra Qualidade dos Cadastros e regularize as rotas pendentes.',
+      severity: 'warning',
+    });
+  }
 
   return {
     periodPreset: input.periodPreset,
@@ -102,15 +127,7 @@ export function composeExecutiveCockpit(
     goals: goalsProgress,
     goalsConfig: goals,
     trends: buildTrends(snapshot, previousSnapshot),
-    insights: buildExecutiveInsights({
-      dre: input.dre,
-      previousDre: input.previousDre,
-      routes: input.routes,
-      previousRoutes: input.previousRoutes,
-      customers: input.customers,
-      previousCustomers: input.previousCustomers,
-      vehicles: input.vehicles,
-    }),
+    insights: insights.slice(0, 8),
     score,
     comparison: {
       vsPrevious: buildPeriodComparisonDelta(snapshot, previousSnapshot),
@@ -124,5 +141,6 @@ export function composeExecutiveCockpit(
       previousSnapshot,
     ),
     preferences: input.preferences,
+    routesWithoutLeadTime,
   };
 }

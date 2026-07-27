@@ -24,6 +24,7 @@ const PERMISSION_ALIASES: Record<string, string[]> = {
     'profiles:read',
     'customers:read',
     'suppliers:read',
+    'routes:read',
   ],
   'operacoes:read': [
     'vehicles:read',

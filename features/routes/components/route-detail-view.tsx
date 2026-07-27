@@ -21,6 +21,7 @@ import {
 } from '../types';
 import {
   formatDistanceKm,
+  formatMinutes,
   getRouteOperationalStatusVariant,
 } from '../utils/route-format';
 import {RouteFormModal} from './route-form-modal';
@@ -58,6 +59,8 @@ function RouteDetailView({data}: RouteDetailViewProps) {
     ['Destino', route.destination],
     ['Tipo', ROUTE_TYPE_LABELS[route.routeType]],
     ['Distância', formatDistanceKm(route.plannedDistanceKm)],
+    ['Lead Time', formatMinutes(route.leadTimeMinutes)],
+    ['Tempo de Descarga', formatMinutes(route.unloadTimeMinutes)],
     ['Status', ROUTE_OPERATIONAL_STATUS_LABELS[route.operationalStatus]],
   ];
 

@@ -1,5 +1,6 @@
 import type {SupabaseClient} from '@supabase/supabase-js';
 
+import {listRoutesWithoutLeadTime} from '@/features/cadastro-quality/queries';
 import {getOperationalDreBundle} from '@/features/dre/loaders';
 import {previousPeriodFilters} from '@/features/organization/dashboard/utils/period';
 import {getOperationalIntelligenceData} from '@/features/operational-intelligence/loaders/operational-intelligence-loader';
@@ -72,6 +73,7 @@ export async function getExecutiveCockpitData(
     yearAgoOps,
     goals,
     preferences,
+    routesWithoutLeadTime,
   ] = await Promise.all([
     getOperationalDreBundle(supabase, companyId, period),
     getOperationalDreBundle(supabase, companyId, previous),
@@ -95,6 +97,7 @@ export async function getExecutiveCockpitData(
           () => DEFAULT_COCKPIT_PREFERENCES,
         )
       : Promise.resolve(DEFAULT_COCKPIT_PREFERENCES),
+    listRoutesWithoutLeadTime(supabase, companyId).catch(() => []),
   ]);
 
   const yearAgoHasData =
@@ -124,5 +127,6 @@ export async function getExecutiveCockpitData(
     yearAgoOpenOccurrences: yearAgoHasData ? yearAgoOps.openOccurrences : 0,
     goals,
     preferences,
+    routesWithoutLeadTime,
   });
 }

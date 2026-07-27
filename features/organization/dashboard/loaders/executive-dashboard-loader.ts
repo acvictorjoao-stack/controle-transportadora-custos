@@ -1,11 +1,13 @@
 import type {SupabaseClient} from '@supabase/supabase-js';
 
-import {getOperationalDreBundle, getOperationalDreByRoute} from '@/features/dre/loaders';
+import {getOperationalDreBundle} from '@/features/dre/loaders';
 import type {
   OperationalDreData,
   OperationalDreFilters,
   OperationalDreRouteGroup,
 } from '@/features/dre/types';
+import {listRoutesWithoutLeadTime} from '@/features/cadastro-quality/queries';
+import type {CadastroQualityRouteItem} from '@/features/cadastro-quality/types';
 import {getFinancialDashboardData} from '@/features/financial-dashboard/queries';
 import type {FinancialDashboardData} from '@/features/financial-dashboard/types';
 import {getMaintenanceStats} from '@/features/maintenance/queries';
@@ -40,6 +42,7 @@ export interface ExecutiveDashboardData {
   topRoutes: TopRouteRankingItem[];
   topCustomers: TopCustomerRankingItem[];
   alerts: OperationalAlertItem[];
+  routesWithoutLeadTime: CadastroQualityRouteItem[];
   dre: OperationalDreData;
   byRoute: {groups: OperationalDreRouteGroup[]; filters: OperationalDreFilters};
   financial: FinancialDashboardData;
@@ -78,12 +81,14 @@ export async function getExecutiveDashboardData(
   };
   const previous = previousPeriodFilters(period);
 
-  const [bundle, previousBundle, financial, maintenance] = await Promise.all([
-    getOperationalDreBundle(supabase, companyId, period),
-    getOperationalDreBundle(supabase, companyId, previous),
-    getFinancialDashboardData(supabase, companyId),
-    getMaintenanceStats(supabase, companyId),
-  ]);
+  const [bundle, previousBundle, financial, maintenance, routesWithoutLeadTime] =
+    await Promise.all([
+      getOperationalDreBundle(supabase, companyId, period),
+      getOperationalDreBundle(supabase, companyId, previous),
+      getFinancialDashboardData(supabase, companyId),
+      getMaintenanceStats(supabase, companyId),
+      listRoutesWithoutLeadTime(supabase, companyId).catch(() => []),
+    ]);
 
   const topRoutes = buildTopRoutes(bundle.byRoute.groups);
   const topCustomers = buildTopCustomers(bundle.byCustomer);
@@ -95,6 +100,7 @@ export async function getExecutiveDashboardData(
     currentRoutes: bundle.byRoute.groups,
     topCustomers,
     previousCustomers,
+    routesWithoutLeadTimeCount: routesWithoutLeadTime.length,
   });
 
   return {
@@ -103,6 +109,7 @@ export async function getExecutiveDashboardData(
     topRoutes,
     topCustomers,
     alerts,
+    routesWithoutLeadTime,
     dre: bundle.dre,
     byRoute: bundle.byRoute,
     financial,

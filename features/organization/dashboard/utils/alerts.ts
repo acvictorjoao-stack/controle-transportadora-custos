@@ -38,10 +38,22 @@ export function buildOperationalAlerts(input: {
   currentRoutes: OperationalDreRouteGroup[];
   topCustomers: TopCustomerRankingItem[];
   previousCustomers: TopCustomerRankingItem[];
+  routesWithoutLeadTimeCount?: number;
 }): OperationalAlertItem[] {
   const alerts: OperationalAlertItem[] = [];
   const today = localTodayIso();
   const dueToday = countDueToday(input.financial.proximosVencimentos, today);
+
+  if ((input.routesWithoutLeadTimeCount ?? 0) > 0) {
+    const count = input.routesWithoutLeadTimeCount ?? 0;
+    alerts.push({
+      id: 'rotas-sem-lead-time',
+      title: `${count} rota${count === 1 ? '' : 's'} sem Lead Time configurado`,
+      description:
+        'Regularize o cadastro para alimentar SLA, atrasos e Inteligência Operacional.',
+      variant: 'warning',
+    });
+  }
 
   if (dueToday > 0) {
     alerts.push({

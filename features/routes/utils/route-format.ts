@@ -20,3 +20,8 @@ export function formatDistanceKm(value: number | null): string {
     maximumFractionDigits: 2,
   })} km`;
 }
+
+export function formatMinutes(value: number | null | undefined): string {
+  if (value === null || value === undefined) return '—';
+  return `${value.toLocaleString('pt-BR')} min`;
+}

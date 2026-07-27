@@ -55,6 +55,8 @@ function buildRoutePayload(
     destination: input.destination,
     route_type: input.routeType,
     planned_distance_km: input.plannedDistanceKm,
+    lead_time_minutes: input.leadTimeMinutes,
+    unload_time_minutes: input.unloadTimeMinutes,
     notes: input.notes,
     operational_status: input.operationalStatus ?? 'active',
     updated_by: profileId,
@@ -165,7 +167,7 @@ export async function listRoutesForSelect(
   let query = supabase
     .from('routes')
     .select(
-      'id, name, code, origin, destination, planned_distance_km',
+      'id, name, code, origin, destination, planned_distance_km, lead_time_minutes, unload_time_minutes',
     )
     .eq('company_id', companyId)
     .is('deleted_at', null)
@@ -192,6 +194,14 @@ export async function listRoutesForSelect(
       row.planned_distance_km === null || row.planned_distance_km === undefined
         ? null
         : Number(row.planned_distance_km),
+    leadTimeMinutes:
+      row.lead_time_minutes === null || row.lead_time_minutes === undefined
+        ? null
+        : Number(row.lead_time_minutes),
+    unloadTimeMinutes:
+      row.unload_time_minutes === null || row.unload_time_minutes === undefined
+        ? null
+        : Number(row.unload_time_minutes),
   }));
 }
 

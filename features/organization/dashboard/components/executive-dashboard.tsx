@@ -1,4 +1,5 @@
 import {Section} from '@/components/layout/section';
+import {RoutesWithoutLeadTimeAlert} from '@/features/cadastro-quality/components';
 
 import type {ExecutiveDashboardData} from '../loaders/executive-dashboard-loader';
 import {ExecutiveKpiGrid} from './executive-kpi-grid';
@@ -31,6 +32,11 @@ function ExecutiveDashboard({data}: ExecutiveDashboardProps) {
           <TopCustomersCard customers={data.topCustomers} />
         </div>
       </Section>
+
+      <RoutesWithoutLeadTimeAlert
+        routes={data.routesWithoutLeadTime}
+        compact
+      />
 
       <OperationalAlertsCard alerts={data.alerts} />
 
