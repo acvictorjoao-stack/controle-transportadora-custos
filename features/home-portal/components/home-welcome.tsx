@@ -1,8 +1,8 @@
 'use client';
 
-import {siteConfig} from '@/config/site/index';
 import {SHELL_FALLBACKS} from '@/constants/app/shell';
 import {useAuth} from '@/contexts/auth/use-auth';
+import {cn} from '@/lib/utils';
 
 import {HomeModuleSearch} from './home-module-search';
 
@@ -20,18 +20,18 @@ function HomeWelcome({className}: HomeWelcomeProps) {
   const name = firstName(user?.name);
 
   return (
-    <div className={className}>
-      <p className="text-sm font-medium text-muted-foreground">{siteConfig.name}</p>
-      <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">
-        Bem-vindo, {name}.
-      </h1>
-      <p className="mt-2 text-base text-muted-foreground">
-        O que deseja acessar hoje?
-      </p>
-      <div className="mt-5">
-        <HomeModuleSearch />
+    <header className={cn('flex flex-col gap-5', className)}>
+      <div className="space-y-1.5">
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+          Bem-vindo, {name}.
+        </h1>
+        <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+          O que deseja acessar hoje? Busque um módulo ou escolha um card abaixo.
+        </p>
       </div>
-    </div>
+
+      <HomeModuleSearch className="max-w-2xl" />
+    </header>
   );
 }
 

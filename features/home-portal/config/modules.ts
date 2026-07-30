@@ -10,11 +10,59 @@ import {
 
 import {ROUTES} from '@/constants/routes/paths';
 
-import type {HomeModuleCard, HomeShortcutItem} from '../types';
+import type {HomeModuleAccent, HomeModuleCard} from '../types';
+
+/** Classes de acento institucional por módulo (barra + ícone). */
+export const HOME_MODULE_ACCENT_STYLES: Record<
+  HomeModuleAccent,
+  {bar: string; iconWrap: string; icon: string; cta: string}
+> = {
+  primary: {
+    bar: 'bg-primary',
+    iconWrap: 'bg-primary/10',
+    icon: 'text-primary',
+    cta: 'text-primary group-hover:bg-primary group-hover:text-primary-foreground',
+  },
+  info: {
+    bar: 'bg-info',
+    iconWrap: 'bg-info/10',
+    icon: 'text-info',
+    cta: 'text-info group-hover:bg-info group-hover:text-info-foreground',
+  },
+  cyan: {
+    bar: 'bg-chart-2',
+    iconWrap: 'bg-chart-2/10',
+    icon: 'text-chart-2',
+    cta: 'text-chart-2 group-hover:bg-chart-2 group-hover:text-white',
+  },
+  success: {
+    bar: 'bg-success',
+    iconWrap: 'bg-success/10',
+    icon: 'text-success',
+    cta: 'text-success group-hover:bg-success group-hover:text-success-foreground',
+  },
+  warning: {
+    bar: 'bg-warning',
+    iconWrap: 'bg-warning/10',
+    icon: 'text-warning',
+    cta: 'text-warning group-hover:bg-warning group-hover:text-warning-foreground',
+  },
+  rose: {
+    bar: 'bg-chart-5',
+    iconWrap: 'bg-chart-5/10',
+    icon: 'text-chart-5',
+    cta: 'text-chart-5 group-hover:bg-chart-5 group-hover:text-white',
+  },
+  slate: {
+    bar: 'bg-foreground/70',
+    iconWrap: 'bg-muted',
+    icon: 'text-foreground',
+    cta: 'text-foreground group-hover:bg-foreground group-hover:text-background',
+  },
+};
 
 /**
- * Cards do portal — grupos de acesso rápido (RC 28.0.4).
- * Cada card abre o primeiro módulo do grupo.
+ * Cards do portal — cada um abre o primeiro módulo do grupo.
  */
 export const homePortalModules: HomeModuleCard[] = [
   {
@@ -23,6 +71,7 @@ export const homePortalModules: HomeModuleCard[] = [
     description: 'KPIs, DRE, Rentabilidade e Inteligência Operacional',
     href: ROUTES.dashboard,
     icon: LayoutDashboard,
+    accent: 'primary',
     permission: 'dashboard:read',
   },
   {
@@ -31,6 +80,7 @@ export const homePortalModules: HomeModuleCard[] = [
     description: 'Empresas, Filiais, Clientes, Rotas e Fornecedores',
     href: ROUTES.empresas,
     icon: Building2,
+    accent: 'info',
     permission: 'cadastros:read',
   },
   {
@@ -39,14 +89,16 @@ export const homePortalModules: HomeModuleCard[] = [
     description: 'Viagens, Entregas, Ocorrências e Monitoramento',
     href: ROUTES.viagens,
     icon: MapPin,
+    accent: 'cyan',
     permission: 'operacoes:read',
   },
   {
     id: 'financeiro',
     title: 'Financeiro',
     description: 'Receitas, Despesas, Custos e DRE',
-    href: ROUTES.contasAPagar,
+    href: ROUTES.contasAReceber,
     icon: Wallet,
+    accent: 'success',
     permission: 'financeiro:read',
   },
   {
@@ -55,6 +107,7 @@ export const homePortalModules: HomeModuleCard[] = [
     description: 'Veículos, Motoristas e Documentações',
     href: ROUTES.veiculos,
     icon: Truck,
+    accent: 'warning',
     permission: 'vehicles:read',
   },
   {
@@ -63,6 +116,7 @@ export const homePortalModules: HomeModuleCard[] = [
     description: 'Ordens de Serviço, Preventivas e Custos',
     href: ROUTES.manutencoes,
     icon: Wrench,
+    accent: 'rose',
     permission: 'maintenance:read',
   },
   {
@@ -71,54 +125,7 @@ export const homePortalModules: HomeModuleCard[] = [
     description: 'Usuários, Permissões e Preferências',
     href: ROUTES.configuracoes,
     icon: Settings,
+    accent: 'slate',
     permission: 'configuracoes:read',
-  },
-];
-
-/** Favoritos padrão por usuário (configuráveis via localStorage). */
-export const DEFAULT_HOME_FAVORITES: HomeShortcutItem[] = [
-  {
-    id: 'inteligencia-operacional',
-    title: 'Inteligência Operacional',
-    href: ROUTES.dashboardInteligencia,
-  },
-  {
-    id: 'dre',
-    title: 'DRE',
-    href: ROUTES.dashboardDre,
-  },
-  {
-    id: 'viagens',
-    title: 'Viagens',
-    href: ROUTES.viagens,
-  },
-  {
-    id: 'clientes',
-    title: 'Clientes',
-    href: ROUTES.clientes,
-  },
-];
-
-/** Recentes padrão até o usuário navegar pelo sistema. */
-export const DEFAULT_HOME_RECENTS: HomeShortcutItem[] = [
-  {
-    id: 'viagens',
-    title: 'Viagens',
-    href: ROUTES.viagens,
-  },
-  {
-    id: 'dashboard',
-    title: 'Dashboard Executivo',
-    href: ROUTES.dashboard,
-  },
-  {
-    id: 'clientes',
-    title: 'Clientes',
-    href: ROUTES.clientes,
-  },
-  {
-    id: 'fornecedores',
-    title: 'Fornecedores',
-    href: ROUTES.fornecedores,
   },
 ];

@@ -2,11 +2,7 @@ import {redirect} from 'next/navigation';
 
 import {ContentContainer} from '@/components/layout/content-container';
 import {ROUTES} from '@/constants/routes/paths';
-import {
-  HomePortal,
-  buildHomePendingItems,
-  getHomePendingSnapshot,
-} from '@/features/home-portal';
+import {HomePortal} from '@/features/home-portal';
 import {getCurrentCompanyProfile, needsOnboarding} from '@/features/organization/companies/queries';
 import {listBranches} from '@/features/organization/branches/queries';
 import {OnboardingWizard} from '@/features/organization/onboarding/components';
@@ -16,8 +12,8 @@ import {
 } from '@/lib/auth/company';
 
 /**
- * Portal de entrada do FleetControl (RC 28.0.4).
- * O Dashboard Executivo permanece em `/dashboard` como módulo analítico.
+ * Portal de navegação do FleetControl (RC 28.0.6).
+ * Apenas saudação, busca e cards de módulos — indicadores ficam no Dashboard.
  */
 export default async function HomePage() {
   const supabase = await getServerSupabaseClient();
@@ -27,17 +23,11 @@ export default async function HomePage() {
     redirect(ROUTES.login);
   }
 
-  const [company, pendingSnapshot] = await Promise.all([
-    getCurrentCompanyProfile(supabase, companyId),
-    getHomePendingSnapshot(supabase, companyId),
-  ]);
-
+  const company = await getCurrentCompanyProfile(supabase, companyId);
   const showOnboarding = company ? needsOnboarding(company) : false;
   const branches = showOnboarding
     ? await listBranches(supabase, {companyId})
     : null;
-
-  const pendingItems = buildHomePendingItems(pendingSnapshot);
 
   return (
     <>
@@ -45,7 +35,7 @@ export default async function HomePage() {
         <OnboardingWizard company={company} branches={branches} />
       )}
       <ContentContainer>
-        <HomePortal pendingItems={pendingItems} />
+        <HomePortal />
       </ContentContainer>
     </>
   );

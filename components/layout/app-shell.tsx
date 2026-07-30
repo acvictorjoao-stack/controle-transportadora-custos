@@ -6,7 +6,6 @@ import {TopProgress} from '@/components/feedback/top-progress';
 import {AppHeader} from '@/components/layout/header/app-header';
 import {Sidebar} from '@/components/layout/sidebar/sidebar';
 import {SidebarProvider} from '@/contexts/shell/sidebar-context';
-import {HomeRecentsTracker} from '@/features/home-portal';
 import {cn} from '@/lib/utils';
 
 export interface AppShellProps {
@@ -22,7 +21,6 @@ function AppShell({children, className}: AppShellProps) {
         className={cn('flex h-screen overflow-hidden bg-background', className)}
       >
         <TopProgress />
-        <HomeRecentsTracker />
         <Sidebar />
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <AppHeader />
