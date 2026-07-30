@@ -5,7 +5,7 @@ import {HomeWelcome} from './home-welcome';
 
 function HomePortal() {
   return (
-    <div className="flex flex-col gap-8 pb-8">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
       <HomeWelcome />
       <HomeModuleGrid />
     </div>

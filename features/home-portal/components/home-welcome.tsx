@@ -20,17 +20,17 @@ function HomeWelcome({className}: HomeWelcomeProps) {
   const name = firstName(user?.name);
 
   return (
-    <header className={cn('flex flex-col gap-5', className)}>
+    <header className={cn('mx-auto flex w-full max-w-2xl flex-col gap-5 text-center', className)}>
       <div className="space-y-1.5">
         <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
           Bem-vindo, {name}.
         </h1>
-        <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+        <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">
           O que deseja acessar hoje? Busque um módulo ou escolha um card abaixo.
         </p>
       </div>
 
-      <HomeModuleSearch className="max-w-2xl" />
+      <HomeModuleSearch className="mx-auto w-full max-w-xl text-left" />
     </header>
   );
 }

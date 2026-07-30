@@ -15,9 +15,11 @@ import {cn} from '@/lib/utils';
 
 export interface AppHeaderProps {
   className?: string;
+  /** Home portal: sem hamburger/breadcrumb; logo sempre visível. */
+  portalMode?: boolean;
 }
 
-function AppHeader({className}: AppHeaderProps) {
+function AppHeader({className, portalMode = false}: AppHeaderProps) {
   const {toggleMobile} = useSidebar();
   const isMobile = useIsMobile();
 
@@ -29,23 +31,36 @@ function AppHeader({className}: AppHeaderProps) {
         className,
       )}
     >
-      <div className="flex items-center gap-3 lg:hidden">
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          onClick={toggleMobile}
-          aria-label="Abrir menu"
-        >
-          <Menu className="size-4" />
-        </Button>
-        <HeaderLogo collapsed />
-      </div>
+      {portalMode ? (
+        <div className="flex shrink-0 items-center">
+          <HeaderLogo />
+        </div>
+      ) : (
+        <div className="flex items-center gap-3 lg:hidden">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={toggleMobile}
+            aria-label="Abrir menu"
+          >
+            <Menu className="size-4" />
+          </Button>
+          <HeaderLogo collapsed />
+        </div>
+      )}
 
-      <div className="hidden min-w-0 flex-1 items-center gap-4 lg:flex">
-        {!isMobile && <Breadcrumb className="min-w-0" />}
-      </div>
+      {!portalMode && (
+        <div className="hidden min-w-0 flex-1 items-center gap-4 lg:flex">
+          {!isMobile && <Breadcrumb className="min-w-0" />}
+        </div>
+      )}
 
-      <div className="hidden flex-1 justify-center lg:flex">
+      <div
+        className={cn(
+          'hidden flex-1 justify-center lg:flex',
+          portalMode && 'min-w-0',
+        )}
+      >
         <HeaderSearch />
       </div>
 

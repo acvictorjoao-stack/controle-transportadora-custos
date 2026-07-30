@@ -1,6 +1,5 @@
 import {redirect} from 'next/navigation';
 
-import {ContentContainer} from '@/components/layout/content-container';
 import {ROUTES} from '@/constants/routes/paths';
 import {HomePortal} from '@/features/home-portal';
 import {getCurrentCompanyProfile, needsOnboarding} from '@/features/organization/companies/queries';
@@ -10,10 +9,11 @@ import {
   getCurrentCompanyId,
   getServerSupabaseClient,
 } from '@/lib/auth/company';
+import {cn} from '@/lib/utils';
 
 /**
- * Portal de navegação do FleetControl (RC 28.0.6).
- * Apenas saudação, busca e cards de módulos — indicadores ficam no Dashboard.
+ * Portal de navegação do FleetControl (RC 28.0.7).
+ * Sem Sidebar — conteúdo em largura total com max 1440px.
  */
 export default async function HomePage() {
   const supabase = await getServerSupabaseClient();
@@ -34,9 +34,14 @@ export default async function HomePage() {
       {showOnboarding && company && branches && (
         <OnboardingWizard company={company} branches={branches} />
       )}
-      <ContentContainer>
+      <div
+        data-slot="home-portal-container"
+        className={cn(
+          'mx-auto w-full max-w-[1440px] px-8 py-8',
+        )}
+      >
         <HomePortal />
-      </ContentContainer>
+      </div>
     </>
   );
 }
