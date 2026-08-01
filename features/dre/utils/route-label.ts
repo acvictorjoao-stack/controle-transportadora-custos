@@ -1,15 +1,12 @@
 /**
- * Rótulo de rota no padrão "Origem → Destino" da análise de custos.
+ * Rótulo de rota no padrão Nome da Rota, com fallback "Origem → Destino".
  */
+import {formatRouteDisplayName} from '@/features/routes/utils/route-format';
+
 export function formatOperationalDreRouteLabel(input: {
   origin?: string | null;
   destination?: string | null;
   name?: string | null;
 }): string {
-  const origin = input.origin?.trim();
-  const destination = input.destination?.trim();
-  if (origin && destination) return `${origin} → ${destination}`;
-  const name = input.name?.trim();
-  if (name) return name;
-  return 'Sem rota';
+  return formatRouteDisplayName(input);
 }

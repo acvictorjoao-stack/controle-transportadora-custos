@@ -22,7 +22,10 @@ export interface RouteRow {
   route_type: RouteType;
   planned_distance_km: number | null;
   lead_time_minutes: number | null;
+  lead_time_days: number | null;
   unload_time_minutes: number | null;
+  customer_id: string | null;
+  branch_id: string | null;
   notes: string | null;
   operational_status: RouteOperationalStatus;
   external_id: string | null;
@@ -34,6 +37,11 @@ export interface RouteRow {
   deleted_at: string | null;
   created_by: string | null;
   updated_by: string | null;
+  customers?:
+    | {legal_name?: string | null; trade_name?: string | null}
+    | {legal_name?: string | null; trade_name?: string | null}[]
+    | null;
+  branches?: {name?: string | null; code?: string | null} | {name?: string | null; code?: string | null}[] | null;
 }
 
 export interface Route {
@@ -45,8 +53,16 @@ export interface Route {
   destination: string;
   routeType: RouteType;
   plannedDistanceKm: number | null;
+  /** Preferred planning unit (RC 28.1.0). */
+  leadTimeDays: number | null;
+  /** Synced as days * 1440 for trip snapshots; prefer leadTimeDays in UI. */
   leadTimeMinutes: number | null;
+  /** Deprecated — kept for legacy rows only. */
   unloadTimeMinutes: number | null;
+  customerId: string | null;
+  customerName: string | null;
+  branchId: string | null;
+  branchName: string | null;
   notes: string | null;
   operationalStatus: RouteOperationalStatus;
   externalId: string | null;
@@ -65,8 +81,10 @@ export type RouteSelectOption = Pick<
   | 'origin'
   | 'destination'
   | 'plannedDistanceKm'
+  | 'leadTimeDays'
   | 'leadTimeMinutes'
-  | 'unloadTimeMinutes'
+  | 'customerId'
+  | 'branchId'
 >;
 
 export interface RouteHistoryRow {

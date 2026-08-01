@@ -140,10 +140,8 @@ function measuredLeadMinutes(trip: Trip): number | null {
   return null;
 }
 
+/** Actual unload duration when available — not used for SLA/arrival forecasts. */
 function measuredUnloadMinutes(trip: Trip): number | null {
-  if (trip.unloadTimeMinutes != null && Number.isFinite(trip.unloadTimeMinutes)) {
-    return trip.unloadTimeMinutes;
-  }
   if (trip.arrivedAt && trip.completedAt) {
     const ms =
       new Date(trip.completedAt).getTime() - new Date(trip.arrivedAt).getTime();
@@ -173,7 +171,13 @@ function routeKey(trip: Trip): string {
 }
 
 function routeLabel(trip: Trip): string {
-  return trip.routeName?.trim() || trip.route?.trim() || 'Sem rota';
+  return (
+    trip.routeName?.trim() ||
+    trip.route?.trim() ||
+    (trip.origin && trip.destination
+      ? `${trip.origin} → ${trip.destination}`
+      : 'Sem rota')
+  );
 }
 
 export function buildTripTimelineEvents(trip: Trip): TimelineEvent[] {
@@ -188,16 +192,6 @@ export function buildTripTimelineEvents(trip: Trip): TimelineEvent[] {
       id: `${trip.id}-arrival`,
       label: 'Chegada Cliente',
       at: trip.arrivedAt,
-      done: Boolean(trip.arrivedAt),
-    },
-    {
-      id: `${trip.id}-unload`,
-      label: 'Descarga',
-      at: trip.arrivedAt && trip.unloadTimeMinutes != null
-        ? new Date(
-            new Date(trip.arrivedAt).getTime() + trip.unloadTimeMinutes * 60_000,
-          ).toISOString()
-        : trip.arrivedAt,
       done: Boolean(trip.arrivedAt),
     },
     {

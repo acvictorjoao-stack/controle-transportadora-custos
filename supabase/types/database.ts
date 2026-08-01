@@ -2583,7 +2583,10 @@ export type Database = {
           route_type: 'delivery' | 'pickup' | 'transfer' | 'distribution' | 'other';
           planned_distance_km: number | null;
           lead_time_minutes: number | null;
+          lead_time_days: number | null;
           unload_time_minutes: number | null;
+          customer_id: string | null;
+          branch_id: string | null;
           notes: string | null;
           operational_status: 'active' | 'inactive';
           metadata: Json;
@@ -2606,7 +2609,10 @@ export type Database = {
           route_type?: 'delivery' | 'pickup' | 'transfer' | 'distribution' | 'other';
           planned_distance_km?: number | null;
           lead_time_minutes?: number | null;
+          lead_time_days?: number | null;
           unload_time_minutes?: number | null;
+          customer_id?: string | null;
+          branch_id?: string | null;
           notes?: string | null;
           operational_status?: 'active' | 'inactive';
           metadata?: Json;
@@ -2629,7 +2635,10 @@ export type Database = {
           route_type?: 'delivery' | 'pickup' | 'transfer' | 'distribution' | 'other';
           planned_distance_km?: number | null;
           lead_time_minutes?: number | null;
+          lead_time_days?: number | null;
           unload_time_minutes?: number | null;
+          customer_id?: string | null;
+          branch_id?: string | null;
           notes?: string | null;
           operational_status?: 'active' | 'inactive';
           metadata?: Json;

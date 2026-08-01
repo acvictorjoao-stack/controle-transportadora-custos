@@ -18,11 +18,10 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import {ROUTES} from '@/constants/routes/paths';
+import {ROUTE_OPERATIONAL_STATUS_LABELS} from '@/features/routes/types';
 import {
-  ROUTE_OPERATIONAL_STATUS_LABELS,
-} from '@/features/routes/types';
-import {
-  formatMinutes,
+  formatLeadTimeDays,
+  formatRouteDisplayName,
   getRouteOperationalStatusVariant,
 } from '@/features/routes/utils/route-format';
 import {cn} from '@/lib/utils';
@@ -59,7 +58,7 @@ function QualityTable({
                   href={ROUTES.rotaDetail(row.id)}
                   className="font-medium hover:underline"
                 >
-                  {row.name}
+                  {formatRouteDisplayName(row)}
                 </Link>
               ),
             },
@@ -74,16 +73,15 @@ function QualityTable({
               cell: (row: CadastroQualityRouteItem) => row.destination,
             },
             {
+              id: 'customer',
+              header: 'Cliente',
+              cell: (row: CadastroQualityRouteItem) => row.customerName ?? '—',
+            },
+            {
               id: 'lead',
               header: 'Lead Time',
               cell: (row: CadastroQualityRouteItem) =>
-                formatMinutes(row.leadTimeMinutes),
-            },
-            {
-              id: 'unload',
-              header: 'Descarga',
-              cell: (row: CadastroQualityRouteItem) =>
-                formatMinutes(row.unloadTimeMinutes),
+                formatLeadTimeDays(row.leadTimeDays),
             },
             {
               id: 'status',
@@ -129,7 +127,7 @@ function CadastroQualityPage({data, error = null}: CadastroQualityPageProps) {
   return (
     <PageTemplate
       title="Qualidade dos Cadastros"
-      description="Regularize rotas sem Lead Time ou Tempo de Descarga para manter a camada analítica confiável."
+      description="Regularize rotas sem Lead Time (dias) para manter a camada analítica confiável."
     >
       {error ? (
         <Alert variant="destructive" className="mb-4">
@@ -137,7 +135,7 @@ function CadastroQualityPage({data, error = null}: CadastroQualityPageProps) {
         </Alert>
       ) : null}
 
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Total de rotas</CardDescription>
@@ -149,14 +147,6 @@ function CadastroQualityPage({data, error = null}: CadastroQualityPageProps) {
             <CardDescription>Sem Lead Time</CardDescription>
             <CardTitle className="text-2xl text-destructive">
               {summary.missingLeadTime}
-            </CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Sem Tempo de Descarga</CardDescription>
-            <CardTitle className="text-2xl text-destructive">
-              {summary.missingUnloadTime}
             </CardTitle>
           </CardHeader>
         </Card>
@@ -184,12 +174,6 @@ function CadastroQualityPage({data, error = null}: CadastroQualityPageProps) {
           description="Pendências que impedem o cálculo de SLA e chegada prevista."
           rows={data.withoutLeadTime}
           emptyTitle="Todas as rotas possuem Lead Time"
-        />
-        <QualityTable
-          title="Rotas sem Tempo de Descarga"
-          description="Pendências que afetam a previsão de conclusão."
-          rows={data.withoutUnloadTime}
-          emptyTitle="Todas as rotas possuem Tempo de Descarga"
         />
         <QualityTable
           title="Rotas inativas"

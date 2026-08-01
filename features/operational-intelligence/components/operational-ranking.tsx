@@ -35,9 +35,12 @@ function formatPercent(value: number | null): string {
   return `${value.toLocaleString('pt-BR', {maximumFractionDigits: 1})}%`;
 }
 
-function formatMinutes(value: number | null): string {
+function formatLeadTimeDaysFromMinutes(value: number | null): string {
   if (value == null) return '—';
-  return `${Math.round(value)} min`;
+  const days = value / 1440;
+  const rounded = Math.round(days * 10) / 10;
+  const label = rounded === 1 ? 'dia' : 'dias';
+  return `${rounded.toLocaleString('pt-BR')} ${label}`;
 }
 
 function RankingListCard({
@@ -114,7 +117,7 @@ function OperationalRanking({
                 id: 'lead',
                 header: 'Lead Time',
                 cell: (row: BranchOperationalRow) =>
-                  formatMinutes(row.averageLeadTimeMinutes),
+                  formatLeadTimeDaysFromMinutes(row.averageLeadTimeMinutes),
               },
               {
                 id: 'delays',
@@ -195,7 +198,7 @@ function OperationalRanking({
             items={routesByLeadTime.map((item) => ({
               id: item.id,
               primary: item.name,
-              secondary: formatMinutes(item.averageLeadTimeMinutes),
+              secondary: formatLeadTimeDaysFromMinutes(item.averageLeadTimeMinutes),
             }))}
           />
         </div>

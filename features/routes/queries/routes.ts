@@ -18,6 +18,7 @@ import type {
   RouteSelectOption,
   RouteSortOptions,
 } from '../types';
+import {leadMinutesFromDays} from '../utils/lead-time';
 import type {CreateRouteInput, UpdateRouteInput} from '../validation';
 
 export interface ListRoutesOptions {
@@ -48,6 +49,7 @@ function buildRoutePayload(
   profileId: string,
   isCreate: boolean,
 ): Record<string, unknown> {
+  const leadTimeDays = input.leadTimeDays;
   const payload: Record<string, unknown> = {
     name: input.name,
     code: input.code,
@@ -55,8 +57,10 @@ function buildRoutePayload(
     destination: input.destination,
     route_type: input.routeType,
     planned_distance_km: input.plannedDistanceKm,
-    lead_time_minutes: input.leadTimeMinutes,
-    unload_time_minutes: input.unloadTimeMinutes,
+    lead_time_days: leadTimeDays,
+    lead_time_minutes: leadMinutesFromDays(leadTimeDays),
+    customer_id: input.customerId,
+    branch_id: input.branchId,
     notes: input.notes,
     operational_status: input.operationalStatus ?? 'active',
     updated_by: profileId,
@@ -167,7 +171,7 @@ export async function listRoutesForSelect(
   let query = supabase
     .from('routes')
     .select(
-      'id, name, code, origin, destination, planned_distance_km, lead_time_minutes, unload_time_minutes',
+      'id, name, code, origin, destination, planned_distance_km, lead_time_minutes, lead_time_days, customer_id, branch_id',
     )
     .eq('company_id', companyId)
     .is('deleted_at', null)
@@ -184,25 +188,62 @@ export async function listRoutesForSelect(
     throw new Error(mapDatabaseError(error));
   }
 
-  return (data ?? []).map((row) => ({
-    id: row.id,
-    name: row.name,
-    code: row.code,
-    origin: row.origin,
-    destination: row.destination,
-    plannedDistanceKm:
-      row.planned_distance_km === null || row.planned_distance_km === undefined
-        ? null
-        : Number(row.planned_distance_km),
-    leadTimeMinutes:
+  return (data ?? []).map((row) => {
+    const leadTimeMinutes =
       row.lead_time_minutes === null || row.lead_time_minutes === undefined
         ? null
-        : Number(row.lead_time_minutes),
-    unloadTimeMinutes:
-      row.unload_time_minutes === null || row.unload_time_minutes === undefined
+        : Number(row.lead_time_minutes);
+    const leadTimeDays =
+      row.lead_time_days === null || row.lead_time_days === undefined
         ? null
-        : Number(row.unload_time_minutes),
-  }));
+        : Number(row.lead_time_days);
+
+    return {
+      id: row.id,
+      name: row.name,
+      code: row.code,
+      origin: row.origin,
+      destination: row.destination,
+      plannedDistanceKm:
+        row.planned_distance_km === null || row.planned_distance_km === undefined
+          ? null
+          : Number(row.planned_distance_km),
+      leadTimeDays:
+        leadTimeDays ??
+        (leadTimeMinutes != null
+          ? Math.max(1, Math.ceil(leadTimeMinutes / 1440))
+          : null),
+      leadTimeMinutes,
+      customerId: row.customer_id ?? null,
+      branchId: row.branch_id ?? null,
+    };
+  });
+}
+
+export async function findRouteByOriginDestinationCustomer(
+  supabase: SupabaseClient,
+  companyId: string,
+  origin: string,
+  destination: string,
+  customerId: string,
+): Promise<Route | null> {
+  const {data, error} = await supabase
+    .from('routes')
+    .select(ROUTE_DETAIL_COLUMNS)
+    .eq('company_id', companyId)
+    .eq('customer_id', customerId)
+    .is('deleted_at', null)
+    .ilike('origin', origin.trim())
+    .ilike('destination', destination.trim())
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(mapDatabaseError(error));
+  }
+
+  if (!data) return null;
+  return mapRouteRow(data as unknown as RouteRow);
 }
 
 export async function getRouteById(

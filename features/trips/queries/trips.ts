@@ -97,25 +97,22 @@ function buildTripPayload(
   // Campos V1 omitidos no payload (contrato, valor contratado, horímetro, cubagem)
   // para preservar valores antigos no banco em updates.
   const leadTimeMinutes = input.leadTimeMinutes ?? null;
-  const unloadTimeMinutes = input.unloadTimeMinutes ?? null;
   const plannedDepartureAt = input.plannedDepartureAt ?? null;
 
   let plannedArrivalAt: string | null = null;
-  let plannedCompletionAt: string | null = null;
 
   if (plannedDepartureAt && leadTimeMinutes != null) {
     const departureMs = new Date(plannedDepartureAt).getTime();
     if (!Number.isNaN(departureMs)) {
+      // RC 28.1.0 — arrival = departure + lead time (days stored as minutes*1440)
       plannedArrivalAt = new Date(
         departureMs + leadTimeMinutes * 60_000,
       ).toISOString();
-      if (unloadTimeMinutes != null) {
-        plannedCompletionAt = new Date(
-          departureMs + (leadTimeMinutes + unloadTimeMinutes) * 60_000,
-        ).toISOString();
-      }
     }
   }
+
+  // Completion forecast no longer adds unload time — equals planned arrival.
+  const plannedCompletionAt = plannedArrivalAt;
 
   const payload: Record<string, unknown> = {
     branch_id: input.branchId,
@@ -132,7 +129,8 @@ function buildTripPayload(
     planned_distance_km: input.plannedDistanceKm,
     planned_departure_at: plannedDepartureAt,
     lead_time_minutes: leadTimeMinutes,
-    unload_time_minutes: unloadTimeMinutes,
+    // Keep column for legacy rows; new trips do not rely on unload for planning.
+    unload_time_minutes: input.unloadTimeMinutes ?? null,
     planned_arrival_at: plannedArrivalAt,
     planned_completion_at: plannedCompletionAt,
     initial_odometer_km: input.initialOdometerKm,

@@ -13,30 +13,49 @@ import {useToast} from '@/contexts/feedback/toast-context';
 import {MSG} from '@/lib/feedback/messages';
 
 import {createRouteAction, updateRouteAction} from '../actions';
-import {ROUTE_TYPES} from '../constants/enums';
-import type {Route, RouteOperationalStatus, RouteType} from '../types';
-import {
-  ROUTE_OPERATIONAL_STATUS_LABELS,
-  ROUTE_TYPE_LABELS,
-} from '../types';
+import type {Route, RouteOperationalStatus} from '../types';
+import {ROUTE_OPERATIONAL_STATUS_LABELS} from '../types';
 import type {CreateRouteInput} from '../validation';
+import {LEAD_TIME_DAYS_HINT} from '../validation';
 import {ROUTE_NATIVE_SELECT_CLASS} from '../utils/form-styles';
+
+export interface RouteFormOption {
+  id: string;
+  label: string;
+}
 
 export interface RouteFormModalProps {
   open: boolean;
   onClose: () => void;
   route?: Route | null;
   onSaved: (route: Route) => void;
+  customers: RouteFormOption[];
+  branches: RouteFormOption[];
 }
 
 type FieldErrors = Partial<Record<keyof CreateRouteInput, string>>;
 
-type RouteFormState = Omit<CreateRouteInput, 'leadTimeMinutes' | 'unloadTimeMinutes'> & {
-  leadTimeMinutes: number | null;
-  unloadTimeMinutes: number | null;
+type RouteFormState = {
+  name: string;
+  code: string | null;
+  origin: string;
+  destination: string;
+  plannedDistanceKm: number | null;
+  leadTimeDays: number | null;
+  customerId: string | null;
+  branchId: string | null;
+  notes: string | null;
+  operationalStatus: RouteOperationalStatus;
 };
 
-function RouteFormModal({open, onClose, route, onSaved}: RouteFormModalProps) {
+function RouteFormModal({
+  open,
+  onClose,
+  route,
+  onSaved,
+  customers,
+  branches,
+}: RouteFormModalProps) {
   const isEdit = Boolean(route);
   const formKey = `${open}-${route?.id ?? 'new'}`;
 
@@ -58,6 +77,8 @@ function RouteFormModal({open, onClose, route, onSaved}: RouteFormModalProps) {
         isEdit={isEdit}
         onClose={onClose}
         onSaved={onSaved}
+        customers={customers}
+        branches={branches}
       />
     </Modal>
   );
@@ -68,21 +89,25 @@ function RouteFormContent({
   isEdit,
   onClose,
   onSaved,
+  customers,
+  branches,
 }: {
   route?: Route | null;
   isEdit: boolean;
   onClose: () => void;
   onSaved: (route: Route) => void;
+  customers: RouteFormOption[];
+  branches: RouteFormOption[];
 }) {
   const [formData, setFormData] = React.useState<RouteFormState>(() => ({
     name: route?.name ?? '',
     code: route?.code ?? null,
     origin: route?.origin ?? '',
     destination: route?.destination ?? '',
-    routeType: route?.routeType ?? 'delivery',
     plannedDistanceKm: route?.plannedDistanceKm ?? null,
-    leadTimeMinutes: route?.leadTimeMinutes ?? null,
-    unloadTimeMinutes: route?.unloadTimeMinutes ?? null,
+    leadTimeDays: route?.leadTimeDays ?? null,
+    customerId: route?.customerId ?? null,
+    branchId: route?.branchId ?? null,
     notes: route?.notes ?? null,
     operationalStatus: route?.operationalStatus ?? 'active',
   }));
@@ -96,10 +121,10 @@ function RouteFormContent({
     value: RouteFormState[K],
   ) {
     setFormData((prev) => ({...prev, [field]: value}));
-    if (fieldErrors[field]) {
+    if (fieldErrors[field as keyof CreateRouteInput]) {
       setFieldErrors((prev) => {
         const next = {...prev};
-        delete next[field];
+        delete next[field as keyof CreateRouteInput];
         return next;
       });
     }
@@ -112,9 +137,14 @@ function RouteFormContent({
     setFormError(null);
     setFieldErrors({});
 
+    const payload = {
+      ...formData,
+      routeType: 'delivery' as const,
+    };
+
     const result = isEdit && route
-      ? await updateRouteAction(route.id, formData)
-      : await createRouteAction(formData);
+      ? await updateRouteAction(route.id, payload)
+      : await createRouteAction(payload);
 
     if (!result.success) {
       setFormError(result.error ?? MSG.operationFailed);
@@ -141,17 +171,17 @@ function RouteFormContent({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <FormField
-          label="Nome da rota"
+          label="Nome da Rota"
           htmlFor="route-name"
-          required
           error={fieldErrors.name}
+          hint="Opcional. Se vazio, o sistema exibe Origem → Destino."
         >
           <Input
             id="route-name"
-            className="uppercase"
             value={formData.name}
-            onChange={(e) => updateField('name', e.target.value.toUpperCase())}
-            placeholder="Ex: São Luís → Bacabal"
+            onChange={(e) => updateField('name', e.target.value)}
+            placeholder="Ex: Norte 01 / São Luís → Imperatriz"
+            maxLength={150}
           />
         </FormField>
         <FormField label="Código" htmlFor="route-code" error={fieldErrors.code}>
@@ -190,30 +220,94 @@ function RouteFormContent({
             className="uppercase"
             value={formData.destination}
             onChange={(e) => updateField('destination', e.target.value.toUpperCase())}
-            placeholder="Ex: Bacabal"
+            placeholder="Ex: Imperatriz"
           />
         </FormField>
         <FormField
-          label="Tipo"
-          htmlFor="route-type"
+          label="Cliente"
+          htmlFor="route-customer"
           required
-          error={fieldErrors.routeType}
+          error={fieldErrors.customerId}
         >
           <select
-            id="route-type"
-            value={formData.routeType}
-            onChange={(e) => updateField('routeType', e.target.value as RouteType)}
+            id="route-customer"
+            value={formData.customerId ?? ''}
+            onChange={(e) => updateField('customerId', e.target.value || null)}
             className={ROUTE_NATIVE_SELECT_CLASS}
           >
-            {ROUTE_TYPES.map((type) => (
-              <option key={type} value={type}>
-                {ROUTE_TYPE_LABELS[type]}
+            <option value="">Selecione o cliente</option>
+            {customers.map((customer) => (
+              <option key={customer.id} value={customer.id}>
+                {customer.label}
               </option>
             ))}
           </select>
         </FormField>
         <FormField
-          label="Status"
+          label="Filial"
+          htmlFor="route-branch"
+          required
+          error={fieldErrors.branchId}
+        >
+          <select
+            id="route-branch"
+            value={formData.branchId ?? ''}
+            onChange={(e) => updateField('branchId', e.target.value || null)}
+            className={ROUTE_NATIVE_SELECT_CLASS}
+          >
+            <option value="">Selecione a filial</option>
+            {branches.map((branch) => (
+              <option key={branch.id} value={branch.id}>
+                {branch.label}
+              </option>
+            ))}
+          </select>
+        </FormField>
+        <FormField
+          label="Distância (KM)"
+          htmlFor="route-distance"
+          error={fieldErrors.plannedDistanceKm}
+        >
+          <Input
+            id="route-distance"
+            type="number"
+            min={0}
+            step="0.01"
+            value={formData.plannedDistanceKm ?? ''}
+            onChange={(e) =>
+              updateField(
+                'plannedDistanceKm',
+                e.target.value === '' ? null : Number(e.target.value),
+              )
+            }
+            placeholder="Ex: 250"
+          />
+        </FormField>
+        <FormField
+          label="Lead Time (dias)"
+          htmlFor="route-lead-time"
+          required
+          error={fieldErrors.leadTimeDays}
+          hint={LEAD_TIME_DAYS_HINT}
+        >
+          <Input
+            id="route-lead-time"
+            type="number"
+            min={1}
+            step={1}
+            inputMode="numeric"
+            value={formData.leadTimeDays ?? ''}
+            onChange={(e) =>
+              updateField(
+                'leadTimeDays',
+                e.target.value === '' ? null : Number(e.target.value),
+              )
+            }
+            placeholder="Ex: 2"
+          />
+        </FormField>
+        <FormField
+          label="Situação"
           htmlFor="route-status"
           error={fieldErrors.operationalStatus}
         >
@@ -236,72 +330,6 @@ function RouteFormContent({
               ),
             )}
           </select>
-        </FormField>
-        <FormField
-          label="Distância (km)"
-          htmlFor="route-distance"
-          error={fieldErrors.plannedDistanceKm}
-        >
-          <Input
-            id="route-distance"
-            type="number"
-            min={0}
-            step="0.01"
-            value={formData.plannedDistanceKm ?? ''}
-            onChange={(e) =>
-              updateField(
-                'plannedDistanceKm',
-                e.target.value === '' ? null : Number(e.target.value),
-              )
-            }
-            placeholder="Ex: 250"
-          />
-        </FormField>
-        <FormField
-          label="Lead Time (minutos)"
-          htmlFor="route-lead-time"
-          required
-          error={fieldErrors.leadTimeMinutes}
-          hint="Tempo previsto entre a saída da origem e a chegada ao destino."
-        >
-          <Input
-            id="route-lead-time"
-            type="number"
-            min={1}
-            step={1}
-            inputMode="numeric"
-            value={formData.leadTimeMinutes ?? ''}
-            onChange={(e) =>
-              updateField(
-                'leadTimeMinutes',
-                e.target.value === '' ? null : Number(e.target.value),
-              )
-            }
-            placeholder="Ex: 240"
-          />
-        </FormField>
-        <FormField
-          label="Tempo de Descarga (minutos)"
-          htmlFor="route-unload-time"
-          required
-          error={fieldErrors.unloadTimeMinutes}
-          hint="Tempo médio previsto para descarregar a carga no destino."
-        >
-          <Input
-            id="route-unload-time"
-            type="number"
-            min={1}
-            step={1}
-            inputMode="numeric"
-            value={formData.unloadTimeMinutes ?? ''}
-            onChange={(e) =>
-              updateField(
-                'unloadTimeMinutes',
-                e.target.value === '' ? null : Number(e.target.value),
-              )
-            }
-            placeholder="Ex: 60"
-          />
         </FormField>
       </div>
 

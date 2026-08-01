@@ -80,13 +80,8 @@ export function mapTripRow(row: TripRow): Trip {
   const plannedArrivalAt =
     row.planned_arrival_at ??
     addMinutesIso(plannedDepartureAt, leadTimeMinutes);
-  const plannedCompletionAt =
-    row.planned_completion_at ??
-    (plannedArrivalAt
-      ? addMinutesIso(plannedArrivalAt, unloadTimeMinutes)
-      : leadTimeMinutes != null && unloadTimeMinutes != null
-        ? addMinutesIso(plannedDepartureAt, leadTimeMinutes + unloadTimeMinutes)
-        : null);
+  // RC 28.1.0 — planning uses arrival only (no unload in forecast).
+  const plannedCompletionAt = row.planned_completion_at ?? plannedArrivalAt;
 
   return {
     id: row.id,

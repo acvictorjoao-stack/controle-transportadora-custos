@@ -7,16 +7,14 @@ export interface CadastroQualityRouteItem {
   origin: string;
   destination: string;
   operationalStatus: RouteOperationalStatus;
+  leadTimeDays: number | null;
   leadTimeMinutes: number | null;
-  unloadTimeMinutes: number | null;
   companyName: string;
-  /** Rotas não possuem cliente direto — exibido como "—" quando inexistente. */
   customerName: string | null;
 }
 
 export interface CadastroQualitySummary {
   missingLeadTime: number;
-  missingUnloadTime: number;
   inactive: number;
   totalRoutes: number;
 }
@@ -25,7 +23,6 @@ export interface CadastroQualityData {
   companyName: string;
   summary: CadastroQualitySummary;
   withoutLeadTime: CadastroQualityRouteItem[];
-  withoutUnloadTime: CadastroQualityRouteItem[];
   inactive: CadastroQualityRouteItem[];
 }
 

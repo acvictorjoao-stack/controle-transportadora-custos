@@ -17,17 +17,20 @@ import type {RouteDetailData} from '../types';
 import {
   ROUTE_HISTORY_ACTION_LABELS,
   ROUTE_OPERATIONAL_STATUS_LABELS,
-  ROUTE_TYPE_LABELS,
 } from '../types';
 import {
   formatDistanceKm,
-  formatMinutes,
+  formatLeadTimeDays,
+  formatRouteDisplayName,
   getRouteOperationalStatusVariant,
 } from '../utils/route-format';
+import type {RouteFormOption} from './route-form-modal';
 import {RouteFormModal} from './route-form-modal';
 
 export interface RouteDetailViewProps {
   data: RouteDetailData;
+  customers: RouteFormOption[];
+  branches: RouteFormOption[];
 }
 
 const TABS = [
@@ -42,31 +45,32 @@ function formatDateTime(value: string) {
   return new Date(value).toLocaleString('pt-BR');
 }
 
-function RouteDetailView({data}: RouteDetailViewProps) {
+function RouteDetailView({data, customers, branches}: RouteDetailViewProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = React.useState<TabId>('dados');
   const [modalOpen, setModalOpen] = React.useState(false);
   const {route} = data;
+  const displayName = formatRouteDisplayName(route);
 
   function handleRefresh() {
     router.refresh();
   }
 
   const infoRows = [
-    ['Nome', route.name],
+    ['Nome da Rota', displayName],
     ['Código', route.code ?? '—'],
     ['Origem', route.origin],
     ['Destino', route.destination],
-    ['Tipo', ROUTE_TYPE_LABELS[route.routeType]],
+    ['Cliente', route.customerName ?? '—'],
+    ['Filial', route.branchName ?? '—'],
     ['Distância', formatDistanceKm(route.plannedDistanceKm)],
-    ['Lead Time', formatMinutes(route.leadTimeMinutes)],
-    ['Tempo de Descarga', formatMinutes(route.unloadTimeMinutes)],
-    ['Status', ROUTE_OPERATIONAL_STATUS_LABELS[route.operationalStatus]],
+    ['Lead Time', formatLeadTimeDays(route.leadTimeDays)],
+    ['Situação', ROUTE_OPERATIONAL_STATUS_LABELS[route.operationalStatus]],
   ];
 
   return (
     <PageTemplate
-      title={route.name}
+      title={displayName}
       description={[route.origin, route.destination].filter(Boolean).join(' → ')}
       actions={
         <div className="flex gap-2">
@@ -88,7 +92,6 @@ function RouteDetailView({data}: RouteDetailViewProps) {
         <Badge variant={getRouteOperationalStatusVariant(route.operationalStatus)}>
           {ROUTE_OPERATIONAL_STATUS_LABELS[route.operationalStatus]}
         </Badge>
-        <Badge variant="outline">{ROUTE_TYPE_LABELS[route.routeType]}</Badge>
         {route.code && <Badge variant="secondary">{route.code}</Badge>}
       </div>
 
@@ -184,6 +187,8 @@ function RouteDetailView({data}: RouteDetailViewProps) {
         onClose={() => setModalOpen(false)}
         route={route}
         onSaved={handleRefresh}
+        customers={customers}
+        branches={branches}
       />
     </PageTemplate>
   );

@@ -36,12 +36,10 @@ export default async function QualidadeCadastrosPage() {
       companyName: '—',
       summary: {
         missingLeadTime: 0,
-        missingUnloadTime: 0,
         inactive: 0,
         totalRoutes: 0,
       },
       withoutLeadTime: [],
-      withoutUnloadTime: [],
       inactive: [],
     };
   }

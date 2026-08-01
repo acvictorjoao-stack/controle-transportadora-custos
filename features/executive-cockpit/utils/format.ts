@@ -19,6 +19,12 @@ export function formatGoalValue(
   if (unit === 'percent') {
     return formatPercent(value);
   }
+  if (metric === 'leadTime') {
+    const days = value / 1440;
+    const rounded = Math.round(days * 10) / 10;
+    const label = rounded === 1 ? 'dia' : 'dias';
+    return `${rounded.toLocaleString('pt-BR')} ${label}`;
+  }
   return `${Math.round(value).toLocaleString('pt-BR')} min`;
 }
 

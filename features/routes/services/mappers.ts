@@ -6,8 +6,28 @@ import type {
   RouteHistoryRow,
   RouteRow,
 } from '../types';
+import {leadDaysFromStored} from '../utils/lead-time';
+
+function firstJoin<T>(value: T | T[] | null | undefined): T | null {
+  if (!value) return null;
+  return Array.isArray(value) ? (value[0] ?? null) : value;
+}
 
 export function mapRouteRow(row: RouteRow): Route {
+  const customer = firstJoin(row.customers);
+  const branch = firstJoin(row.branches);
+  const leadTimeMinutes =
+    row.lead_time_minutes === null || row.lead_time_minutes === undefined
+      ? null
+      : Number(row.lead_time_minutes);
+  const leadTimeDays = leadDaysFromStored({
+    leadTimeDays:
+      row.lead_time_days === null || row.lead_time_days === undefined
+        ? null
+        : Number(row.lead_time_days),
+    leadTimeMinutes,
+  });
+
   return {
     id: row.id,
     companyId: row.company_id,
@@ -20,14 +40,18 @@ export function mapRouteRow(row: RouteRow): Route {
       row.planned_distance_km === null || row.planned_distance_km === undefined
         ? null
         : Number(row.planned_distance_km),
-    leadTimeMinutes:
-      row.lead_time_minutes === null || row.lead_time_minutes === undefined
-        ? null
-        : Number(row.lead_time_minutes),
+    leadTimeDays,
+    leadTimeMinutes,
     unloadTimeMinutes:
       row.unload_time_minutes === null || row.unload_time_minutes === undefined
         ? null
         : Number(row.unload_time_minutes),
+    customerId: row.customer_id ?? null,
+    customerName: customer
+      ? customer.trade_name?.trim() || customer.legal_name || null
+      : null,
+    branchId: row.branch_id ?? null,
+    branchName: branch?.name ?? null,
     notes: row.notes,
     operationalStatus: row.operational_status,
     externalId: row.external_id ?? null,

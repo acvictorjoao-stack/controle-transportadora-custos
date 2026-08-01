@@ -13,12 +13,10 @@ export async function getCadastroQualityData(
     companyName: snapshot.companyName,
     summary: {
       missingLeadTime: snapshot.withoutLeadTime.length,
-      missingUnloadTime: snapshot.withoutUnloadTime.length,
       inactive: snapshot.inactive.length,
       totalRoutes: snapshot.totalRoutes,
     },
     withoutLeadTime: snapshot.withoutLeadTime,
-    withoutUnloadTime: snapshot.withoutUnloadTime,
     inactive: snapshot.inactive,
   };
 }

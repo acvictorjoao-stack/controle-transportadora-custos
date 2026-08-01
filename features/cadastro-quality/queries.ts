@@ -2,6 +2,7 @@ import type {SupabaseClient} from '@supabase/supabase-js';
 
 import {mapDatabaseError} from '@/features/master/companies/utils/database-error';
 import type {RouteOperationalStatus, RouteRow} from '@/features/routes/types';
+import {leadDaysFromStored} from '@/features/routes/utils/lead-time';
 
 import type {CadastroQualityRouteItem} from './types';
 
@@ -14,13 +15,32 @@ type RouteQualityRow = Pick<
   | 'destination'
   | 'operational_status'
   | 'lead_time_minutes'
-  | 'unload_time_minutes'
->;
+  | 'lead_time_days'
+  | 'customer_id'
+> & {
+  customers?:
+    | {legal_name?: string | null; trade_name?: string | null}
+    | {legal_name?: string | null; trade_name?: string | null}[]
+    | null;
+};
+
+function firstJoin<T>(value: T | T[] | null | undefined): T | null {
+  if (!value) return null;
+  return Array.isArray(value) ? (value[0] ?? null) : value;
+}
 
 function mapQualityRow(
   row: RouteQualityRow,
   companyName: string,
 ): CadastroQualityRouteItem {
+  const customer = firstJoin(row.customers);
+  const leadTimeDays = leadDaysFromStored({
+    leadTimeDays:
+      row.lead_time_days == null ? null : Number(row.lead_time_days),
+    leadTimeMinutes:
+      row.lead_time_minutes == null ? null : Number(row.lead_time_minutes),
+  });
+
   return {
     id: row.id,
     name: row.name,
@@ -28,12 +48,13 @@ function mapQualityRow(
     origin: row.origin,
     destination: row.destination,
     operationalStatus: row.operational_status as RouteOperationalStatus,
+    leadTimeDays,
     leadTimeMinutes:
       row.lead_time_minutes == null ? null : Number(row.lead_time_minutes),
-    unloadTimeMinutes:
-      row.unload_time_minutes == null ? null : Number(row.unload_time_minutes),
     companyName,
-    customerName: null,
+    customerName: customer
+      ? customer.trade_name?.trim() || customer.legal_name || null
+      : null,
   };
 }
 
@@ -61,7 +82,7 @@ async function listActiveRoutesBase(
   const {data, error} = await supabase
     .from('routes')
     .select(
-      'id, name, code, origin, destination, operational_status, lead_time_minutes, unload_time_minutes',
+      'id, name, code, origin, destination, operational_status, lead_time_minutes, lead_time_days, customer_id, customers:customer_id ( legal_name, trade_name )',
     )
     .eq('company_id', companyId)
     .is('deleted_at', null)
@@ -74,31 +95,13 @@ async function listActiveRoutesBase(
   return (data ?? []) as RouteQualityRow[];
 }
 
-/** Rotas ativas (não excluídas) sem Lead Time — alerta administrativo. */
 export async function listRoutesWithoutLeadTime(
   supabase: SupabaseClient,
   companyId: string,
   limit = 50,
 ): Promise<CadastroQualityRouteItem[]> {
-  const companyName = await getCompanyDisplayName(supabase, companyId);
-  const {data, error} = await supabase
-    .from('routes')
-    .select(
-      'id, name, code, origin, destination, operational_status, lead_time_minutes, unload_time_minutes',
-    )
-    .eq('company_id', companyId)
-    .is('deleted_at', null)
-    .is('lead_time_minutes', null)
-    .order('name')
-    .limit(limit);
-
-  if (error) {
-    throw new Error(mapDatabaseError(error));
-  }
-
-  return ((data ?? []) as RouteQualityRow[]).map((row) =>
-    mapQualityRow(row, companyName),
-  );
+  const snapshot = await getCadastroQualitySnapshot(supabase, companyId);
+  return snapshot.withoutLeadTime.slice(0, limit);
 }
 
 export async function getCadastroQualitySnapshot(
@@ -108,7 +111,6 @@ export async function getCadastroQualitySnapshot(
   companyName: string;
   routes: CadastroQualityRouteItem[];
   withoutLeadTime: CadastroQualityRouteItem[];
-  withoutUnloadTime: CadastroQualityRouteItem[];
   inactive: CadastroQualityRouteItem[];
   totalRoutes: number;
 }> {
@@ -119,8 +121,7 @@ export async function getCadastroQualitySnapshot(
   return {
     companyName,
     routes,
-    withoutLeadTime: routes.filter((route) => route.leadTimeMinutes == null),
-    withoutUnloadTime: routes.filter((route) => route.unloadTimeMinutes == null),
+    withoutLeadTime: routes.filter((route) => route.leadTimeDays == null),
     inactive: routes.filter((route) => route.operationalStatus === 'inactive'),
     totalRoutes: routes.length,
   };

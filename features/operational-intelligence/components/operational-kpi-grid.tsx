@@ -6,15 +6,14 @@ export interface OperationalKpiGridProps {
   kpis: OperationalKpis;
 }
 
-function formatMinutes(value: number | null): string {
-  if (value == null || !Number.isFinite(value)) {
+function formatLeadTimeDays(valueMinutes: number | null): string {
+  if (valueMinutes == null || !Number.isFinite(valueMinutes)) {
     return 'Dados insuficientes para calcular previsão.';
   }
-  if (value < 60) {
-    return `${Math.round(value)} min`;
-  }
-  const hours = value / 60;
-  return `${hours.toLocaleString('pt-BR', {maximumFractionDigits: 1})} h`;
+  const days = valueMinutes / 1440;
+  const rounded = Math.round(days * 10) / 10;
+  const label = rounded === 1 ? 'dia' : 'dias';
+  return `${rounded.toLocaleString('pt-BR')} ${label}`;
 }
 
 function formatPercent(value: number | null): string {
@@ -36,13 +35,12 @@ function OperationalKpiGrid({kpis}: OperationalKpiGridProps) {
         }
       />
       <StatCard title="Entregas pendentes" value={kpis.pendingDeliveries} />
-      <StatCard title="Lead Time médio" value={formatMinutes(kpis.averageLeadTimeMinutes)} />
+      <StatCard
+        title="Lead Time médio"
+        value={formatLeadTimeDays(kpis.averageLeadTimeMinutes)}
+      />
       <StatCard title="SLA atendido" value={formatPercent(kpis.slaPercent)} />
       <StatCard title="Ocorrências abertas" value={kpis.openOccurrences} />
-      <StatCard
-        title="Tempo médio de descarga"
-        value={formatMinutes(kpis.averageUnloadMinutes)}
-      />
     </div>
   );
 }

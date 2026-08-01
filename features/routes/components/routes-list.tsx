@@ -1,6 +1,6 @@
 'use client';
 
-import {Eye, Pencil, Plus, Trash2} from 'lucide-react';
+import {Eye, Pencil, Plus, Trash2, Upload} from 'lucide-react';
 import Link from 'next/link';
 import {useRouter} from 'next/navigation';
 import * as React from 'react';
@@ -20,6 +20,7 @@ import {ROUTES} from '@/constants/routes/paths';
 import {MSG} from '@/lib/feedback/messages';
 
 import {deleteRouteAction, updateRouteStatusAction} from '../actions';
+import {RouteImportModal} from '../import';
 import type {
   PaginatedRoutes,
   Route,
@@ -28,16 +29,15 @@ import type {
   RouteOperationalStatus,
   RouteSortOptions,
 } from '../types';
-import {
-  ROUTE_OPERATIONAL_STATUS_LABELS,
-  ROUTE_TYPE_LABELS,
-} from '../types';
+import {ROUTE_OPERATIONAL_STATUS_LABELS} from '../types';
 import {buildRoutesListUrl} from '../utils/list-url';
 import {
   formatDistanceKm,
-  formatMinutes,
+  formatLeadTimeDays,
+  formatRouteDisplayName,
   getRouteOperationalStatusVariant,
 } from '../utils/route-format';
+import type {RouteFormOption} from './route-form-modal';
 import {RouteFilters} from './route-filters';
 import {RouteFormModal} from './route-form-modal';
 
@@ -47,6 +47,8 @@ export interface RoutesListProps {
   initialFilters: RouteListFilters;
   initialSort: RouteSortOptions;
   filterOptions: RouteFilterOptions;
+  customers: RouteFormOption[];
+  branches: RouteFormOption[];
   error: string | null;
 }
 
@@ -56,6 +58,8 @@ function RoutesList({
   initialFilters,
   initialSort,
   filterOptions,
+  customers,
+  branches,
   error: initialError,
 }: RoutesListProps) {
   const router = useRouter();
@@ -63,6 +67,7 @@ function RoutesList({
   const toast = useToast();
   const [search, setSearch] = React.useState(initialSearch);
   const [modalOpen, setModalOpen] = React.useState(false);
+  const [importOpen, setImportOpen] = React.useState(false);
   const [editingRoute, setEditingRoute] = React.useState<Route | null>(null);
   const [actionError, setActionError] = React.useState<string | null>(initialError);
   const [actionLoading, setActionLoading] = React.useState<string | null>(null);
@@ -159,13 +164,13 @@ function RoutesList({
   const columns = [
     {
       id: 'name',
-      header: 'Nome',
+      header: 'Nome da Rota',
       cell: (row: Route) => (
         <Link
           href={ROUTES.rotaDetail(row.id)}
           className="font-medium hover:underline"
         >
-          {row.name}
+          {formatRouteDisplayName(row)}
         </Link>
       ),
     },
@@ -180,9 +185,14 @@ function RoutesList({
       cell: (row: Route) => row.destination,
     },
     {
-      id: 'routeType',
-      header: 'Tipo',
-      cell: (row: Route) => ROUTE_TYPE_LABELS[row.routeType],
+      id: 'customer',
+      header: 'Cliente',
+      cell: (row: Route) => row.customerName ?? '—',
+    },
+    {
+      id: 'branch',
+      header: 'Filial',
+      cell: (row: Route) => row.branchName ?? '—',
     },
     {
       id: 'distance',
@@ -192,11 +202,11 @@ function RoutesList({
     {
       id: 'leadTime',
       header: 'Lead Time',
-      cell: (row: Route) => formatMinutes(row.leadTimeMinutes),
+      cell: (row: Route) => formatLeadTimeDays(row.leadTimeDays),
     },
     {
       id: 'operationalStatus',
-      header: 'Status',
+      header: 'Situação',
       cell: (row: Route) => (
         <Badge variant={getRouteOperationalStatusVariant(row.operationalStatus)}>
           {ROUTE_OPERATIONAL_STATUS_LABELS[row.operationalStatus]}
@@ -249,12 +259,18 @@ function RoutesList({
   return (
     <PageTemplate
       title="Rotas"
-      description="Cadastro de rotas operacionais (origem, destino, lead time e descarga)"
+      description="Cadastro de rotas operacionais (origem, destino e lead time em dias)"
       actions={
-        <Button size="sm" onClick={openCreate}>
-          <Plus className="size-4" />
-          Nova rota
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => setImportOpen(true)}>
+            <Upload className="size-4" />
+            Importar
+          </Button>
+          <Button size="sm" onClick={openCreate}>
+            <Plus className="size-4" />
+            Nova rota
+          </Button>
+        </div>
       }
       actionBar={{
         leading: (
@@ -305,6 +321,14 @@ function RoutesList({
         onClose={() => setModalOpen(false)}
         route={editingRoute}
         onSaved={handleSaved}
+        customers={customers}
+        branches={branches}
+      />
+
+      <RouteImportModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImported={() => router.refresh()}
       />
     </PageTemplate>
   );

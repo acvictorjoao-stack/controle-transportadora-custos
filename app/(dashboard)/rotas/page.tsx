@@ -1,6 +1,8 @@
 import {redirect} from 'next/navigation';
 
 import {ROUTES} from '@/constants/routes/paths';
+import {listCustomersForSelect} from '@/features/customers/queries';
+import {listBranchesForSelect} from '@/features/organization/branches/queries';
 import {RoutesList} from '@/features/routes/components';
 import {listRouteFilterOptions, listRoutes} from '@/features/routes/queries';
 import type {
@@ -60,13 +62,27 @@ export default async function RotasPage({searchParams}: RotasPageProps) {
 
   let data;
   let filterOptions: RouteFilterOptions;
+  let customers: {id: string; label: string}[] = [];
+  let branches: {id: string; label: string}[] = [];
   let error: string | null = null;
 
   try {
-    [data, filterOptions] = await Promise.all([
+    const [routesData, routeFilters, customerRows, branchRows] = await Promise.all([
       listRoutes(supabase, {companyId, search, page, filters, sort}),
       listRouteFilterOptions(supabase, companyId),
+      listCustomersForSelect(supabase, companyId),
+      listBranchesForSelect(supabase, companyId),
     ]);
+    data = routesData;
+    filterOptions = routeFilters;
+    customers = customerRows.map((customer) => ({
+      id: customer.id,
+      label: customer.displayName,
+    }));
+    branches = branchRows.map((branch) => ({
+      id: branch.id,
+      label: branch.name,
+    }));
   } catch (err) {
     error = err instanceof Error ? err.message : 'Erro ao carregar rotas.';
     data = {items: [], total: 0, page: 1, pageSize: 10, totalPages: 1};
@@ -80,6 +96,8 @@ export default async function RotasPage({searchParams}: RotasPageProps) {
       initialFilters={filters}
       initialSort={sort}
       filterOptions={filterOptions}
+      customers={customers}
+      branches={branches}
       error={error}
     />
   );

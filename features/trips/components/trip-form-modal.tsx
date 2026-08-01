@@ -195,8 +195,13 @@ function TripFormContent({
         origin: trip.origin ?? '',
         destination: trip.destination ?? '',
         plannedDistanceKm: trip.plannedDistanceKm,
+        leadTimeDays:
+          trip.leadTimeMinutes != null
+            ? Math.max(1, Math.round(trip.leadTimeMinutes / 1440) || 1)
+            : null,
         leadTimeMinutes: trip.leadTimeMinutes,
-        unloadTimeMinutes: trip.unloadTimeMinutes,
+        customerId: trip.customerId,
+        branchId: trip.branchId,
       },
       ...routes,
     ];
@@ -258,6 +263,10 @@ function TripFormContent({
       return;
     }
 
+    const leadMinutes =
+      route.leadTimeMinutes ??
+      (route.leadTimeDays != null ? route.leadTimeDays * 1440 : null);
+
     setFormData((prev) => ({
       ...prev,
       routeId: route.id,
@@ -265,8 +274,10 @@ function TripFormContent({
       destination: route.destination,
       route: route.name,
       plannedDistanceKm: route.plannedDistanceKm,
-      leadTimeMinutes: route.leadTimeMinutes,
-      unloadTimeMinutes: route.unloadTimeMinutes,
+      leadTimeMinutes: leadMinutes,
+      unloadTimeMinutes: null,
+      customerId: route.customerId ?? prev.customerId,
+      branchId: route.branchId ?? prev.branchId,
     }));
     if (fieldErrors.routeId) {
       setFieldErrors((prev) => {
@@ -459,7 +470,7 @@ function TripFormContent({
           />
         </FormField>
         <FormField
-          label="Lead Time (minutos)"
+          label="Lead Time (dias)"
           htmlFor="trip-lead-time"
           error={fieldErrors.leadTimeMinutes}
           hint="Preenchido pela rota. Tempo previsto entre saída e chegada."
@@ -470,37 +481,17 @@ function TripFormContent({
             min={1}
             step={1}
             inputMode="numeric"
-            value={formData.leadTimeMinutes ?? ''}
+            value={
+              formData.leadTimeMinutes != null
+                ? Math.max(1, Math.round(formData.leadTimeMinutes / 1440) || 1)
+                : ''
+            }
             readOnly={!canEditRouteTimes}
             disabled={!canEditRouteTimes}
             onChange={(e) =>
               updateField(
                 'leadTimeMinutes',
-                e.target.value === '' ? null : Number(e.target.value),
-              )
-            }
-            placeholder="Preenchido pela rota"
-          />
-        </FormField>
-        <FormField
-          label="Tempo de Descarga (minutos)"
-          htmlFor="trip-unload-time"
-          error={fieldErrors.unloadTimeMinutes}
-          hint="Preenchido pela rota. Tempo médio previsto para descarga."
-        >
-          <Input
-            id="trip-unload-time"
-            type="number"
-            min={1}
-            step={1}
-            inputMode="numeric"
-            value={formData.unloadTimeMinutes ?? ''}
-            readOnly={!canEditRouteTimes}
-            disabled={!canEditRouteTimes}
-            onChange={(e) =>
-              updateField(
-                'unloadTimeMinutes',
-                e.target.value === '' ? null : Number(e.target.value),
+                e.target.value === '' ? null : Number(e.target.value) * 1440,
               )
             }
             placeholder="Preenchido pela rota"
