@@ -123,15 +123,6 @@ export async function updateSession(request: NextRequest) {
   const supabaseEnv = getMiddlewareSupabaseEnv();
 
   if (!supabaseEnv) {
-    console.info('[AUTH_DEBUG]', {
-      stage: 'middleware_missing_env',
-      at: new Date().toISOString(),
-      path: request.nextUrl.pathname,
-      urlDefined: process.env.NEXT_PUBLIC_SUPABASE_URL !== undefined,
-      urlPresent: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()),
-      anonDefined: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY !== undefined,
-      anonPresent: Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim()),
-    });
     return createMissingSupabaseEnvResponse();
   }
 
@@ -166,35 +157,7 @@ export async function updateSession(request: NextRequest) {
 
   const {
     data: {user},
-    error: getUserError,
   } = await supabase.auth.getUser();
-
-  if (
-    process.env.NODE_ENV === 'development' &&
-    (isAuthRoute(request.nextUrl.pathname) || getUserError)
-  ) {
-    let supabaseHost = 'invalid';
-    try {
-      supabaseHost = new URL(supabaseEnv.url).host;
-    } catch {
-      supabaseHost = 'invalid';
-    }
-
-    console.info('[AUTH_DEBUG]', {
-      stage: 'middleware_getUser',
-      at: new Date().toISOString(),
-      path: request.nextUrl.pathname,
-      supabaseHost,
-      hasUser: Boolean(user),
-      getUserError: getUserError
-        ? {
-            message: getUserError.message,
-            status: getUserError.status ?? null,
-            code: (getUserError as {code?: string}).code ?? null,
-          }
-        : null,
-    });
-  }
 
   const {pathname} = request.nextUrl;
 

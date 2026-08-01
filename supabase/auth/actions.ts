@@ -18,7 +18,6 @@ import {
 import {checkTenantAccess} from '@/lib/auth/tenant-access';
 import {createClient} from '@/supabase/server';
 import {createAdminClient} from '@/supabase/server/admin';
-import {getSupabaseEnv} from '@/supabase/utils/env';
 
 import type {SignInCredentials} from './client';
 
@@ -66,52 +65,6 @@ function validateNewPassword(password: string): string | null {
   return null;
 }
 
-/** TEMP — diagnóstico de login. Remover após identificar a causa. Não loga senha/token. */
-function authDebug(stage: string, payload: Record<string, unknown> = {}) {
-  const safeEmail =
-    typeof payload.email === 'string'
-      ? payload.email.replace(/(^.).*(@.*$)/, '$1***$2')
-      : undefined;
-
-  console.info('[AUTH_DEBUG]', {
-    stage,
-    at: new Date().toISOString(),
-    ...payload,
-    ...(safeEmail ? {email: safeEmail} : {}),
-  });
-}
-
-function detectKeyFormat(value: string | undefined): string {
-  const key = value?.trim() ?? '';
-  if (!key) return 'missing';
-  if (key.startsWith('eyJ')) return 'legacy_jwt';
-  if (key.startsWith('sb_publishable_')) return 'sb_publishable';
-  if (key.startsWith('sb_secret_')) return 'sb_secret';
-  return 'unknown';
-}
-
-function describeSupabaseTarget() {
-  try {
-    const {url, anonKey} = getSupabaseEnv();
-    const host = new URL(url).host;
-    const serviceRaw = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    return {
-      supabaseHost: host,
-      anonKeyFormat: detectKeyFormat(anonKey),
-      anonKeyLen: anonKey.length,
-      serviceRoleDefined: serviceRaw !== undefined,
-      serviceRolePresent: Boolean(serviceRaw?.trim()),
-      serviceRoleFormat: detectKeyFormat(serviceRaw),
-      serviceRoleLen: serviceRaw?.trim()?.length ?? 0,
-    };
-  } catch (error) {
-    return {
-      supabaseEnvError:
-        error instanceof Error ? error.message : 'failed_to_read_supabase_env',
-    };
-  }
-}
-
 /**
  * Server Action — login por e-mail e senha.
  * Grava cookies SSR via createServerClient (simétrico ao signOutAction).
@@ -121,106 +74,45 @@ export async function signInAction(
   returnTo?: string,
 ): Promise<AuthActionResult> {
   const email = credentials.email.trim();
-
-  authDebug('start', {
-    email,
-    returnTo: returnTo ?? null,
-    ...describeSupabaseTarget(),
-  });
-
   const supabase = await createClient();
 
   const {data: beforeData} = await supabase.auth.getSession();
-  authDebug('pre_session', {
-    hadSession: Boolean(beforeData.session),
-  });
 
   if (beforeData.session) {
     await supabase.auth.signOut();
-    authDebug('cleared_existing_session');
   }
 
-  const {data: signInData, error} = await supabase.auth.signInWithPassword({
+  const {error} = await supabase.auth.signInWithPassword({
     email,
     password: credentials.password,
   });
 
   if (error) {
-    authDebug('signInWithPassword_error', {
-      name: error.name,
-      message: error.message,
-      status: error.status ?? null,
-      code: (error as {code?: string}).code ?? null,
-      hint:
-        /invalid jwt|invalid token format/i.test(error.message)
-          ? 'Possível incompatibilidade: chave sb_publishable_/sb_secret_ enviada como Bearer. Teste as Legacy API Keys (anon/service_role JWT) no .env.local.'
-          : null,
-    });
-    const normalized = normalizeAuthError(error);
+    const normalized = logAuthError(error, 'signInWithPassword');
     return {success: false, error: normalized.message};
   }
 
-  authDebug('signInWithPassword_ok', {
-    userId: signInData.user?.id ?? null,
-    hasSession: Boolean(signInData.session),
-    expiresAt: signInData.session?.expires_at ?? null,
-  });
-
   const {
     data: {user},
-    error: getUserError,
   } = await supabase.auth.getUser();
-
-  authDebug('getUser', {
-    userId: user?.id ?? null,
-    email: user?.email ?? null,
-    getUserError: getUserError
-      ? {
-          message: getUserError.message,
-          status: getUserError.status ?? null,
-          code: (getUserError as {code?: string}).code ?? null,
-        }
-      : null,
-  });
 
   if (user) {
     try {
       const admin = createAdminClient();
-      const {error: profileError} = await admin
+      await admin
         .from('profiles')
         .update({last_login_at: new Date().toISOString()})
         .eq('id', user.id);
-
-      authDebug('last_login_update', {
-        ok: !profileError,
-        error: profileError
-          ? {
-              message: profileError.message,
-              code: profileError.code,
-              details: profileError.details,
-            }
-          : null,
-      });
-    } catch (adminError) {
+    } catch {
       // Não bloquear autenticação por falha de service_role / update auxiliar.
-      authDebug('last_login_update_threw', {
-        message:
-          adminError instanceof Error ? adminError.message : 'unknown_admin_error',
-        name: adminError instanceof Error ? adminError.name : typeof adminError,
-      });
     }
   }
 
   let isOwner = false;
   try {
     isOwner = await isPortalOwner(supabase);
-    authDebug('portal_owner_check', {isOwner});
   } catch (portalError) {
-    authDebug('portal_owner_check_threw', {
-      message:
-        portalError instanceof Error ? portalError.message : 'unknown_portal_error',
-      name: portalError instanceof Error ? portalError.name : typeof portalError,
-    });
+    logAuthError(portalError, 'signIn.portalOwner');
     await supabase.auth.signOut();
     return {
       success: false,
@@ -230,11 +122,6 @@ export async function signInAction(
 
   if (!isOwner) {
     const access = await checkTenantAccess(supabase);
-    authDebug('tenant_access', {
-      valid: access.valid,
-      reason: access.reason ?? null,
-      companyId: access.companyId ?? null,
-    });
 
     if (!access.valid) {
       await supabase.auth.signOut();
@@ -251,7 +138,6 @@ export async function signInAction(
   }
 
   const destination = resolvePostLoginRedirect(returnTo, isOwner);
-  authDebug('redirect', {destination, isOwner});
 
   revalidatePath('/', 'layout');
 
