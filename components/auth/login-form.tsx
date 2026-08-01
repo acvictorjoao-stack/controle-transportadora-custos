@@ -1,6 +1,6 @@
 'use client';
 
-import {AlertCircle, Eye, EyeOff} from 'lucide-react';
+import {AlertCircle, CheckCircle2, Eye, EyeOff} from 'lucide-react';
 import Link from 'next/link';
 import {isRedirectError} from 'next/dist/client/components/redirect-error';
 import {useSearchParams} from 'next/navigation';
@@ -14,6 +14,10 @@ import {useAuth} from '@/contexts/auth/use-auth';
 import {logAuthError} from '@/lib/auth/auth-errors';
 import {
   getSafeReturnTo,
+  PASSWORD_RESET_SUCCESS_PARAM,
+  PASSWORD_RESET_SUCCESS_VALUE,
+  RECOVERY_LINK_INVALID_MESSAGE,
+  RECOVERY_LINK_INVALID_REASON,
   TENANT_ACCESS_DENIED_MESSAGE,
   TENANT_ACCESS_DENIED_REASON,
 } from '@/lib/auth/redirect';
@@ -25,13 +29,27 @@ function LoginForm() {
   const returnTo = getSafeReturnTo(searchParams.get('returnTo'));
   const tenantAccessDenied =
     searchParams.get('reason') === TENANT_ACCESS_DENIED_REASON;
+  const recoveryLinkInvalid =
+    searchParams.get('reason') === RECOVERY_LINK_INVALID_REASON;
+  const passwordResetSuccess =
+    searchParams.get(PASSWORD_RESET_SUCCESS_PARAM) ===
+    PASSWORD_RESET_SUCCESS_VALUE;
 
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [showPassword, setShowPassword] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(
-    tenantAccessDenied ? TENANT_ACCESS_DENIED_MESSAGE : null,
+    tenantAccessDenied
+      ? TENANT_ACCESS_DENIED_MESSAGE
+      : recoveryLinkInvalid
+        ? RECOVERY_LINK_INVALID_MESSAGE
+        : null,
+  );
+  const [successMessage] = React.useState<string | null>(
+    passwordResetSuccess
+      ? 'Senha redefinida com sucesso. Entre com sua nova senha.'
+      : null,
   );
   const [fieldErrors, setFieldErrors] = React.useState<{
     email?: string;
@@ -84,6 +102,13 @@ function LoginForm() {
         <Alert variant="destructive">
           <AlertCircle />
           <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {!error && successMessage && (
+        <Alert variant="success">
+          <CheckCircle2 />
+          <AlertDescription>{successMessage}</AlertDescription>
         </Alert>
       )}
 

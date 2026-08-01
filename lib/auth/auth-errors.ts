@@ -6,6 +6,9 @@ export type AuthErrorCode =
   | 'SESSION_EXPIRED'
   | 'NETWORK_ERROR'
   | 'SUPABASE_ERROR'
+  | 'WEAK_PASSWORD'
+  | 'RECOVERY_LINK_INVALID'
+  | 'RATE_LIMITED'
   | 'UNKNOWN';
 
 export class AuthError extends Error {
@@ -27,6 +30,11 @@ const AUTH_ERROR_MESSAGES: Record<AuthErrorCode, string> = {
   SESSION_EXPIRED: 'Sua sessão expirou. Faça login novamente.',
   NETWORK_ERROR: 'Erro de conexão. Verifique sua internet e tente novamente.',
   SUPABASE_ERROR: 'Não foi possível completar a autenticação. Tente novamente.',
+  WEAK_PASSWORD:
+    'A senha não atende aos requisitos mínimos. Use pelo menos 8 caracteres.',
+  RECOVERY_LINK_INVALID:
+    'Link de recuperação inválido ou expirado. Solicite um novo envio.',
+  RATE_LIMITED: 'Muitas tentativas. Aguarde alguns minutos e tente novamente.',
   UNKNOWN: 'Ocorreu um erro inesperado. Tente novamente.',
 };
 
@@ -63,6 +71,50 @@ export function normalizeAuthError(error: unknown): AuthError {
       return new AuthError(
         AUTH_ERROR_MESSAGES.USER_NOT_FOUND,
         'USER_NOT_FOUND',
+        error,
+      );
+    }
+
+    if (
+      code === 'weak_password' ||
+      (message.includes('password') &&
+        (message.includes('weak') ||
+          message.includes('at least') ||
+          message.includes('too short') ||
+          message.includes('least 6')))
+    ) {
+      return new AuthError(
+        AUTH_ERROR_MESSAGES.WEAK_PASSWORD,
+        'WEAK_PASSWORD',
+        error,
+      );
+    }
+
+    if (
+      code === 'otp_expired' ||
+      code === 'flow_state_expired' ||
+      message.includes('otp_expired') ||
+      message.includes('token has expired') ||
+      message.includes('email link is invalid') ||
+      message.includes('invalid recovery')
+    ) {
+      return new AuthError(
+        AUTH_ERROR_MESSAGES.RECOVERY_LINK_INVALID,
+        'RECOVERY_LINK_INVALID',
+        error,
+      );
+    }
+
+    if (
+      code === 'over_email_send_rate_limit' ||
+      code === 'over_request_rate_limit' ||
+      message.includes('rate limit') ||
+      message.includes('too many requests') ||
+      message.includes('for security purposes')
+    ) {
+      return new AuthError(
+        AUTH_ERROR_MESSAGES.RATE_LIMITED,
+        'RATE_LIMITED',
         error,
       );
     }

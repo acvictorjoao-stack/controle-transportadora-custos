@@ -1,0 +1,2 @@
+features/executive-cockpit/utils/__tests__/insights.test.ts(51,5): error TS2783: 'label' is specified more than once, so this usage will be overwritten.
+TYPECHECK_EXIT=2 

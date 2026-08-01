@@ -3,7 +3,11 @@ import {join} from 'node:path';
 
 import {SUPABASE_ENV_KEYS} from './env';
 
-const SUPABASE_ENV_KEY_LIST = Object.values(SUPABASE_ENV_KEYS);
+/** NEXT_PUBLIC_* + service role (service role também sofre shadowing por env vazia). */
+const SUPABASE_ENV_KEY_LIST = [
+  ...Object.values(SUPABASE_ENV_KEYS),
+  'SUPABASE_SERVICE_ROLE_KEY',
+] as const;
 
 function parseEnvContents(contents: string): Record<string, string> {
   const result: Record<string, string> = {};

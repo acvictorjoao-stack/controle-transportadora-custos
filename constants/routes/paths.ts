@@ -67,10 +67,12 @@ export const ROUTES = {
   // Sistema
   configuracoes: '/configuracoes',
 
-  // Auth (placeholders)
+  // Auth
   login: '/login',
   registro: '/registro',
   recuperarSenha: '/recuperar-senha',
+  atualizarSenha: '/atualizar-senha',
+  authCallback: '/auth/callback',
 
   // Marketing (placeholders)
   pricing: '/pricing',

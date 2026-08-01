@@ -5,7 +5,9 @@ import {ROUTES} from '@/constants/routes/paths';
 import {
   isAuthRoute,
   isMasterRoute,
+  isPasswordUpdateRoute,
   isProtectedRoute,
+  RECOVERY_LINK_INVALID_REASON,
   resolvePostLoginRedirect,
   TENANT_ACCESS_DENIED_REASON,
 } from '@/lib/auth/redirect';
@@ -121,6 +123,15 @@ export async function updateSession(request: NextRequest) {
   const supabaseEnv = getMiddlewareSupabaseEnv();
 
   if (!supabaseEnv) {
+    console.info('[AUTH_DEBUG]', {
+      stage: 'middleware_missing_env',
+      at: new Date().toISOString(),
+      path: request.nextUrl.pathname,
+      urlDefined: process.env.NEXT_PUBLIC_SUPABASE_URL !== undefined,
+      urlPresent: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()),
+      anonDefined: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY !== undefined,
+      anonPresent: Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim()),
+    });
     return createMissingSupabaseEnvResponse();
   }
 
@@ -155,9 +166,52 @@ export async function updateSession(request: NextRequest) {
 
   const {
     data: {user},
+    error: getUserError,
   } = await supabase.auth.getUser();
 
+  if (
+    process.env.NODE_ENV === 'development' &&
+    (isAuthRoute(request.nextUrl.pathname) || getUserError)
+  ) {
+    let supabaseHost = 'invalid';
+    try {
+      supabaseHost = new URL(supabaseEnv.url).host;
+    } catch {
+      supabaseHost = 'invalid';
+    }
+
+    console.info('[AUTH_DEBUG]', {
+      stage: 'middleware_getUser',
+      at: new Date().toISOString(),
+      path: request.nextUrl.pathname,
+      supabaseHost,
+      hasUser: Boolean(user),
+      getUserError: getUserError
+        ? {
+            message: getUserError.message,
+            status: getUserError.status ?? null,
+            code: (getUserError as {code?: string}).code ?? null,
+          }
+        : null,
+    });
+  }
+
   const {pathname} = request.nextUrl;
+
+  if (isPasswordUpdateRoute(pathname)) {
+    if (!user) {
+      const loginUrl = request.nextUrl.clone();
+      loginUrl.pathname = ROUTES.login;
+      loginUrl.search = '';
+      loginUrl.searchParams.set('reason', RECOVERY_LINK_INVALID_REASON);
+      const redirectResponse = NextResponse.redirect(loginUrl);
+      copyCookies(supabaseResponse, redirectResponse);
+      return redirectResponse;
+    }
+
+    // Sessão de recovery: permite acesso sem bounce para home/master e sem checagem de tenant.
+    return supabaseResponse;
+  }
 
   if (!user && isProtectedRoute(pathname)) {
     const loginUrl = request.nextUrl.clone();
