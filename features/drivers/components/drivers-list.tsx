@@ -5,6 +5,8 @@ import Link from 'next/link';
 import {useRouter} from 'next/navigation';
 import * as React from 'react';
 
+import {useSyncedListData} from '@/hooks/use-synced-list-data';
+
 import {RowActionsMenu, RowActionsMenuItem} from '@/components/common/row-actions-menu';
 import {DataTable} from '@/components/data-display/data-table';
 import {ListPagination} from '@/components/data-display/list-pagination';
@@ -22,6 +24,7 @@ import {MSG} from '@/lib/feedback/messages';
 
 import {deleteDriverAction, updateDriverStatusAction} from '../actions';
 import type {
+
   Driver,
   DriverListFilters,
   DriverOperationalStatus,
@@ -67,7 +70,7 @@ function DriversList({
   const [actionLoading, setActionLoading] = React.useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = React.useState<string | null>(null);
 
-  const data = initialData;
+  const {data, removeItem, patchItem, upsertItem} = useSyncedListData(initialData);
 
   React.useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -108,7 +111,7 @@ function DriversList({
       toast.error(result.error ?? MSG.operationFailed);
     } else {
       toast.success(MSG.deleted('Motorista'));
-      router.refresh();
+      removeItem(driver.id);
     }
     setActionLoading(null);
     setOpenMenuId(null);
@@ -125,7 +128,7 @@ function DriversList({
       toast.success(
         MSG.statusChanged('Motorista', DRIVER_OPERATIONAL_STATUS_LABELS[operationalStatus]),
       );
-      router.refresh();
+      patchItem(driver.id, {operationalStatus});
     }
     setActionLoading(null);
     setOpenMenuId(null);

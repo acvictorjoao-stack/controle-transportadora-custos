@@ -5,6 +5,8 @@ import Link from 'next/link';
 import {useRouter} from 'next/navigation';
 import * as React from 'react';
 
+import {useSyncedListData} from '@/hooks/use-synced-list-data';
+
 import {RowActionsMenu, RowActionsMenuItem} from '@/components/common/row-actions-menu';
 import {DataTable} from '@/components/data-display/data-table';
 import {ListPagination} from '@/components/data-display/list-pagination';
@@ -18,6 +20,7 @@ import {useConfirm} from '@/contexts/feedback/confirm-context';
 import {useToast} from '@/contexts/feedback/toast-context';
 import {ROUTES} from '@/constants/routes/paths';
 import {
+
   ACCOUNTS_PAYABLE_STATUS_LABELS,
 } from '@/features/financial/types/financial-entry';
 import {formatCurrencyBr, formatDateBr} from '@/features/financial/utils/financial-format';
@@ -111,7 +114,7 @@ function AccountsPayableList({
   const [actionLoading, setActionLoading] = React.useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = React.useState<string | null>(null);
 
-  const data = initialData;
+  const {data, removeItem, patchItem, upsertItem} = useSyncedListData(initialData);
 
   React.useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -176,7 +179,8 @@ function AccountsPayableList({
       toast.error(result.error);
     } else {
       toast.success('Conta cancelada com sucesso');
-      router.refresh();
+      if (result.data) upsertItem(result.data);
+      else patchItem(entry.id, {entryStatus: 'cancelled'});
     }
     setActionLoading(null);
     setOpenMenuId(null);
@@ -200,7 +204,7 @@ function AccountsPayableList({
       toast.error(result.error);
     } else {
       toast.success('Conta excluída com sucesso');
-      router.refresh();
+      removeItem(entry.id);
     }
     setActionLoading(null);
     setOpenMenuId(null);

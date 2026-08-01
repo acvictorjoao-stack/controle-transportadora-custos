@@ -5,6 +5,8 @@ import Link from 'next/link';
 import {useRouter} from 'next/navigation';
 import * as React from 'react';
 
+import {useSyncedListData} from '@/hooks/use-synced-list-data';
+
 import {RowActionsMenu, RowActionsMenuItem} from '@/components/common/row-actions-menu';
 import {DataTable} from '@/components/data-display/data-table';
 import {ListPagination} from '@/components/data-display/list-pagination';
@@ -22,6 +24,7 @@ import {MSG} from '@/lib/feedback/messages';
 
 import {deleteVehicleAction, updateVehicleStatusAction} from '../actions';
 import type {
+
   PaginatedVehicles,
   Vehicle,
   VehicleAssetStatus,
@@ -62,7 +65,7 @@ function VehiclesList({
   const [actionLoading, setActionLoading] = React.useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = React.useState<string | null>(null);
 
-  const data = initialData;
+  const {data, removeItem, patchItem, upsertItem} = useSyncedListData(initialData);
 
   React.useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -103,7 +106,7 @@ function VehiclesList({
       toast.error(result.error ?? MSG.operationFailed);
     } else {
       toast.success(MSG.deleted('Veículo'));
-      router.refresh();
+      removeItem(vehicle.id);
     }
     setActionLoading(null);
     setOpenMenuId(null);
@@ -120,7 +123,7 @@ function VehiclesList({
       toast.success(
         MSG.statusChanged('Veículo', VEHICLE_ASSET_STATUS_LABELS[assetStatus]),
       );
-      router.refresh();
+      patchItem(vehicle.id, {assetStatus});
     }
     setActionLoading(null);
     setOpenMenuId(null);

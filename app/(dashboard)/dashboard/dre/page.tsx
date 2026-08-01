@@ -1,3 +1,4 @@
+import {Suspense} from 'react';
 import {redirect} from 'next/navigation';
 
 import {PageTemplate} from '@/components/layout/page-template';
@@ -10,6 +11,7 @@ import type {
   OperationalDreByRouteData,
   OperationalDreData,
   OperationalDreFilterOptions,
+  OperationalDreFilters,
 } from '@/features/dre/types';
 import {
   EMPTY_OPERATIONAL_DRE,
@@ -38,6 +40,40 @@ interface DashboardDrePageProps {
   }>;
 }
 
+async function DreViewWithFilters({
+  companyId,
+  dreFilters,
+  dreData,
+  dreByRoute,
+  dreError,
+}: {
+  companyId: string;
+  dreFilters: OperationalDreFilters;
+  dreData: OperationalDreData;
+  dreByRoute: OperationalDreByRouteData;
+  dreError: string | null;
+}) {
+  const supabase = await getServerSupabaseClient();
+  let dreFilterOptions: OperationalDreFilterOptions =
+    EMPTY_OPERATIONAL_DRE_FILTER_OPTIONS;
+
+  try {
+    dreFilterOptions = await getOperationalDreFilterOptions(supabase, companyId);
+  } catch {
+    // Mantém opções vazias; a DRE principal já carregou.
+  }
+
+  return (
+    <OperationalDreView
+      data={dreData}
+      byRoute={dreByRoute}
+      filterOptions={dreFilterOptions}
+      initialFilters={dreFilters}
+      error={dreError}
+    />
+  );
+}
+
 export default async function DashboardDrePage({
   searchParams,
 }: DashboardDrePageProps) {
@@ -59,18 +95,12 @@ export default async function DashboardDrePage({
     ...EMPTY_OPERATIONAL_DRE_BY_ROUTE,
     filters: dreFilters,
   };
-  let dreFilterOptions: OperationalDreFilterOptions =
-    EMPTY_OPERATIONAL_DRE_FILTER_OPTIONS;
   let dreError: string | null = null;
 
   try {
-    const [bundle, filterOptions] = await Promise.all([
-      getOperationalDreBundle(supabase, companyId, dreFilters),
-      getOperationalDreFilterOptions(supabase, companyId),
-    ]);
+    const bundle = await getOperationalDreBundle(supabase, companyId, dreFilters);
     dreData = bundle.dre;
     dreByRoute = bundle.byRoute;
-    dreFilterOptions = filterOptions;
   } catch (err) {
     dreError =
       err instanceof Error ? err.message : 'Erro ao carregar a DRE Operacional.';
@@ -85,13 +115,25 @@ export default async function DashboardDrePage({
         {label: 'DRE'},
       ]}
     >
-      <OperationalDreView
-        data={dreData}
-        byRoute={dreByRoute}
-        filterOptions={dreFilterOptions}
-        initialFilters={dreFilters}
-        error={dreError}
-      />
+      <Suspense
+        fallback={
+          <OperationalDreView
+            data={dreData}
+            byRoute={dreByRoute}
+            filterOptions={EMPTY_OPERATIONAL_DRE_FILTER_OPTIONS}
+            initialFilters={dreFilters}
+            error={dreError}
+          />
+        }
+      >
+        <DreViewWithFilters
+          companyId={companyId}
+          dreFilters={dreFilters}
+          dreData={dreData}
+          dreByRoute={dreByRoute}
+          dreError={dreError}
+        />
+      </Suspense>
     </PageTemplate>
   );
 }

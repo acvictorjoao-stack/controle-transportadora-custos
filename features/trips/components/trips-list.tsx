@@ -5,6 +5,8 @@ import Link from 'next/link';
 import {useRouter} from 'next/navigation';
 import * as React from 'react';
 
+import {useSyncedListData} from '@/hooks/use-synced-list-data';
+
 import {RowActionsMenu, RowActionsMenuItem} from '@/components/common/row-actions-menu';
 import {DataTable} from '@/components/data-display/data-table';
 import {ListPagination} from '@/components/data-display/list-pagination';
@@ -26,6 +28,7 @@ import {MSG} from '@/lib/feedback/messages';
 
 import {deleteTripAction, startTripAction} from '../actions';
 import type {
+
   PaginatedTrips,
   Trip,
   TripListFilters,
@@ -89,7 +92,7 @@ function TripsList({
   const [openMenuId, setOpenMenuId] = React.useState<string | null>(null);
   const [completingTrip, setCompletingTrip] = React.useState<Trip | null>(null);
 
-  const data = initialData;
+  const {data, removeItem, patchItem, upsertItem} = useSyncedListData(initialData);
 
   React.useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -130,7 +133,7 @@ function TripsList({
       toast.error(result.error ?? MSG.operationFailed);
     } else {
       toast.success(MSG.deletedFeminine('Viagem'));
-      router.refresh();
+      removeItem(trip.id);
     }
     setActionLoading(null);
     setOpenMenuId(null);
@@ -146,7 +149,8 @@ function TripsList({
       toast.error(result.error ?? MSG.operationFailed);
     } else {
       toast.success('Viagem iniciada com sucesso.');
-      router.refresh();
+      if (result.data) upsertItem(result.data);
+      else patchItem(trip.id, {tripStatus: 'in_progress'});
     }
     setActionLoading(null);
   }

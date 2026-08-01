@@ -16,7 +16,7 @@ function HomeModuleSearch({
   className,
   placeholder = 'Buscar módulo...',
 }: HomeModuleSearchProps) {
-  const {query, setQuery, results, openModule} = useModuleSearch(6);
+  const {query, setQuery, results, openModule, prefetchModule} = useModuleSearch(6);
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [open, setOpen] = React.useState(false);
 
@@ -80,6 +80,8 @@ function HomeModuleSearch({
                       'flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm',
                       'hover:bg-accent hover:text-accent-foreground',
                     )}
+                    onMouseEnter={() => prefetchModule(item.href)}
+                    onFocus={() => prefetchModule(item.href)}
                     onClick={() => {
                       openModule(item.href);
                       setOpen(false);

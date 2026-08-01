@@ -5,6 +5,8 @@ import Link from 'next/link';
 import {useRouter} from 'next/navigation';
 import * as React from 'react';
 
+import {useSyncedListData} from '@/hooks/use-synced-list-data';
+
 import {RowActionsMenu, RowActionsMenuItem} from '@/components/common/row-actions-menu';
 import {DataTable} from '@/components/data-display/data-table';
 import {ListPagination} from '@/components/data-display/list-pagination';
@@ -23,6 +25,7 @@ import type {VehicleSelectOption} from '@/features/vehicles/types';
 
 import {deleteMaintenanceRecordAction} from '../actions';
 import type {
+
   MaintenanceListFilters,
   MaintenanceRecord,
   MaintenanceSortOptions,
@@ -79,7 +82,7 @@ function MaintenanceList({
   const [actionLoading, setActionLoading] = React.useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = React.useState<string | null>(null);
 
-  const data = initialData;
+  const {data, removeItem, patchItem, upsertItem} = useSyncedListData(initialData);
 
   React.useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -121,7 +124,7 @@ function MaintenanceList({
       toast.error(result.error);
     } else {
       toast.success('Manutenção excluída com sucesso');
-      router.refresh();
+      removeItem(record.id);
     }
     setActionLoading(null);
     setOpenMenuId(null);

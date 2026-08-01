@@ -3,8 +3,15 @@ import type {SupabaseClient} from '@supabase/supabase-js';
 import {mapDatabaseError} from '@/features/master/companies/utils/database-error';
 
 import {
+  TRIP_CHECKLIST_COLUMNS,
   TRIP_DETAIL_COLUMNS,
+  TRIP_DOCUMENT_COLUMNS,
+  TRIP_EXPENSE_COLUMNS,
+  TRIP_HISTORY_COLUMNS,
   TRIP_LIST_COLUMNS,
+  TRIP_LOCATION_COLUMNS,
+  TRIP_OCCURRENCE_COLUMNS,
+  TRIP_STOP_COLUMNS,
   TRIP_STORAGE_BUCKET,
   TRIPS_PAGE_SIZE,
 } from '../constants';
@@ -929,7 +936,7 @@ export async function listTripHistory(
 ): Promise<TripHistory[]> {
   const {data, error} = await supabase
     .from('trip_history')
-    .select('*')
+    .select(TRIP_HISTORY_COLUMNS)
     .eq('company_id', companyId)
     .eq('trip_id', tripId)
     .order('created_at', {ascending: false});
@@ -950,7 +957,7 @@ export async function listTripDocuments(
 ): Promise<TripDocument[]> {
   const {data, error} = await supabase
     .from('trip_documents')
-    .select('*')
+    .select(TRIP_DOCUMENT_COLUMNS)
     .eq('company_id', companyId)
     .eq('trip_id', tripId)
     .is('deleted_at', null)
@@ -994,7 +1001,7 @@ export async function createTripDocument(
       file_size: input.fileSize ?? null,
       created_by: profileId,
     })
-    .select('*')
+    .select(TRIP_DOCUMENT_COLUMNS)
     .single();
 
   if (error) {
@@ -1044,7 +1051,7 @@ export async function getTripChecklist(
 ): Promise<TripChecklist | null> {
   const {data, error} = await supabase
     .from('trip_checklists')
-    .select('*')
+    .select(TRIP_CHECKLIST_COLUMNS)
     .eq('company_id', companyId)
     .eq('trip_id', tripId)
     .is('deleted_at', null)
@@ -1091,7 +1098,7 @@ export async function upsertTripChecklist(
       .update(payload)
       .eq('id', existing.id)
       .eq('company_id', companyId)
-      .select('*')
+      .select(TRIP_CHECKLIST_COLUMNS)
       .single();
 
     if (error) throw new Error(mapDatabaseError(error));
@@ -1101,7 +1108,7 @@ export async function upsertTripChecklist(
   const {data, error} = await supabase
     .from('trip_checklists')
     .insert({...payload, created_by: profileId})
-    .select('*')
+    .select(TRIP_CHECKLIST_COLUMNS)
     .single();
 
   if (error) throw new Error(mapDatabaseError(error));
@@ -1115,7 +1122,7 @@ export async function listTripOccurrences(
 ): Promise<TripOccurrence[]> {
   const {data, error} = await supabase
     .from('trip_occurrences')
-    .select('*')
+    .select(TRIP_OCCURRENCE_COLUMNS)
     .eq('company_id', companyId)
     .eq('trip_id', tripId)
     .is('deleted_at', null)
@@ -1140,7 +1147,7 @@ export async function listCompanyTripOccurrences(
   const limit = options.limit ?? 500;
   let query = supabase
     .from('trip_occurrences')
-    .select('*')
+    .select(TRIP_OCCURRENCE_COLUMNS)
     .eq('company_id', companyId)
     .is('deleted_at', null)
     .order('occurred_at', {ascending: false})
@@ -1176,7 +1183,7 @@ export async function createTripOccurrence(
       occurred_at: input.occurredAt ?? new Date().toISOString(),
       created_by: profileId,
     })
-    .select('*')
+    .select(TRIP_OCCURRENCE_COLUMNS)
     .single();
 
   if (error) throw new Error(mapDatabaseError(error));
@@ -1190,7 +1197,7 @@ export async function listTripExpenses(
 ): Promise<TripExpense[]> {
   const {data, error} = await supabase
     .from('trip_expenses')
-    .select('*')
+    .select(TRIP_EXPENSE_COLUMNS)
     .eq('company_id', companyId)
     .eq('trip_id', tripId)
     .is('deleted_at', null)
@@ -1225,7 +1232,7 @@ export async function createTripExpense(
       receipt_url: input.receiptUrl,
       created_by: profileId,
     })
-    .select('*')
+    .select(TRIP_EXPENSE_COLUMNS)
     .single();
 
   if (error) throw new Error(mapDatabaseError(error));
@@ -1254,7 +1261,7 @@ export async function updateTripExpense(
     .eq('company_id', companyId)
     .eq('trip_id', input.tripId)
     .is('deleted_at', null)
-    .select('*')
+    .select(TRIP_EXPENSE_COLUMNS)
     .single();
 
   if (error) throw new Error(mapDatabaseError(error));
@@ -1287,7 +1294,7 @@ export async function listTripStops(
 ): Promise<TripStop[]> {
   const {data, error} = await supabase
     .from('trip_stops')
-    .select('*')
+    .select(TRIP_STOP_COLUMNS)
     .eq('company_id', companyId)
     .eq('trip_id', tripId)
     .is('deleted_at', null)
@@ -1322,7 +1329,7 @@ export async function createTripStop(
       notes: input.notes,
       created_by: profileId,
     })
-    .select('*')
+    .select(TRIP_STOP_COLUMNS)
     .single();
 
   if (error) throw new Error(mapDatabaseError(error));
@@ -1336,7 +1343,7 @@ export async function listTripLocations(
 ): Promise<TripLocation[]> {
   const {data, error} = await supabase
     .from('trip_locations')
-    .select('*')
+    .select(TRIP_LOCATION_COLUMNS)
     .eq('company_id', companyId)
     .eq('trip_id', tripId)
     .is('deleted_at', null)

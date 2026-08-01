@@ -8,6 +8,15 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
+  experimental: {
+    // PPR (`ppr: 'incremental'`) exige Next.js canary nesta linha (15.4.x).
+    // Rotas piloto já usam Suspense/streaming e ficam prontas para opt-in quando
+    // a versão estável/canary do projeto habilitar PPR.
+    staleTimes: {
+      dynamic: 30,
+      static: 180,
+    },
+  },
   images: {
     remotePatterns: [
       {
@@ -20,7 +29,7 @@ const nextConfig: NextConfig = {
   },
   webpack: (config, {dev}) => {
     // HMR is disabled in AI Studio via DISABLE_HMR env var.
-    // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
+    // Do not modify—file watching is disabled to prevent flickering during agent edits.
     if (dev && process.env.DISABLE_HMR === 'true') {
       config.watchOptions = {
         ignored: /.*/,

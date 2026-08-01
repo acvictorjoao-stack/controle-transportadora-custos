@@ -36,11 +36,13 @@ export default async function FinanceiroDashboardPage() {
     redirect(ROUTES.login);
   }
 
-  const canRead =
-    (await assertCompanyPermission(supabase, companyId, 'financeiro:read')) ||
-    (await assertCompanyPermission(supabase, companyId, 'financeiro_fluxo:read')) ||
-    (await assertCompanyPermission(supabase, companyId, 'financeiro_pagar:read')) ||
-    (await assertCompanyPermission(supabase, companyId, 'financeiro_receber:read'));
+  const canReadResults = await Promise.all([
+    assertCompanyPermission(supabase, companyId, 'financeiro:read'),
+    assertCompanyPermission(supabase, companyId, 'financeiro_fluxo:read'),
+    assertCompanyPermission(supabase, companyId, 'financeiro_pagar:read'),
+    assertCompanyPermission(supabase, companyId, 'financeiro_receber:read'),
+  ]);
+  const canRead = canReadResults.some(Boolean);
 
   if (!canRead) {
     redirect(ROUTES.dashboard);

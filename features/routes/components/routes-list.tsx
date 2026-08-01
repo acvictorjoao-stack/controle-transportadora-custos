@@ -5,6 +5,8 @@ import Link from 'next/link';
 import {useRouter} from 'next/navigation';
 import * as React from 'react';
 
+import {useSyncedListData} from '@/hooks/use-synced-list-data';
+
 import {RowActionsMenu, RowActionsMenuItem} from '@/components/common/row-actions-menu';
 import {DataTable} from '@/components/data-display/data-table';
 import {ListPagination} from '@/components/data-display/list-pagination';
@@ -22,6 +24,7 @@ import {MSG} from '@/lib/feedback/messages';
 import {deleteRouteAction, updateRouteStatusAction} from '../actions';
 import {RouteImportModal} from '../import';
 import type {
+
   PaginatedRoutes,
   Route,
   RouteFilterOptions,
@@ -73,7 +76,7 @@ function RoutesList({
   const [actionLoading, setActionLoading] = React.useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = React.useState<string | null>(null);
 
-  const data = initialData;
+  const {data, removeItem, patchItem, upsertItem} = useSyncedListData(initialData);
 
   React.useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -128,7 +131,7 @@ function RoutesList({
       toast.error(result.error ?? MSG.operationFailed);
     } else {
       toast.success(MSG.deletedFeminine('Rota'));
-      router.refresh();
+      removeItem(route.id);
     }
     setActionLoading(null);
     setOpenMenuId(null);
@@ -151,7 +154,7 @@ function RoutesList({
           ROUTE_OPERATIONAL_STATUS_LABELS[operationalStatus],
         ),
       );
-      router.refresh();
+      patchItem(route.id, {operationalStatus});
     }
     setActionLoading(null);
     setOpenMenuId(null);

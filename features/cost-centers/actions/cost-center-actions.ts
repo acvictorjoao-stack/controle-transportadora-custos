@@ -22,12 +22,15 @@ import {
 import type {CostCenter} from '../types';
 import {createCostCenterSchema, updateCostCenterSchema} from '../validation';
 
-function revalidateCostCenterPaths() {
+function revalidateCostCenterPaths(companyId: string) {
   revalidatePath(ROUTES.centrosDeCusto);
   revalidatePath(ROUTES.dashboard);
   revalidatePath(ROUTES.contasAPagar);
   revalidatePath(ROUTES.contasAReceber);
   revalidatePath(ROUTES.financeiro);
+  void import('@/lib/cache/reference-data').then(({revalidateCostCentersSelect}) => {
+    revalidateCostCentersSelect(companyId);
+  });
 }
 
 async function resolveCostCenterAccess(
@@ -76,7 +79,7 @@ export async function createCostCenterAction(
       parsed.data,
       resolved.data.profileId,
     );
-    revalidateCostCenterPaths();
+    revalidateCostCenterPaths(resolved.data.companyId);
     return {success: true, data};
   } catch (error) {
     return {
@@ -111,7 +114,7 @@ export async function updateCostCenterAction(
       parsed.data,
       resolved.data.profileId,
     );
-    revalidateCostCenterPaths();
+    revalidateCostCenterPaths(resolved.data.companyId);
     return {success: true, data};
   } catch (error) {
     return {
@@ -138,7 +141,7 @@ export async function toggleCostCenterStatusAction(
       active ? 'active' : 'inactive',
       resolved.data.profileId,
     );
-    revalidateCostCenterPaths();
+    revalidateCostCenterPaths(resolved.data.companyId);
     return {success: true, data};
   } catch (error) {
     return {
@@ -162,7 +165,7 @@ export async function deleteCostCenterAction(
       costCenterId,
       resolved.data.profileId,
     );
-    revalidateCostCenterPaths();
+    revalidateCostCenterPaths(resolved.data.companyId);
     return {success: true, data: undefined};
   } catch (error) {
     return {

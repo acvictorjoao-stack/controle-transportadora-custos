@@ -1,4 +1,7 @@
-﻿import {redirect} from 'next/navigation';
+﻿import {Suspense} from 'react';
+import {redirect} from 'next/navigation';
+
+import type {SupabaseClient} from '@supabase/supabase-js';
 
 import {listCustomersForSelect} from '@/features/customers/queries';
 import type {Customer} from '@/features/customers/types';
@@ -48,6 +51,97 @@ interface ViagensPageProps {
   }>;
 }
 
+const EMPTY_SELECTS = {
+  branches: [] as BranchSelectOption[],
+  drivers: [] as DriverSelectOption[],
+  vehicles: [] as VehicleSelectOption[],
+  customers: [] as Customer[],
+  routes: [] as RouteSelectOption[],
+  routeFilterOptions: {origins: [], destinations: []} as RouteFilterOptions,
+  resourceAvailability: {
+    busyVehicleIds: [],
+    busyDriverIds: [],
+  } as TripResourceAvailability,
+};
+
+async function loadTripSelects(
+  supabase: SupabaseClient,
+  companyId: string,
+) {
+  const [
+    branches,
+    drivers,
+    vehicles,
+    customers,
+    routes,
+    routeFilterOptions,
+    resourceAvailability,
+  ] = await Promise.all([
+    listBranchesForSelect(supabase, companyId),
+    listDriversForSelect(supabase, companyId),
+    listVehiclesForSelect(supabase, companyId),
+    listCustomersForSelect(supabase, companyId),
+    listRoutesForSelect(supabase, companyId, 200),
+    listRouteFilterOptions(supabase, companyId),
+    listTripResourceAvailability(supabase, companyId),
+  ]);
+
+  return {
+    branches,
+    drivers,
+    vehicles,
+    customers,
+    routes,
+    routeFilterOptions,
+    resourceAvailability,
+  };
+}
+
+async function ViagensListWithSelects({
+  companyId,
+  data,
+  search,
+  filters,
+  sort,
+  listError,
+}: {
+  companyId: string;
+  data: PaginatedTrips;
+  search: string;
+  filters: TripListFilters;
+  sort: TripSortOptions;
+  listError: string | null;
+}) {
+  const supabase = await getServerSupabaseClient();
+  let selects = EMPTY_SELECTS;
+  let error = listError;
+
+  try {
+    selects = await loadTripSelects(supabase, companyId);
+  } catch (err) {
+    error =
+      error ??
+      (err instanceof Error ? err.message : 'Erro ao carregar filtros de viagens.');
+  }
+
+  return (
+    <TripsList
+      initialData={data}
+      initialSearch={search}
+      initialFilters={filters}
+      initialSort={sort}
+      branches={selects.branches}
+      drivers={selects.drivers}
+      vehicles={selects.vehicles}
+      customers={selects.customers}
+      routes={selects.routes}
+      routeFilterOptions={selects.routeFilterOptions}
+      resourceAvailability={selects.resourceAvailability}
+      error={error}
+    />
+  );
+}
+
 export default async function ViagensPage({searchParams}: ViagensPageProps) {
   const supabase = await getServerSupabaseClient();
   const companyId = await getCurrentCompanyId(supabase);
@@ -83,63 +177,48 @@ export default async function ViagensPage({searchParams}: ViagensPageProps) {
     sortOrder: (params.sortOrder as 'asc' | 'desc') ?? 'desc',
   };
 
-  let data: PaginatedTrips;
-  let branches: BranchSelectOption[];
-  let drivers: DriverSelectOption[];
-  let vehicles: VehicleSelectOption[];
-  let customers: Customer[];
-  let routes: RouteSelectOption[];
-  let routeFilterOptions: RouteFilterOptions;
-  let resourceAvailability: TripResourceAvailability;
-  let error: string | null = null;
+  let data: PaginatedTrips = {
+    items: [],
+    total: 0,
+    page: 1,
+    pageSize: 10,
+    totalPages: 1,
+  };
+  let listError: string | null = null;
 
   try {
-    [
-      data,
-      branches,
-      drivers,
-      vehicles,
-      customers,
-      routes,
-      routeFilterOptions,
-      resourceAvailability,
-    ] =
-      await Promise.all([
-        listTrips(supabase, {companyId, search, page, filters, sort}),
-        listBranchesForSelect(supabase, companyId),
-        listDriversForSelect(supabase, companyId),
-        listVehiclesForSelect(supabase, companyId),
-        listCustomersForSelect(supabase, companyId),
-        listRoutesForSelect(supabase, companyId, 200),
-        listRouteFilterOptions(supabase, companyId),
-        listTripResourceAvailability(supabase, companyId),
-      ]);
+    data = await listTrips(supabase, {companyId, search, page, filters, sort});
   } catch (err) {
-    error = err instanceof Error ? err.message : 'Erro ao carregar viagens.';
-    data = {items: [], total: 0, page: 1, pageSize: 10, totalPages: 1};
-    branches = [];
-    drivers = [];
-    vehicles = [];
-    customers = [];
-    routes = [];
-    routeFilterOptions = {origins: [], destinations: []};
-    resourceAvailability = {busyVehicleIds: [], busyDriverIds: []};
+    listError = err instanceof Error ? err.message : 'Erro ao carregar viagens.';
   }
 
   return (
-    <TripsList
-      initialData={data}
-      initialSearch={search}
-      initialFilters={filters}
-      initialSort={sort}
-      branches={branches}
-      drivers={drivers}
-      vehicles={vehicles}
-      customers={customers}
-      routes={routes}
-      routeFilterOptions={routeFilterOptions}
-      resourceAvailability={resourceAvailability}
-      error={error}
-    />
+    <Suspense
+      fallback={
+        <TripsList
+          initialData={data}
+          initialSearch={search}
+          initialFilters={filters}
+          initialSort={sort}
+          branches={EMPTY_SELECTS.branches}
+          drivers={EMPTY_SELECTS.drivers}
+          vehicles={EMPTY_SELECTS.vehicles}
+          customers={EMPTY_SELECTS.customers}
+          routes={EMPTY_SELECTS.routes}
+          routeFilterOptions={EMPTY_SELECTS.routeFilterOptions}
+          resourceAvailability={EMPTY_SELECTS.resourceAvailability}
+          error={listError}
+        />
+      }
+    >
+      <ViagensListWithSelects
+        companyId={companyId}
+        data={data}
+        search={search}
+        filters={filters}
+        sort={sort}
+        listError={listError}
+      />
+    </Suspense>
   );
 }

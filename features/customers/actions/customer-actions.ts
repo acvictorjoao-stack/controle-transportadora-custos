@@ -49,12 +49,17 @@ type CustomerPermission =
   | 'customers:update'
   | 'customers:delete';
 
-function revalidateCustomerPaths(customerId?: string) {
+function revalidateCustomerPaths(customerId?: string, companyId?: string) {
   revalidatePath(ROUTES.clientes);
   revalidatePath(ROUTES.dashboard);
   revalidatePath(ROUTES.viagens);
   if (customerId) {
     revalidatePath(ROUTES.clienteDetail(customerId));
+  }
+  if (companyId) {
+    void import('@/lib/cache/reference-data').then(({revalidateCustomersSelect}) => {
+      revalidateCustomersSelect(companyId);
+    });
   }
 }
 
@@ -104,7 +109,7 @@ export async function createCustomerAction(
       parsed.data,
       resolved.data.profileId,
     );
-    revalidateCustomerPaths();
+    revalidateCustomerPaths(undefined, resolved.data.companyId);
     return {success: true, data};
   } catch (error) {
     return {
@@ -139,7 +144,7 @@ export async function updateCustomerAction(
       parsed.data,
       resolved.data.profileId,
     );
-    revalidateCustomerPaths(customerId);
+    revalidateCustomerPaths(customerId, resolved.data.companyId);
     return {success: true, data};
   } catch (error) {
     return {
@@ -170,7 +175,7 @@ export async function updateCustomerStatusAction(
       parsed.data.customerStatus,
       resolved.data.profileId,
     );
-    revalidateCustomerPaths(customerId);
+    revalidateCustomerPaths(customerId, resolved.data.companyId);
     return {success: true, data};
   } catch (error) {
     return {
@@ -194,7 +199,7 @@ export async function deleteCustomerAction(
       customerId,
       resolved.data.profileId,
     );
-    revalidateCustomerPaths(customerId);
+    revalidateCustomerPaths(customerId, resolved.data.companyId);
     return {success: true, data: undefined};
   } catch (error) {
     return {
@@ -225,7 +230,7 @@ export async function createCustomerAddressAction(
       parsed.data,
       resolved.data.profileId,
     );
-    revalidateCustomerPaths(customerId);
+    revalidateCustomerPaths(customerId, resolved.data.companyId);
     return {success: true, data};
   } catch (error) {
     return {
@@ -257,7 +262,7 @@ export async function updateCustomerAddressAction(
       parsed.data,
       resolved.data.profileId,
     );
-    revalidateCustomerPaths(customerId);
+    revalidateCustomerPaths(customerId, resolved.data.companyId);
     return {success: true, data};
   } catch (error) {
     return {
@@ -282,7 +287,7 @@ export async function deleteCustomerAddressAction(
       addressId,
       resolved.data.profileId,
     );
-    revalidateCustomerPaths(customerId);
+    revalidateCustomerPaths(customerId, resolved.data.companyId);
     return {success: true, data: undefined};
   } catch (error) {
     return {
@@ -313,7 +318,7 @@ export async function createCustomerContactAction(
       parsed.data,
       resolved.data.profileId,
     );
-    revalidateCustomerPaths(customerId);
+    revalidateCustomerPaths(customerId, resolved.data.companyId);
     return {success: true, data};
   } catch (error) {
     return {
@@ -345,7 +350,7 @@ export async function updateCustomerContactAction(
       parsed.data,
       resolved.data.profileId,
     );
-    revalidateCustomerPaths(customerId);
+    revalidateCustomerPaths(customerId, resolved.data.companyId);
     return {success: true, data};
   } catch (error) {
     return {
@@ -370,7 +375,7 @@ export async function deleteCustomerContactAction(
       contactId,
       resolved.data.profileId,
     );
-    revalidateCustomerPaths(customerId);
+    revalidateCustomerPaths(customerId, resolved.data.companyId);
     return {success: true, data: undefined};
   } catch (error) {
     return {
@@ -403,7 +408,7 @@ export async function createCustomerContractAction(
       parsed.data,
       resolved.data.profileId,
     );
-    revalidateCustomerPaths(parsed.data.customerId);
+    revalidateCustomerPaths(parsed.data.customerId, resolved.data.companyId);
     return {success: true, data};
   } catch (error) {
     return {
@@ -439,7 +444,7 @@ export async function updateCustomerContractAction(
       parsed.data,
       resolved.data.profileId,
     );
-    revalidateCustomerPaths(customerId);
+    revalidateCustomerPaths(customerId, resolved.data.companyId);
     return {success: true, data};
   } catch (error) {
     return {
@@ -464,7 +469,7 @@ export async function deleteCustomerContractAction(
       contractId,
       resolved.data.profileId,
     );
-    revalidateCustomerPaths(customerId);
+    revalidateCustomerPaths(customerId, resolved.data.companyId);
     return {success: true, data: undefined};
   } catch (error) {
     return {
@@ -502,7 +507,7 @@ export async function registerCustomerFileAction(
       },
       resolved.data.profileId,
     );
-    revalidateCustomerPaths(parsed.data.customerId);
+    revalidateCustomerPaths(parsed.data.customerId, resolved.data.companyId);
     return {success: true, data};
   } catch (error) {
     return {
@@ -545,7 +550,7 @@ export async function replaceCustomerDocumentAction(
       },
       resolved.data.profileId,
     );
-    revalidateCustomerPaths(customerId);
+    revalidateCustomerPaths(customerId, resolved.data.companyId);
     return {success: true, data};
   } catch (error) {
     return {
@@ -570,7 +575,7 @@ export async function deleteCustomerDocumentAction(
       documentId,
       resolved.data.profileId,
     );
-    revalidateCustomerPaths(customerId);
+    revalidateCustomerPaths(customerId, resolved.data.companyId);
     return {success: true, data: undefined};
   } catch (error) {
     return {

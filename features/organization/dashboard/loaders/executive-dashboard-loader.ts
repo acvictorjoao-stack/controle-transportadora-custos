@@ -36,18 +36,25 @@ export interface ExecutiveDashboardKpis {
   accountsReceivable: number;
 }
 
-export interface ExecutiveDashboardData {
+export interface ExecutiveDashboardCoreData {
   period: OperationalDreFilters;
   kpis: ExecutiveDashboardKpis;
   topRoutes: TopRouteRankingItem[];
   topCustomers: TopCustomerRankingItem[];
-  alerts: OperationalAlertItem[];
-  routesWithoutLeadTime: CadastroQualityRouteItem[];
   dre: OperationalDreData;
   byRoute: {groups: OperationalDreRouteGroup[]; filters: OperationalDreFilters};
   financial: FinancialDashboardData;
   maintenance: MaintenanceStats;
 }
+
+export interface ExecutiveDashboardSecondaryData {
+  alerts: OperationalAlertItem[];
+  routesWithoutLeadTime: CadastroQualityRouteItem[];
+}
+
+export interface ExecutiveDashboardData
+  extends ExecutiveDashboardCoreData,
+    ExecutiveDashboardSecondaryData {}
 
 function buildKpis(
   dre: OperationalDreData,
@@ -66,55 +73,84 @@ function buildKpis(
 }
 
 /**
- * Composição executiva — reutiliza loaders DRE / Financial / Maintenance.
- * Rankings e alertas são calculados em memória.
+ * Caminho crítico: período atual + financeiro + manutenção (KPIs e rankings).
+ */
+export async function getExecutiveDashboardCore(
+  supabase: SupabaseClient,
+  companyId: string,
+  filters: OperationalDreFilters = currentMonthFilters(),
+): Promise<ExecutiveDashboardCoreData> {
+  const period = {
+    ...filters,
+    dateFrom: filters.dateFrom ?? currentMonthFilters().dateFrom,
+    dateTo: filters.dateTo ?? currentMonthFilters().dateTo,
+  };
+
+  const [bundle, financial, maintenance] = await Promise.all([
+    getOperationalDreBundle(supabase, companyId, period),
+    getFinancialDashboardData(supabase, companyId),
+    getMaintenanceStats(supabase, companyId),
+  ]);
+
+  return {
+    period,
+    kpis: buildKpis(bundle.dre, financial),
+    topRoutes: buildTopRoutes(bundle.byRoute.groups),
+    topCustomers: buildTopCustomers(bundle.byCustomer),
+    dre: bundle.dre,
+    byRoute: bundle.byRoute,
+    financial,
+    maintenance,
+  };
+}
+
+/**
+ * Dados secundários: período anterior (alertas comparativos) + qualidade de cadastro.
+ */
+export async function getExecutiveDashboardSecondary(
+  supabase: SupabaseClient,
+  companyId: string,
+  core: ExecutiveDashboardCoreData,
+): Promise<ExecutiveDashboardSecondaryData> {
+  const previous = previousPeriodFilters(core.period);
+
+  const [previousBundle, routesWithoutLeadTime] = await Promise.all([
+    getOperationalDreBundle(supabase, companyId, previous),
+    listRoutesWithoutLeadTime(supabase, companyId).catch(() => []),
+  ]);
+
+  const previousCustomers = buildTopCustomers(previousBundle.byCustomer);
+
+  const alerts = buildOperationalAlerts({
+    financial: core.financial,
+    maintenance: core.maintenance,
+    currentRoutes: core.byRoute.groups,
+    topCustomers: core.topCustomers,
+    previousCustomers,
+    routesWithoutLeadTimeCount: routesWithoutLeadTime.length,
+  });
+
+  return {
+    alerts,
+    routesWithoutLeadTime,
+  };
+}
+
+/**
+ * Composição executiva completa — reutiliza loaders DRE / Financial / Maintenance.
  */
 export async function getExecutiveDashboardData(
   supabase: SupabaseClient,
   companyId: string,
   filters: OperationalDreFilters = currentMonthFilters(),
 ): Promise<ExecutiveDashboardData> {
-  const period = {
-    ...filters,
-    dateFrom: filters.dateFrom ?? currentMonthFilters().dateFrom,
-    dateTo: filters.dateTo ?? currentMonthFilters().dateTo,
-  };
-  const previous = previousPeriodFilters(period);
-
-  const [bundle, previousBundle, financial, maintenance, routesWithoutLeadTime] =
-    await Promise.all([
-      getOperationalDreBundle(supabase, companyId, period),
-      getOperationalDreBundle(supabase, companyId, previous),
-      getFinancialDashboardData(supabase, companyId),
-      getMaintenanceStats(supabase, companyId),
-      listRoutesWithoutLeadTime(supabase, companyId).catch(() => []),
-    ]);
-
-  const topRoutes = buildTopRoutes(bundle.byRoute.groups);
-  const topCustomers = buildTopCustomers(bundle.byCustomer);
-  const previousCustomers = buildTopCustomers(previousBundle.byCustomer);
-
-  const alerts = buildOperationalAlerts({
-    financial,
-    maintenance,
-    currentRoutes: bundle.byRoute.groups,
-    topCustomers,
-    previousCustomers,
-    routesWithoutLeadTimeCount: routesWithoutLeadTime.length,
-  });
-
-  return {
-    period,
-    kpis: buildKpis(bundle.dre, financial),
-    topRoutes,
-    topCustomers,
-    alerts,
-    routesWithoutLeadTime,
-    dre: bundle.dre,
-    byRoute: bundle.byRoute,
-    financial,
-    maintenance,
-  };
+  const core = await getExecutiveDashboardCore(supabase, companyId, filters);
+  const secondary = await getExecutiveDashboardSecondary(
+    supabase,
+    companyId,
+    core,
+  );
+  return {...core, ...secondary};
 }
 
 export type {TopCustomerRankingItem, TopRouteRankingItem, OperationalAlertItem};

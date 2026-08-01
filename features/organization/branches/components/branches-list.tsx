@@ -4,6 +4,8 @@ import {Building2, Pencil, Plus, Star, Trash2} from 'lucide-react';
 import {useRouter} from 'next/navigation';
 import * as React from 'react';
 
+import {useSyncedListData} from '@/hooks/use-synced-list-data';
+
 import {RowActionsMenu, RowActionsMenuItem} from '@/components/common/row-actions-menu';
 import {DataTable} from '@/components/data-display/data-table';
 import {ListPagination} from '@/components/data-display/list-pagination';
@@ -21,6 +23,7 @@ import {formatTaxId} from '@/features/master/companies/utils/format';
 import {MSG} from '@/lib/feedback/messages';
 
 import {
+
   deleteBranchAction,
   setHeadquartersAction,
   toggleBranchStatusAction,
@@ -71,7 +74,7 @@ function BranchesList({
   const [actionLoading, setActionLoading] = React.useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = React.useState<string | null>(null);
 
-  const data = initialData;
+  const {data, setData, removeItem, patchItem, upsertItem} = useSyncedListData(initialData);
 
   React.useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -112,7 +115,7 @@ function BranchesList({
       toast.error(result.error ?? MSG.operationFailed);
     } else {
       toast.success(MSG.deletedFeminine('Filial'));
-      router.refresh();
+      removeItem(branch.id);
     }
     setActionLoading(null);
     setOpenMenuId(null);
@@ -134,7 +137,12 @@ function BranchesList({
           ? MSG.deactivatedFeminine('Filial')
           : MSG.activatedFeminine('Filial'),
       );
-      router.refresh();
+      if (result.data) upsertItem(result.data);
+      else {
+        patchItem(branch.id, {
+          status: branch.status === 'active' ? 'inactive' : 'active',
+        });
+      }
     }
     setActionLoading(null);
     setOpenMenuId(null);
@@ -149,7 +157,18 @@ function BranchesList({
       toast.error(result.error ?? MSG.operationFailed);
     } else {
       toast.success('Filial definida como matriz com sucesso.');
-      router.refresh();
+      if (result.data) {
+        setData((prev) => ({
+          ...prev,
+          items: prev.items.map((item) =>
+            item.id === branch.id
+              ? result.data!
+              : {...item, isHeadquarters: false},
+          ),
+        }));
+      } else {
+        router.refresh();
+      }
     }
     setActionLoading(null);
     setOpenMenuId(null);

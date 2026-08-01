@@ -66,6 +66,18 @@ export async function listBranchesForSelect(
   companyId: string,
   limit = 100,
 ): Promise<BranchSelectOption[]> {
+  const {getCachedBranchesForSelect} = await import(
+    '@/lib/cache/reference-data'
+  );
+  const cached = await getCachedBranchesForSelect(companyId, limit);
+  if (cached) {
+    return cached.map((row) => ({
+      id: row.id,
+      name: row.name,
+      code: row.code ?? '',
+    }));
+  }
+
   const {data, error} = await supabase
     .from('branches')
     .select('id, name, code')

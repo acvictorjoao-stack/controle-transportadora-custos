@@ -15,9 +15,15 @@ import {FuelComparison} from './fuel-comparison';
 import {FuelDashboardCards} from './fuel-dashboard-cards';
 import {FuelDashboardFilters} from './fuel-dashboard-filters';
 import {FuelExecutiveCards} from './fuel-executive-cards';
-import {FuelMonthlyChart} from './fuel-monthly-chart';
+import dynamic from 'next/dynamic';
+import {Skeleton} from '@/components/ui/skeleton';
 import {FuelVehicleRanking} from './fuel-vehicle-ranking';
 import {FuelVehicleTable} from './fuel-vehicle-table';
+
+const FuelMonthlyChart = dynamic(
+  () => import('./fuel-monthly-chart').then((m) => m.FuelMonthlyChart),
+  {loading: () => <Skeleton className="h-64 w-full rounded-xl" />},
+);
 
 export interface FuelConsumptionDashboardViewProps {
   data: FuelConsumptionDashboardData;

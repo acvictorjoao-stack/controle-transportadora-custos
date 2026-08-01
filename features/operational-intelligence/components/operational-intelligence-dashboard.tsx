@@ -16,13 +16,19 @@ import * as React from 'react';
 
 import type {OperationalIntelligenceData} from '../types';
 import {OperationalAlertsCard} from './operational-alerts-card';
-import {OperationalCharts} from './operational-charts';
+import dynamic from 'next/dynamic';
+import {Skeleton} from '@/components/ui/skeleton';
 import {OperationalDrillDown} from './operational-drill-down';
 import {OperationalHeatMap} from './operational-heat-map';
 import {OperationalKpiGrid} from './operational-kpi-grid';
 import {OperationalQuickLinks} from './operational-quick-links';
 import {OperationalRanking} from './operational-ranking';
 import {OperationalTimeline} from './operational-timeline';
+
+const OperationalCharts = dynamic(
+  () => import('./operational-charts').then((m) => m.OperationalCharts),
+  {loading: () => <Skeleton className="h-64 w-full rounded-xl" />},
+);
 
 export interface OperationalIntelligenceDashboardProps {
   data: OperationalIntelligenceData;

@@ -43,11 +43,21 @@ import {
   isFavorableDelta,
 } from '../utils/period-comparison';
 import {CustomerSideRankingCard} from './customer-side-ranking-card';
-import {DimensionBarChart} from './dimension-bar-chart';
 import type {PeriodChartPoint} from './revenue-cost-profit-chart';
 import {OperationalDreCustomerCosts} from './operational-dre-customer-costs';
 import {OperationalDreFiltersBar} from './operational-dre-filters';
-import {RevenueCostProfitChart} from './revenue-cost-profit-chart';
+import dynamic from 'next/dynamic';
+import {Skeleton} from '@/components/ui/skeleton';
+
+const DimensionBarChart = dynamic(
+  () => import('./dimension-bar-chart').then((m) => m.DimensionBarChart),
+  {loading: () => <Skeleton className="h-56 w-full rounded-xl" />},
+);
+const RevenueCostProfitChart = dynamic(
+  () =>
+    import('./revenue-cost-profit-chart').then((m) => m.RevenueCostProfitChart),
+  {loading: () => <Skeleton className="h-64 w-full rounded-xl" />},
+);
 
 export interface CustomerBarChartPoint {
   key: string;

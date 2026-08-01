@@ -18,6 +18,7 @@ import {useConfirm} from '@/contexts/feedback/confirm-context';
 import {useToast} from '@/contexts/feedback/toast-context';
 import {ROUTES} from '@/constants/routes/paths';
 import type {BranchSelectOption} from '@/features/organization/branches/types';
+import {useSyncedListData} from '@/hooks/use-synced-list-data';
 import {MSG} from '@/lib/feedback/messages';
 
 import {deleteCustomerAction, updateCustomerStatusAction} from '../actions';
@@ -61,7 +62,7 @@ function CustomersList({
   const [actionLoading, setActionLoading] = React.useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = React.useState<string | null>(null);
 
-  const data = initialData;
+  const {data, removeItem, patchItem} = useSyncedListData(initialData);
 
   React.useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -96,7 +97,7 @@ function CustomersList({
       toast.error(result.error ?? MSG.operationFailed);
     } else {
       toast.success(MSG.deleted('Cliente'));
-      router.refresh();
+      removeItem(customer.id);
     }
     setActionLoading(null);
     setOpenMenuId(null);
@@ -114,7 +115,7 @@ function CustomersList({
           ? MSG.activated('Cliente')
           : MSG.deactivated('Cliente'),
       );
-      router.refresh();
+      patchItem(customer.id, {customerStatus});
     }
     setActionLoading(null);
     setOpenMenuId(null);

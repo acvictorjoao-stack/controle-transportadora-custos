@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import * as React from 'react';
 
+import {useNavigationPending} from '@/contexts/navigation/use-navigation-pending';
 import {useSidebar} from '@/contexts/shell/use-sidebar';
 import {isNavItemActive, splitNavHref} from '@/lib/navigation/breadcrumb';
 import type {NavItem} from '@/types/global/navigation';
@@ -19,7 +20,9 @@ export interface SidebarItemProps {
 
 function SidebarItem({item, pathname, hash = '', depth = 0}: SidebarItemProps) {
   const {collapsed, setMobileOpen} = useSidebar();
-  const isActive = isNavItemActive(pathname, item.href, hash);
+  const {isPending, startNavigation} = useNavigationPending();
+  const routePending = isPending(item.href);
+  const isActive = isNavItemActive(pathname, item.href, hash) || routePending;
   const Icon = item.icon;
   const badgeTone =
     typeof item.badge === 'number' ? ('count' as const) : ('label' as const);
@@ -60,18 +63,21 @@ function SidebarItem({item, pathname, hash = '', depth = 0}: SidebarItemProps) {
       setMobileOpen(false);
 
       const {path, hash: targetHash} = splitNavHref(item.href);
-      if (!targetHash || path !== pathname) return;
-
-      event.preventDefault();
-      const nextHash = `#${targetHash}`;
-      if (window.location.hash !== nextHash) {
-        window.history.pushState(null, '', `${path}${nextHash}`);
+      if (targetHash && path === pathname) {
+        event.preventDefault();
+        const nextHash = `#${targetHash}`;
+        if (window.location.hash !== nextHash) {
+          window.history.pushState(null, '', `${path}${nextHash}`);
+        }
+        window.dispatchEvent(new Event('hashchange'));
+        const el = document.getElementById(targetHash);
+        el?.scrollIntoView({behavior: 'smooth', block: 'start'});
+        return;
       }
-      window.dispatchEvent(new Event('hashchange'));
-      const el = document.getElementById(targetHash);
-      el?.scrollIntoView({behavior: 'smooth', block: 'start'});
+
+      startNavigation(item.href);
     },
-    [item.href, pathname, setMobileOpen],
+    [item.href, pathname, setMobileOpen, startNavigation],
   );
 
   const activeBar = isActive ? (
@@ -101,9 +107,12 @@ function SidebarItem({item, pathname, hash = '', depth = 0}: SidebarItemProps) {
     <Link
       data-slot="sidebar-item"
       data-active={isActive || undefined}
+      data-pending={routePending || undefined}
       href={item.href}
+      prefetch
       title={collapsed ? item.title : undefined}
       aria-current={isActive ? 'page' : undefined}
+      aria-busy={routePending || undefined}
       className={className}
       onClick={handleClick}
     >

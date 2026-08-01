@@ -23,10 +23,13 @@ import {
 import type {Branch} from '../types';
 import {createBranchSchema, updateBranchSchema} from '../validation';
 
-function revalidateBranchPaths() {
+function revalidateBranchPaths(companyId: string) {
   revalidatePath(ROUTES.filiais);
   revalidatePath(ROUTES.dashboard);
   revalidatePath(ROUTES.empresas);
+  void import('@/lib/cache/reference-data').then(({revalidateBranchesSelect}) => {
+    revalidateBranchesSelect(companyId);
+  });
 }
 
 async function resolveBranchAccess(
@@ -75,7 +78,7 @@ export async function createBranchAction(
       parsed.data,
       resolved.data.profileId,
     );
-    revalidateBranchPaths();
+    revalidateBranchPaths(resolved.data.companyId);
     return {success: true, data};
   } catch (error) {
     return {
@@ -110,7 +113,7 @@ export async function updateBranchAction(
       parsed.data,
       resolved.data.profileId,
     );
-    revalidateBranchPaths();
+    revalidateBranchPaths(resolved.data.companyId);
     return {success: true, data};
   } catch (error) {
     return {
@@ -134,7 +137,7 @@ export async function deleteBranchAction(
       branchId,
       resolved.data.profileId,
     );
-    revalidateBranchPaths();
+    revalidateBranchPaths(resolved.data.companyId);
     return {success: true, data: undefined};
   } catch (error) {
     return {
@@ -160,7 +163,7 @@ export async function toggleBranchStatusAction(
       active ? 'active' : 'inactive',
       resolved.data.profileId,
     );
-    revalidateBranchPaths();
+    revalidateBranchPaths(resolved.data.companyId);
     return {success: true, data};
   } catch (error) {
     return {
@@ -184,7 +187,7 @@ export async function setHeadquartersAction(
       branchId,
       resolved.data.profileId,
     );
-    revalidateBranchPaths();
+    revalidateBranchPaths(resolved.data.companyId);
     return {success: true, data};
   } catch (error) {
     return {

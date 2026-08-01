@@ -1,6 +1,8 @@
 'use client';
 
 import {ChevronDown} from 'lucide-react';
+import {useRouter} from 'next/navigation';
+import * as React from 'react';
 
 import {SIDEBAR_ACCORDION_DURATION_MS} from '@/constants/app/sidebar';
 import {useSidebar} from '@/contexts/shell/use-sidebar';
@@ -29,9 +31,22 @@ function SidebarGroup({
   hash = '',
 }: SidebarGroupProps) {
   const {collapsed} = useSidebar();
+  const router = useRouter();
   const GroupIcon = group.icon;
   const panelId = `sidebar-group-panel-${group.id}`;
   const headerId = `sidebar-group-header-${group.id}`;
+  const wasOpenRef = React.useRef(open);
+
+  React.useEffect(() => {
+    if (open && !wasOpenRef.current) {
+      for (const item of items) {
+        if (!item.disabled && item.href) {
+          router.prefetch(item.href);
+        }
+      }
+    }
+    wasOpenRef.current = open;
+  }, [open, items, router]);
 
   if (collapsed) {
     return (

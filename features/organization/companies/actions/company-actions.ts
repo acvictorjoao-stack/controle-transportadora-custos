@@ -27,11 +27,16 @@ import {
   updateCompanyProfileSchema,
 } from '../validation';
 
-function revalidateOrganizationPaths() {
+function revalidateOrganizationPaths(companyId?: string) {
   revalidatePath(ROUTES.dashboard);
   revalidatePath(ROUTES.empresas);
   revalidatePath(ROUTES.filiais);
   revalidatePath(ROUTES.configuracoes);
+  if (companyId) {
+    void import('@/lib/cache/reference-data').then(({revalidateCompanyProfile}) => {
+      revalidateCompanyProfile(companyId);
+    });
+  }
 }
 
 async function resolveWritableCompany(): Promise<
@@ -92,7 +97,7 @@ export async function updateCompanyProfileAction(
       resolved.data.companyId,
       parsed.data,
     );
-    revalidateOrganizationPaths();
+    revalidateOrganizationPaths(resolved.data.companyId);
     return {success: true, data};
   } catch (error) {
     return {
@@ -125,7 +130,7 @@ export async function updateCompanySettingsAction(
       parsed.data,
       resolved.data.settings,
     );
-    revalidateOrganizationPaths();
+    revalidateOrganizationPaths(resolved.data.companyId);
     return {success: true, data};
   } catch (error) {
     return {
@@ -157,7 +162,7 @@ export async function updateCompanyLogoAction(
       resolved.data.companyId,
       parsed.data.logoUrl,
     );
-    revalidateOrganizationPaths();
+    revalidateOrganizationPaths(resolved.data.companyId);
     return {success: true, data};
   } catch (error) {
     return {
@@ -178,7 +183,7 @@ export async function completeOnboardingAction(): Promise<ActionResult<CompanyPr
       resolved.data.companyId,
       resolved.data.settings,
     );
-    revalidateOrganizationPaths();
+    revalidateOrganizationPaths(resolved.data.companyId);
     return {success: true, data};
   } catch (error) {
     return {

@@ -33,7 +33,7 @@ type SupplierPermission =
   | 'suppliers:update'
   | 'suppliers:delete';
 
-function revalidateSupplierPaths(supplierId?: string) {
+function revalidateSupplierPaths(supplierId?: string, companyId?: string) {
   revalidatePath(ROUTES.fornecedores);
   revalidatePath(ROUTES.manutencoes);
   revalidatePath(ROUTES.abastecimentos);
@@ -42,6 +42,11 @@ function revalidateSupplierPaths(supplierId?: string) {
   revalidatePath(ROUTES.financeiro);
   if (supplierId) {
     revalidatePath(ROUTES.fornecedorDetail(supplierId));
+  }
+  if (companyId) {
+    void import('@/lib/cache/reference-data').then(({revalidateSuppliersSelect}) => {
+      revalidateSuppliersSelect(companyId);
+    });
   }
 }
 
@@ -91,7 +96,7 @@ export async function createSupplierAction(
       parsed.data,
       resolved.data.profileId,
     );
-    revalidateSupplierPaths();
+    revalidateSupplierPaths(undefined, resolved.data.companyId);
     return {success: true, data};
   } catch (error) {
     return {
@@ -136,7 +141,7 @@ export async function quickCreateSupplierAction(
       },
       resolved.data.profileId,
     );
-    revalidateSupplierPaths();
+    revalidateSupplierPaths(undefined, resolved.data.companyId);
     return {success: true, data};
   } catch (error) {
     return {
@@ -171,7 +176,7 @@ export async function updateSupplierAction(
       parsed.data,
       resolved.data.profileId,
     );
-    revalidateSupplierPaths(supplierId);
+    revalidateSupplierPaths(supplierId, resolved.data.companyId);
     return {success: true, data};
   } catch (error) {
     return {
@@ -202,7 +207,7 @@ export async function updateSupplierActiveAction(
       parsed.data.active,
       resolved.data.profileId,
     );
-    revalidateSupplierPaths(supplierId);
+    revalidateSupplierPaths(supplierId, resolved.data.companyId);
     return {success: true, data};
   } catch (error) {
     return {
@@ -226,7 +231,7 @@ export async function deleteSupplierAction(
       supplierId,
       resolved.data.profileId,
     );
-    revalidateSupplierPaths(supplierId);
+    revalidateSupplierPaths(supplierId, resolved.data.companyId);
     return {success: true, data: undefined};
   } catch (error) {
     return {

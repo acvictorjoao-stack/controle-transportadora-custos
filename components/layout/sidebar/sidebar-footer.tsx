@@ -111,6 +111,7 @@ function WorkspaceMenu({
         </button>
         <Link
           href={ROUTES.configuracoes}
+          prefetch
           role="menuitem"
           className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground"
           onClick={onClose}

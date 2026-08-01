@@ -48,5 +48,9 @@ export function useModuleSearch(limit = 8) {
     router.push(href);
   };
 
-  return {query, setQuery, results, openModule, modules};
+  const prefetchModule = (href: string) => {
+    router.prefetch(href);
+  };
+
+  return {query, setQuery, results, openModule, prefetchModule, modules};
 }

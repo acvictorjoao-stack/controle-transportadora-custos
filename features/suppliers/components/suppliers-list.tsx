@@ -5,6 +5,8 @@ import Link from 'next/link';
 import {useRouter} from 'next/navigation';
 import * as React from 'react';
 
+import {useSyncedListData} from '@/hooks/use-synced-list-data';
+
 import {RowActionsMenu, RowActionsMenuItem} from '@/components/common/row-actions-menu';
 import {DataTable} from '@/components/data-display/data-table';
 import {ListPagination} from '@/components/data-display/list-pagination';
@@ -20,6 +22,7 @@ import {ROUTES} from '@/constants/routes/paths';
 import {MSG} from '@/lib/feedback/messages';
 
 import {
+
   deleteSupplierAction,
   updateSupplierActiveAction,
 } from '../actions';
@@ -55,7 +58,7 @@ function SuppliersList({
   const [actionLoading, setActionLoading] = React.useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = React.useState<string | null>(null);
 
-  const data = initialData;
+  const {data, removeItem, patchItem, upsertItem} = useSyncedListData(initialData);
 
   React.useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -112,7 +115,7 @@ function SuppliersList({
       setActionError(result.error ?? null);
     } else {
       toast.success(MSG.deleted('Fornecedor'));
-      router.refresh();
+      removeItem(supplier.id);
     }
     setActionLoading(null);
     setOpenMenuId(null);
@@ -132,7 +135,7 @@ function SuppliersList({
           ? MSG.deactivated('Fornecedor')
           : MSG.activated('Fornecedor'),
       );
-      router.refresh();
+      patchItem(supplier.id, {active: !supplier.active});
     }
     setActionLoading(null);
     setOpenMenuId(null);

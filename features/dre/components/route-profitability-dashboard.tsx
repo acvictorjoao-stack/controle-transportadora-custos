@@ -37,7 +37,14 @@ import type {PeriodDelta} from '../utils/period-comparison';
 import type {PeriodChartPoint} from './revenue-cost-profit-chart';
 import {OperationalDreFiltersBar} from './operational-dre-filters';
 import {OperationalDreRouteCosts} from './operational-dre-route-costs';
-import {RevenueCostProfitChart} from './revenue-cost-profit-chart';
+import dynamic from 'next/dynamic';
+import {Skeleton} from '@/components/ui/skeleton';
+
+const RevenueCostProfitChart = dynamic(
+  () =>
+    import('./revenue-cost-profit-chart').then((m) => m.RevenueCostProfitChart),
+  {loading: () => <Skeleton className="h-64 w-full rounded-xl" />},
+);
 
 export interface RouteProfitabilityDashboardProps {
   dre: OperationalDreData;

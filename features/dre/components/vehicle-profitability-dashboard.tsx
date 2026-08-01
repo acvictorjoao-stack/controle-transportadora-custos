@@ -33,12 +33,22 @@ import type {
   OperationalDreVehicleGroup,
 } from '../types';
 import type {PeriodDelta} from '../utils/period-comparison';
-import {DimensionBarChart} from './dimension-bar-chart';
 import {OperationalDreFiltersBar} from './operational-dre-filters';
 import {OperationalDreVehicleCosts} from './operational-dre-vehicle-costs';
 import type {PeriodChartPoint} from './revenue-cost-profit-chart';
-import {RevenueCostProfitChart} from './revenue-cost-profit-chart';
 import {VehicleHighlightCard} from './vehicle-highlight-card';
+import dynamic from 'next/dynamic';
+import {Skeleton} from '@/components/ui/skeleton';
+
+const DimensionBarChart = dynamic(
+  () => import('./dimension-bar-chart').then((m) => m.DimensionBarChart),
+  {loading: () => <Skeleton className="h-56 w-full rounded-xl" />},
+);
+const RevenueCostProfitChart = dynamic(
+  () =>
+    import('./revenue-cost-profit-chart').then((m) => m.RevenueCostProfitChart),
+  {loading: () => <Skeleton className="h-64 w-full rounded-xl" />},
+);
 
 export interface VehicleBarChartPoint {
   key: string;

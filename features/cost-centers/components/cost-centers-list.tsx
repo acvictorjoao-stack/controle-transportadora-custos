@@ -4,6 +4,8 @@ import {Pencil, Plus, Trash2} from 'lucide-react';
 import {useRouter} from 'next/navigation';
 import * as React from 'react';
 
+import {useSyncedListData} from '@/hooks/use-synced-list-data';
+
 import {RowActionsMenu, RowActionsMenuItem} from '@/components/common/row-actions-menu';
 import {DataTable} from '@/components/data-display/data-table';
 import {ListPagination} from '@/components/data-display/list-pagination';
@@ -19,6 +21,7 @@ import {ROUTES} from '@/constants/routes/paths';
 import {MSG} from '@/lib/feedback/messages';
 
 import {
+
   deleteCostCenterAction,
   toggleCostCenterStatusAction,
 } from '../actions';
@@ -68,7 +71,7 @@ function CostCentersList({
   const [actionLoading, setActionLoading] = React.useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = React.useState<string | null>(null);
 
-  const data = initialData;
+  const {data, removeItem, patchItem, upsertItem} = useSyncedListData(initialData);
 
   React.useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -109,7 +112,7 @@ function CostCentersList({
       toast.error(result.error ?? MSG.operationFailed);
     } else {
       toast.success(MSG.deleted('Centro de custo'));
-      router.refresh();
+      removeItem(center.id);
     }
     setActionLoading(null);
     setOpenMenuId(null);
@@ -131,7 +134,12 @@ function CostCentersList({
           ? MSG.deactivated('Centro de custo')
           : MSG.activated('Centro de custo'),
       );
-      router.refresh();
+      if (result.data) upsertItem(result.data);
+      else {
+        patchItem(center.id, {
+          status: center.status === 'active' ? 'inactive' : 'active',
+        });
+      }
     }
     setActionLoading(null);
     setOpenMenuId(null);

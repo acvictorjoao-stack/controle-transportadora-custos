@@ -104,6 +104,12 @@ export async function listCostCentersForSelect(
 ): Promise<CostCenterSelectOption[]> {
   await ensureCostCenterDefaults(supabase, companyId);
 
+  const {getCachedCostCentersForSelect} = await import(
+    '@/lib/cache/reference-data'
+  );
+  const cached = await getCachedCostCentersForSelect(companyId, limit);
+  if (cached) return cached;
+
   const {data, error} = await supabase
     .from('cost_centers')
     .select('id, code, name, status')

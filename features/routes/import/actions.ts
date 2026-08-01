@@ -140,8 +140,8 @@ export async function downloadRouteImportTemplateAction(): Promise<
   if (!resolved.success) return resolved;
 
   try {
-    const workbook = buildRouteImportTemplateWorkbook();
-    const buffer = workbookToArrayBuffer(workbook);
+    const workbook = await buildRouteImportTemplateWorkbook();
+    const buffer = await workbookToArrayBuffer(workbook);
     const base64 = Buffer.from(buffer).toString('base64');
     return {
       success: true,
@@ -176,7 +176,7 @@ export async function previewRouteImportAction(
 
   try {
     const buffer = await file.arrayBuffer();
-    const rawRows = parseRouteImportFile(buffer, file.name);
+    const rawRows = await parseRouteImportFile(buffer, file.name);
     const maps = await loadLookupMaps(resolved.data.companyId);
     const preview = validateRouteImportRows(rawRows, maps);
     return {

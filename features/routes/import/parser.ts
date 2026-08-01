@@ -1,6 +1,5 @@
-import * as XLSX from 'xlsx';
-
 import {IMPORT_MAX_FILE_BYTES, cellToString} from '@/features/import';
+import type {WorkBook} from 'xlsx';
 
 import {ROUTE_IMPORT_HEADERS, type RouteImportRawRow} from './types';
 
@@ -43,7 +42,8 @@ function resolveHeader(value: unknown): (typeof ROUTE_IMPORT_HEADERS)[number] | 
   return HEADER_ALIASES[normalizeHeader(raw)] ?? null;
 }
 
-export function buildRouteImportTemplateWorkbook(): XLSX.WorkBook {
+export async function buildRouteImportTemplateWorkbook(): Promise<WorkBook> {
+  const XLSX = await import('xlsx');
   const sheet = XLSX.utils.aoa_to_sheet([
     [...ROUTE_IMPORT_HEADERS],
     [
@@ -65,12 +65,18 @@ export function buildRouteImportTemplateWorkbook(): XLSX.WorkBook {
   return workbook;
 }
 
-export function workbookToArrayBuffer(workbook: XLSX.WorkBook): ArrayBuffer {
+export async function workbookToArrayBuffer(
+  workbook: WorkBook,
+): Promise<ArrayBuffer> {
+  const XLSX = await import('xlsx');
   const buffer = XLSX.write(workbook, {bookType: 'xlsx', type: 'array'});
   return buffer as ArrayBuffer;
 }
 
-export function parseRouteImportFile(buffer: ArrayBuffer, fileName: string): RouteImportRawRow[] {
+export async function parseRouteImportFile(
+  buffer: ArrayBuffer,
+  fileName: string,
+): Promise<RouteImportRawRow[]> {
   if (buffer.byteLength > IMPORT_MAX_FILE_BYTES) {
     throw new Error('Arquivo excede o tamanho máximo de 20 MB.');
   }
@@ -80,6 +86,7 @@ export function parseRouteImportFile(buffer: ArrayBuffer, fileName: string): Rou
     throw new Error('Formato inválido. Envie um arquivo .xlsx ou .xls.');
   }
 
+  const XLSX = await import('xlsx');
   const workbook = XLSX.read(buffer, {type: 'array'});
   const sheetName = workbook.SheetNames[0];
   if (!sheetName) {
