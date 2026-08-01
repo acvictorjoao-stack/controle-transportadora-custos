@@ -334,19 +334,50 @@ export async function updatePortalUserRoleAction(
 export async function resetPortalUserPasswordAction(
   id: string,
 ): Promise<ActionResult<PortalUserCredentials>> {
+  // TEMP — diagnóstico reset de senha (Master > Usuários). Remover após identificar a causa.
+  console.info('[RESET_PASSWORD_DEBUG]', {
+    stage: 'action_start',
+    at: new Date().toISOString(),
+    portalUserId: id,
+  });
+
   const denied = await assertOwner();
-  if (denied) return denied;
+  if (denied) {
+    console.info('[RESET_PASSWORD_DEBUG]', {
+      stage: 'action_denied',
+      error: denied.error,
+    });
+    return denied;
+  }
 
   try {
     const supabase = await createClient();
     const existing = await getPortalUserById(supabase, id);
 
     if (!existing) {
+      console.info('[RESET_PASSWORD_DEBUG]', {
+        stage: 'user_not_found',
+        portalUserId: id,
+      });
       return {success: false, error: 'Usuário não encontrado.'};
     }
 
+    console.info('[RESET_PASSWORD_DEBUG]', {
+      stage: 'user_loaded',
+      portalUserId: id,
+      profileId: existing.profileId,
+      email: existing.email,
+      method: 'resetAdminPassword → admin.auth.admin.updateUserById',
+    });
+
     const temporaryPassword = generateTemporaryPassword();
     await resetAdminPassword(existing.profileId, temporaryPassword);
+
+    console.info('[RESET_PASSWORD_DEBUG]', {
+      stage: 'resetAdminPassword_ok',
+      profileId: existing.profileId,
+      email: existing.email,
+    });
 
     const actor = await getActorContext();
     await logPortalAudit({
@@ -358,11 +389,24 @@ export async function resetPortalUserPasswordAction(
       targetLabel: existing.email,
     });
 
+    console.info('[RESET_PASSWORD_DEBUG]', {
+      stage: 'action_success',
+      email: existing.email,
+    });
+
     return {
       success: true,
       data: {email: existing.email, temporaryPassword},
     };
   } catch (error) {
+    console.error('[RESET_PASSWORD_DEBUG]', {
+      stage: 'action_catch',
+      at: new Date().toISOString(),
+      errorName: error instanceof Error ? error.name : typeof error,
+      errorMessage: error instanceof Error ? error.message : String(error),
+      errorStack: error instanceof Error ? error.stack : undefined,
+      raw: error,
+    });
     return {
       success: false,
       error:

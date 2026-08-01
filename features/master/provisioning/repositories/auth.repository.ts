@@ -144,11 +144,67 @@ export async function deleteAuthUser(userId: string): Promise<void> {
 }
 
 export async function resetAdminPassword(userId: string, password: string): Promise<void> {
-  const admin = createAdminClient();
-  const {error} = await admin.auth.admin.updateUserById(userId, {password});
+  // TEMP — diagnóstico reset de senha. Remover após identificar a causa. Não loga a senha.
+  console.info('[RESET_PASSWORD_DEBUG]', {
+    stage: 'resetAdminPassword_start',
+    at: new Date().toISOString(),
+    userId,
+    method: 'admin.auth.admin.updateUserById',
+    passwordLength: password.length,
+  });
 
-  if (error) {
-    throw new Error(error.message);
+  let admin: ReturnType<typeof createAdminClient>;
+  try {
+    admin = createAdminClient();
+    console.info('[RESET_PASSWORD_DEBUG]', {
+      stage: 'createAdminClient_ok',
+      userId,
+    });
+  } catch (createError) {
+    console.error('[RESET_PASSWORD_DEBUG]', {
+      stage: 'createAdminClient_threw',
+      userId,
+      errorName: createError instanceof Error ? createError.name : typeof createError,
+      errorMessage:
+        createError instanceof Error ? createError.message : String(createError),
+      errorStack: createError instanceof Error ? createError.stack : undefined,
+    });
+    throw createError;
+  }
+
+  const response = await admin.auth.admin.updateUserById(userId, {password});
+
+  console.info('[RESET_PASSWORD_DEBUG]', {
+    stage: 'updateUserById_response',
+    userId,
+    method: 'admin.auth.admin.updateUserById',
+    hasUser: Boolean(response.data?.user),
+    userIdReturned: response.data?.user?.id ?? null,
+    userEmail: response.data?.user?.email ?? null,
+    error: response.error
+      ? {
+          message: response.error.message,
+          status: response.error.status ?? null,
+          code: (response.error as {code?: string}).code ?? null,
+          name: response.error.name,
+          full: response.error,
+        }
+      : null,
+    rawResponse: {
+      data: response.data,
+      error: response.error,
+    },
+  });
+
+  if (response.error) {
+    console.error('[RESET_PASSWORD_DEBUG]', {
+      stage: 'updateUserById_error_throw',
+      userId,
+      errorMessage: response.error.message,
+      errorStatus: response.error.status ?? null,
+      errorCode: (response.error as {code?: string}).code ?? null,
+    });
+    throw new Error(response.error.message);
   }
 }
 
