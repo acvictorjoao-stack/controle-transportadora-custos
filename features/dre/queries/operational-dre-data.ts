@@ -28,11 +28,16 @@ const DRE_TRIP_DETAIL_COLUMNS = `
   routes:route_id (id, name, origin, destination)
 `;
 
+/**
+ * Sem embed em `cost_centers`: o join PostgREST falha com
+ * "permission denied for table cost_centers" quando o papel não tem SELECT
+ * na tabela relacionada (GRANT/RLS). Nomes/códigos são hidratados depois
+ * via query user-scoped que respeita RLS (`financeiro:read`).
+ */
 const DRE_EXPENSE_COLUMNS = `
   id, amount, branch_id, customer_id, trip_id, vehicle_id, source_module,
   fuel_record_id, maintenance_record_id, tire_id, cost_center_id,
-  financial_categories:category_id (slug),
-  cost_centers:cost_center_id (id, code, name)
+  financial_categories:category_id (slug)
 `;
 
 function asNumber(value: unknown): number {
@@ -98,10 +103,12 @@ type ExpenseRawRow = {
     | {slug: string | null}
     | {slug: string | null}[]
     | null;
-  cost_centers:
-    | {id: string; code: string; name: string}
-    | {id: string; code: string; name: string}[]
-    | null;
+};
+
+type CostCenterLookup = {
+  id: string;
+  code: string;
+  name: string;
 };
 
 function mapCategorySlug(
@@ -112,16 +119,13 @@ function mapCategorySlug(
   return value.slug ?? null;
 }
 
-function mapCostCenter(
-  value: ExpenseRawRow['cost_centers'],
-): {id: string; code: string; name: string} | null {
-  if (!value) return null;
-  if (Array.isArray(value)) return value[0] ?? null;
-  return value;
-}
-
-function mapExpenseRow(row: ExpenseRawRow): OperationalDreExpenseRow {
-  const costCenter = mapCostCenter(row.cost_centers);
+function mapExpenseRow(
+  row: ExpenseRawRow,
+  costCentersById: Map<string, CostCenterLookup> = new Map(),
+): OperationalDreExpenseRow {
+  const costCenter = row.cost_center_id
+    ? costCentersById.get(row.cost_center_id)
+    : undefined;
   return {
     id: row.id,
     amount: asNumber(row.amount),
@@ -134,10 +138,57 @@ function mapExpenseRow(row: ExpenseRawRow): OperationalDreExpenseRow {
     fuelRecordId: row.fuel_record_id,
     maintenanceRecordId: row.maintenance_record_id,
     tireId: row.tire_id,
-    costCenterId: row.cost_center_id ?? costCenter?.id ?? null,
+    costCenterId: row.cost_center_id,
     costCenterCode: costCenter?.code ?? null,
     costCenterName: costCenter?.name ?? null,
   };
+}
+
+/**
+ * Hidrata código/nome dos centros via SELECT user-scoped (RLS).
+ * Falha silenciosa: despesas seguem com id; labels vazios se sem permissão.
+ */
+async function loadCostCentersById(
+  supabase: SupabaseClient,
+  companyId: string,
+  costCenterIds: string[],
+): Promise<Map<string, CostCenterLookup>> {
+  const uniqueIds = Array.from(new Set(costCenterIds.filter(Boolean)));
+  const byId = new Map<string, CostCenterLookup>();
+  if (uniqueIds.length === 0) return byId;
+
+  const {data, error} = await supabase
+    .from('cost_centers')
+    .select('id, code, name')
+    .eq('company_id', companyId)
+    .in('id', uniqueIds)
+    .is('deleted_at', null);
+
+  if (error || !data) return byId;
+
+  for (const row of data) {
+    byId.set(row.id as string, {
+      id: row.id as string,
+      code: row.code as string,
+      name: row.name as string,
+    });
+  }
+  return byId;
+}
+
+async function mapExpenseRowsWithCostCenters(
+  supabase: SupabaseClient,
+  companyId: string,
+  rows: ExpenseRawRow[],
+): Promise<OperationalDreExpenseRow[]> {
+  const costCentersById = await loadCostCentersById(
+    supabase,
+    companyId,
+    rows
+      .map((row) => row.cost_center_id)
+      .filter((id): id is string => Boolean(id)),
+  );
+  return rows.map((row) => mapExpenseRow(row, costCentersById));
 }
 
 export interface FetchOperationalDreTripsOptions {
@@ -429,7 +480,11 @@ export async function fetchOperationalDreExpenses(
     throw new Error(mapDatabaseError(error));
   }
 
-  return ((data ?? []) as unknown as ExpenseRawRow[]).map(mapExpenseRow);
+  return mapExpenseRowsWithCostCenters(
+    supabase,
+    companyId,
+    (data ?? []) as unknown as ExpenseRawRow[],
+  );
 }
 
 /**
@@ -495,5 +550,9 @@ export async function fetchOperationalDreUnlinkedVehicleExpenses(
   const {data, error} = await query;
   if (error) throw new Error(mapDatabaseError(error));
 
-  return ((data ?? []) as unknown as ExpenseRawRow[]).map(mapExpenseRow);
+  return mapExpenseRowsWithCostCenters(
+    supabase,
+    companyId,
+    (data ?? []) as unknown as ExpenseRawRow[],
+  );
 }

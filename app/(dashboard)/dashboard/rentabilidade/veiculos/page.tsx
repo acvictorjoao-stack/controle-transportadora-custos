@@ -23,6 +23,7 @@ import type {
   VehicleRankingRow,
 } from '@/features/organization/dashboard/utils/rankings';
 import {
+  assertCompanyPermission,
   getCurrentCompanyId,
   getServerSupabaseClient,
 } from '@/lib/auth/company';
@@ -63,6 +64,15 @@ export default async function VehicleProfitabilityPage({
 
   if (!companyId) {
     redirect(ROUTES.login);
+  }
+
+  const canRead = await assertCompanyPermission(
+    supabase,
+    companyId,
+    'financeiro:read',
+  );
+  if (!canRead) {
+    redirect(ROUTES.dashboard);
   }
 
   const params = await searchParams;

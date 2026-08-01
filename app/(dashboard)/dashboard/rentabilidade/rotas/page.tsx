@@ -19,6 +19,7 @@ import type {PeriodChartPoint} from '@/features/dre/components/revenue-cost-prof
 import type {PeriodDelta} from '@/features/dre/utils/period-comparison';
 import type {RouteRankingRow} from '@/features/organization/dashboard/utils/rankings';
 import {
+  assertCompanyPermission,
   getCurrentCompanyId,
   getServerSupabaseClient,
 } from '@/lib/auth/company';
@@ -47,6 +48,16 @@ export default async function RouteProfitabilityPage({
 
   if (!companyId) {
     redirect(ROUTES.login);
+  }
+
+  // Despesas/centros de custo exigem financeiro:read (RLS em financial_entries / cost_centers).
+  const canRead = await assertCompanyPermission(
+    supabase,
+    companyId,
+    'financeiro:read',
+  );
+  if (!canRead) {
+    redirect(ROUTES.dashboard);
   }
 
   const params = await searchParams;

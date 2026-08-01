@@ -104,12 +104,7 @@ export async function listCostCentersForSelect(
 ): Promise<CostCenterSelectOption[]> {
   await ensureCostCenterDefaults(supabase, companyId);
 
-  const {getCachedCostCentersForSelect} = await import(
-    '@/lib/cache/reference-data'
-  );
-  const cached = await getCachedCostCentersForSelect(companyId, limit);
-  if (cached) return cached;
-
+  // User-scoped only — RLS exige financeiro:read (não usar admin/service_role).
   const {data, error} = await supabase
     .from('cost_centers')
     .select('id, code, name, status')

@@ -20,6 +20,7 @@ import {
   compareAggregatePeriods,
 } from '@/features/dre/utils/period-comparison';
 import type {PeriodDelta} from '@/features/dre/utils/period-comparison';
+import {EMPTY_OPERATIONAL_DRE_FILTER_OPTIONS} from '@/features/dre/utils/empty-state';
 import {
   buildMonthlyPeriodBuckets,
   currentMonthFilters,
@@ -73,12 +74,12 @@ export async function getCustomerProfitabilityDashboardData(
   const previous = previousPeriodFilters(period);
   const buckets = buildMonthlyPeriodBuckets(period, 6);
 
-  const [bundle, previousByCustomer, previousDre, filterOptions, chartSeries] =
+  const [bundle, previousByCustomer, previousDre, filterOptionsResult, chartSeries] =
     await Promise.all([
       getOperationalDreBundle(supabase, companyId, period),
       getOperationalDreByCustomer(supabase, companyId, previous),
       getOperationalDRE(supabase, companyId, previous),
-      getOperationalDreFilterOptions(supabase, companyId),
+      getOperationalDreFilterOptions(supabase, companyId).catch(() => null),
       Promise.all(
         buckets.map(async (bucket) => {
           const dre = await getOperationalDRE(supabase, companyId, bucket.filters);
@@ -129,7 +130,7 @@ export async function getCustomerProfitabilityDashboardData(
     byCustomer,
     byRouteGroups: bundle.byRoute.groups,
     byVehicleGroups: bundle.byVehicle,
-    filterOptions,
+    filterOptions: filterOptionsResult ?? EMPTY_OPERATIONAL_DRE_FILTER_OPTIONS,
     chartPoints: chartSeries,
     profitByCustomerPoints,
     topCustomersChartPoints,

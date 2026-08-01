@@ -97,37 +97,42 @@ export const getCachedCostCentersForSelect = cache(
     const admin = getAdminOrNull();
     if (!admin) return null;
 
-    return unstable_cache(
-      async () => {
-        const {data, error} = await admin
-          .from('cost_centers')
-          .select('id, code, name, status')
-          .eq('company_id', companyId)
-          .eq('status', 'active')
-          .is('deleted_at', null)
-          .order('is_system', {ascending: false})
-          .order('code', {ascending: true})
-          .limit(limit);
+    try {
+      return await unstable_cache(
+        async () => {
+          const {data, error} = await admin
+            .from('cost_centers')
+            .select('id, code, name, status')
+            .eq('company_id', companyId)
+            .eq('status', 'active')
+            .is('deleted_at', null)
+            .order('is_system', {ascending: false})
+            .order('code', {ascending: true})
+            .limit(limit);
 
-        if (error) throw new Error(error.message);
-        const rows = (data ?? []) as Array<{
-          id: string;
-          code: string;
-          name: string;
-          status: string;
-        }>;
-        return rows.map((row) => ({
-          id: row.id,
-          code: row.code,
-          name: row.name,
-          active: row.status === 'active',
-        }));
-      },
-      ['cost-centers-for-select', companyId, String(limit)],
-      {
-        revalidate: REVALIDATE_SECONDS,
-        tags: [referenceCacheTags.costCenters(companyId)],
-      },
-    )();
+          if (error) throw new Error(error.message);
+          const rows = (data ?? []) as Array<{
+            id: string;
+            code: string;
+            name: string;
+            status: string;
+          }>;
+          return rows.map((row) => ({
+            id: row.id,
+            code: row.code,
+            name: row.name,
+            active: row.status === 'active',
+          }));
+        },
+        ['cost-centers-for-select', companyId, String(limit)],
+        {
+          revalidate: REVALIDATE_SECONDS,
+          tags: [referenceCacheTags.costCenters(companyId)],
+        },
+      )();
+    } catch {
+      // Falha de cache/admin não deve derrubar a tela — caller usa client do usuário.
+      return null;
+    }
   },
 );

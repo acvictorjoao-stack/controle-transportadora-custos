@@ -58,7 +58,7 @@ export const navigationGroups: NavGroup[] = [
         description: 'DRE operacional',
         href: ROUTES.dashboardDre,
         icon: CircleDollarSign,
-        permission: 'dashboard:read',
+        permission: 'financeiro:read',
       },
       {
         id: 'rentabilidade-rota',
@@ -66,7 +66,7 @@ export const navigationGroups: NavGroup[] = [
         description: 'Análise de rentabilidade por rota',
         href: ROUTES.dashboardRentabilidadeRotas,
         icon: Route,
-        permission: 'dashboard:read',
+        permission: 'financeiro:read',
       },
       {
         id: 'rentabilidade-cliente',
@@ -74,7 +74,7 @@ export const navigationGroups: NavGroup[] = [
         description: 'Análise de rentabilidade por cliente',
         href: ROUTES.dashboardRentabilidadeClientes,
         icon: Users,
-        permission: 'dashboard:read',
+        permission: 'financeiro:read',
       },
       {
         id: 'rentabilidade-veiculo',
@@ -82,7 +82,7 @@ export const navigationGroups: NavGroup[] = [
         description: 'Análise de rentabilidade por veículo',
         href: ROUTES.dashboardRentabilidadeVeiculos,
         icon: Truck,
-        permission: 'dashboard:read',
+        permission: 'financeiro:read',
       },
       {
         id: 'rentabilidade-motorista',
@@ -90,7 +90,7 @@ export const navigationGroups: NavGroup[] = [
         description: 'Análise de rentabilidade por motorista',
         href: ROUTES.dashboardRentabilidadeMotoristas,
         icon: Car,
-        permission: 'dashboard:read',
+        permission: 'financeiro:read',
         badge: 'Em breve',
       },
       {

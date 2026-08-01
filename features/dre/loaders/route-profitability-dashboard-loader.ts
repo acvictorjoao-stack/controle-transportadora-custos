@@ -17,6 +17,7 @@ import type {
 import type {PeriodChartPoint} from '@/features/dre/components/revenue-cost-profit-chart';
 import {buildRouteComparisons} from '@/features/dre/utils/period-comparison';
 import type {PeriodDelta} from '@/features/dre/utils/period-comparison';
+import {EMPTY_OPERATIONAL_DRE_FILTER_OPTIONS} from '@/features/dre/utils/empty-state';
 import {
   buildMonthlyPeriodBuckets,
   currentMonthFilters,
@@ -56,23 +57,24 @@ export async function getRouteProfitabilityDashboardData(
   const previous = previousPeriodFilters(period);
   const buckets = buildMonthlyPeriodBuckets(period, 6);
 
-  const [bundle, previousByRoute, filterOptions, chartSeries] = await Promise.all([
-    getOperationalDreBundle(supabase, companyId, period),
-    getOperationalDreByRoute(supabase, companyId, previous),
-    getOperationalDreFilterOptions(supabase, companyId),
-    Promise.all(
-      buckets.map(async (bucket) => {
-        const dre = await getOperationalDRE(supabase, companyId, bucket.filters);
-        return {
-          key: bucket.key,
-          label: bucket.label,
-          revenue: dre.revenues.totalRevenue,
-          costs: dre.costs.totalOperatingCosts,
-          profit: dre.result.operatingProfit,
-        } satisfies PeriodChartPoint;
-      }),
-    ),
-  ]);
+  const [bundle, previousByRoute, filterOptionsResult, chartSeries] =
+    await Promise.all([
+      getOperationalDreBundle(supabase, companyId, period),
+      getOperationalDreByRoute(supabase, companyId, previous),
+      getOperationalDreFilterOptions(supabase, companyId).catch(() => null),
+      Promise.all(
+        buckets.map(async (bucket) => {
+          const dre = await getOperationalDRE(supabase, companyId, bucket.filters);
+          return {
+            key: bucket.key,
+            label: bucket.label,
+            revenue: dre.revenues.totalRevenue,
+            costs: dre.costs.totalOperatingCosts,
+            profit: dre.result.operatingProfit,
+          } satisfies PeriodChartPoint;
+        }),
+      ),
+    ]);
 
   const comparisonsMap = buildRouteComparisons(
     bundle.byRoute.groups,
@@ -85,7 +87,7 @@ export async function getRouteProfitabilityDashboardData(
     byRoute: bundle.byRoute,
     byCustomerGroups: bundle.byCustomer,
     byVehicleGroups: bundle.byVehicle,
-    filterOptions,
+    filterOptions: filterOptionsResult ?? EMPTY_OPERATIONAL_DRE_FILTER_OPTIONS,
     chartPoints: chartSeries,
     rankingRows: buildRouteRankingRows(bundle.byRoute.groups),
     comparisons: Array.from(comparisonsMap.entries()),

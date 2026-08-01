@@ -20,6 +20,7 @@ import {
 } from '@/features/dre/utils/empty-state';
 import {parseOperationalDreFilters} from '@/features/dre/utils/list-url';
 import {
+  assertCompanyPermission,
   getCurrentCompanyId,
   getServerSupabaseClient,
 } from '@/lib/auth/company';
@@ -82,6 +83,15 @@ export default async function DashboardDrePage({
 
   if (!companyId) {
     redirect(ROUTES.login);
+  }
+
+  const canRead = await assertCompanyPermission(
+    supabase,
+    companyId,
+    'financeiro:read',
+  );
+  if (!canRead) {
+    redirect(ROUTES.dashboard);
   }
 
   const params = await searchParams;

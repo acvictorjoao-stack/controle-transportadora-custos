@@ -17,6 +17,7 @@ import type {
 import type {PeriodChartPoint} from '@/features/dre/components/revenue-cost-profit-chart';
 import {buildDimensionComparisons} from '@/features/dre/utils/period-comparison';
 import type {PeriodDelta} from '@/features/dre/utils/period-comparison';
+import {EMPTY_OPERATIONAL_DRE_FILTER_OPTIONS} from '@/features/dre/utils/empty-state';
 import {
   buildMonthlyPeriodBuckets,
   currentMonthFilters,
@@ -73,11 +74,11 @@ export async function getVehicleProfitabilityDashboardData(
   const previous = previousPeriodFilters(period);
   const buckets = buildMonthlyPeriodBuckets(period, 6);
 
-  const [bundle, previousByVehicle, filterOptions, chartSeries] =
+  const [bundle, previousByVehicle, filterOptionsResult, chartSeries] =
     await Promise.all([
       getOperationalDreBundle(supabase, companyId, period),
       getOperationalDreByVehicle(supabase, companyId, previous),
-      getOperationalDreFilterOptions(supabase, companyId),
+      getOperationalDreFilterOptions(supabase, companyId).catch(() => null),
       Promise.all(
         buckets.map(async (bucket) => {
           const dre = await getOperationalDRE(supabase, companyId, bucket.filters);
@@ -111,7 +112,7 @@ export async function getVehicleProfitabilityDashboardData(
     byVehicle,
     byCustomerGroups: bundle.byCustomer,
     byRouteGroups: bundle.byRoute.groups,
-    filterOptions,
+    filterOptions: filterOptionsResult ?? EMPTY_OPERATIONAL_DRE_FILTER_OPTIONS,
     chartPoints: chartSeries,
     revenueByVehiclePoints: chartSlice.map((row) => ({
       key: row.id,

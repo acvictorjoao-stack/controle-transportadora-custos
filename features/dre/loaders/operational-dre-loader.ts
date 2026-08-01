@@ -435,15 +435,24 @@ export async function getOperationalDreFilterOptions(
   const {listVehiclesForSelect} = await import('@/features/vehicles/queries');
   const {formatPlate} = await import('@/features/vehicles/utils/vehicle-format');
 
-  const [branches, customers, routes, costCenters, vehicles, drivers] =
-    await Promise.all([
-      listBranchesForSelect(supabase, companyId),
-      listCustomersForSelect(supabase, companyId),
-      listRoutesForSelect(supabase, companyId),
-      listCostCentersForSelect(supabase, companyId),
-      listVehiclesForSelect(supabase, companyId),
-      listDriversForSelect(supabase, companyId),
-    ]);
+  const settled = await Promise.allSettled([
+    listBranchesForSelect(supabase, companyId),
+    listCustomersForSelect(supabase, companyId),
+    listRoutesForSelect(supabase, companyId),
+    listCostCentersForSelect(supabase, companyId),
+    listVehiclesForSelect(supabase, companyId),
+    listDriversForSelect(supabase, companyId),
+  ]);
+
+  const valueOrEmpty = <T,>(result: PromiseSettledResult<T[]>): T[] =>
+    result.status === 'fulfilled' ? result.value : [];
+
+  const branches = valueOrEmpty(settled[0]);
+  const customers = valueOrEmpty(settled[1]);
+  const routes = valueOrEmpty(settled[2]);
+  const costCenters = valueOrEmpty(settled[3]);
+  const vehicles = valueOrEmpty(settled[4]);
+  const drivers = valueOrEmpty(settled[5]);
 
   return {
     branches: branches.map((branch) => ({
