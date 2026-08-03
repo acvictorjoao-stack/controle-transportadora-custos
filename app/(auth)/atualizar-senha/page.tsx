@@ -1,5 +1,5 @@
 import {AuthCard} from '@/components/auth/auth-card';
-import {UpdatePasswordForm} from '@/components/auth/update-password-form';
+import {RecoverySessionGate} from '@/components/auth/recovery-session-gate';
 
 export const metadata = {
   title: 'Redefinir senha',
@@ -12,7 +12,7 @@ export default function AtualizarSenhaPage() {
       description="Escolha uma nova senha para acessar o FleetControl."
       showLogo={false}
     >
-      <UpdatePasswordForm />
+      <RecoverySessionGate />
     </AuthCard>
   );
 }

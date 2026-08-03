@@ -7,7 +7,6 @@ import {
   isMasterRoute,
   isPasswordUpdateRoute,
   isProtectedRoute,
-  RECOVERY_LINK_INVALID_REASON,
   resolvePostLoginRedirect,
   TENANT_ACCESS_DENIED_REASON,
 } from '@/lib/auth/redirect';
@@ -119,11 +118,39 @@ async function hasValidTenantAccess(
  * - Redirecionamento de OWNER para /master após login
  * - Bloqueio de /master/* para não-OWNER
  */
+function buildAuthCallbackFunnelUrl(request: NextRequest): URL | null {
+  const {pathname, searchParams} = request.nextUrl;
+  const code = searchParams.get('code');
+  const tokenHash = searchParams.get('token_hash');
+
+  if ((!code && !tokenHash) || pathname === ROUTES.authCallback) {
+    return null;
+  }
+
+  const callbackUrl = request.nextUrl.clone();
+  callbackUrl.pathname = ROUTES.authCallback;
+
+  const type = searchParams.get('type');
+  if (
+    !searchParams.get('next') &&
+    (type === 'recovery' || Boolean(tokenHash) || Boolean(code))
+  ) {
+    callbackUrl.searchParams.set('next', ROUTES.atualizarSenha);
+  }
+
+  return callbackUrl;
+}
+
 export async function updateSession(request: NextRequest) {
   const supabaseEnv = getMiddlewareSupabaseEnv();
 
   if (!supabaseEnv) {
     return createMissingSupabaseEnvResponse();
+  }
+
+  const authCallbackFunnel = buildAuthCallbackFunnelUrl(request);
+  if (authCallbackFunnel) {
+    return NextResponse.redirect(authCallbackFunnel);
   }
 
   let supabaseResponse = NextResponse.next({request});
@@ -162,17 +189,8 @@ export async function updateSession(request: NextRequest) {
   const {pathname} = request.nextUrl;
 
   if (isPasswordUpdateRoute(pathname)) {
-    if (!user) {
-      const loginUrl = request.nextUrl.clone();
-      loginUrl.pathname = ROUTES.login;
-      loginUrl.search = '';
-      loginUrl.searchParams.set('reason', RECOVERY_LINK_INVALID_REASON);
-      const redirectResponse = NextResponse.redirect(loginUrl);
-      copyCookies(supabaseResponse, redirectResponse);
-      return redirectResponse;
-    }
-
-    // Sessão de recovery: permite acesso sem bounce para home/master e sem checagem de tenant.
+    // Sem exigir user aqui: hash #access_token é invisível ao middleware;
+    // a página valida sessão (cookies pós-callback ou fragment no client).
     return supabaseResponse;
   }
 
