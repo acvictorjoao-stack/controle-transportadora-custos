@@ -1,6 +1,7 @@
 import {
   Building2,
   CreditCard,
+  KeyRound,
   LayoutDashboard,
   ScrollText,
   Settings,
@@ -50,6 +51,14 @@ export const masterNavigationGroups: NavGroup[] = [
         href: ROUTES.masterUsuarios,
         icon: Users,
         permission: 'master:usuarios:read',
+      },
+      {
+        id: 'master-roles',
+        title: 'Roles e permissões',
+        description: 'Catálogo de perfis de negócio',
+        href: ROUTES.masterRoles,
+        icon: KeyRound,
+        permission: 'master:roles:read',
       },
       {
         id: 'master-logs',

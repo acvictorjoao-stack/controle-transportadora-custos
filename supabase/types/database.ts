@@ -391,10 +391,28 @@ export type Database = {
         };
         Relationships: [];
       };
+      portal_acting_companies: {
+        Row: {
+          profile_id: string;
+          company_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          profile_id: string;
+          company_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          profile_id?: string;
+          company_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       portal_audit_logs: {
         Row: {
           id: string;
-          action: 'login' | 'logout' | 'company_create' | 'company_update' | 'company_provision' | 'company_delete' | 'password_reset' | 'user_create' | 'user_update' | 'user_role_change' | 'user_activate' | 'user_deactivate' | 'plan_change' | 'company_suspend' | 'company_reactivate' | 'settings_update';
+          action: 'login' | 'logout' | 'company_create' | 'company_update' | 'company_provision' | 'company_delete' | 'password_reset' | 'user_create' | 'user_update' | 'user_role_change' | 'user_activate' | 'user_deactivate' | 'plan_change' | 'company_suspend' | 'company_reactivate' | 'settings_update' | 'company_access';
           actor_profile_id: string | null;
           actor_email: string | null;
           target_type: string | null;
@@ -407,7 +425,7 @@ export type Database = {
         };
         Insert: {
           id?: string;
-          action: 'login' | 'logout' | 'company_create' | 'company_update' | 'company_provision' | 'company_delete' | 'password_reset' | 'user_create' | 'user_update' | 'user_role_change' | 'user_activate' | 'user_deactivate' | 'plan_change' | 'company_suspend' | 'company_reactivate' | 'settings_update';
+          action: 'login' | 'logout' | 'company_create' | 'company_update' | 'company_provision' | 'company_delete' | 'password_reset' | 'user_create' | 'user_update' | 'user_role_change' | 'user_activate' | 'user_deactivate' | 'plan_change' | 'company_suspend' | 'company_reactivate' | 'settings_update' | 'company_access';
           actor_profile_id?: string | null;
           actor_email?: string | null;
           target_type?: string | null;
@@ -420,7 +438,7 @@ export type Database = {
         };
         Update: {
           id?: string;
-          action?: 'login' | 'logout' | 'company_create' | 'company_update' | 'company_provision' | 'company_delete' | 'password_reset' | 'user_create' | 'user_update' | 'user_role_change' | 'user_activate' | 'user_deactivate' | 'plan_change' | 'company_suspend' | 'company_reactivate' | 'settings_update';
+          action?: 'login' | 'logout' | 'company_create' | 'company_update' | 'company_provision' | 'company_delete' | 'password_reset' | 'user_create' | 'user_update' | 'user_role_change' | 'user_activate' | 'user_deactivate' | 'plan_change' | 'company_suspend' | 'company_reactivate' | 'settings_update' | 'company_access';
           actor_profile_id?: string | null;
           actor_email?: string | null;
           target_type?: string | null;
@@ -2795,6 +2813,16 @@ export type Database = {
         Args: Record<string, never>;
         Returns: boolean;
       };
+      get_portal_acting_company_id: {
+        Args: Record<string, never>;
+        Returns: string;
+      };
+      is_portal_owner_acting_for: {
+        Args: {
+          p_company_id: string;
+        };
+        Returns: boolean;
+      };
       update_company_provision_status: {
         Args: {
           p_company_id: string;
@@ -2857,7 +2885,7 @@ export type Database = {
       entity_status: 'active' | 'inactive' | 'blocked' | 'archived';
       provision_status: 'pending' | 'in_progress' | 'completed' | 'error';
       portal_role: 'OWNER' | 'SUPPORT' | 'FINANCE';
-      portal_audit_action: 'login' | 'logout' | 'company_create' | 'company_update' | 'company_provision' | 'company_delete' | 'password_reset' | 'user_create' | 'user_update' | 'user_role_change' | 'user_activate' | 'user_deactivate' | 'plan_change' | 'company_suspend' | 'company_reactivate' | 'settings_update';
+      portal_audit_action: 'login' | 'logout' | 'company_create' | 'company_update' | 'company_provision' | 'company_delete' | 'password_reset' | 'user_create' | 'user_update' | 'user_role_change' | 'user_activate' | 'user_deactivate' | 'plan_change' | 'company_suspend' | 'company_reactivate' | 'settings_update' | 'company_access';
       vehicle_asset_status: 'active' | 'maintenance' | 'inactive' | 'sold';
       vehicle_fuel_type: 'diesel' | 'gasoline' | 'ethanol' | 'flex' | 'gnv' | 'electric' | 'hybrid' | 'other';
       provider_name: 'openai' | 'google' | 'azure' | 'aws' | 'anthropic' | 'custom';

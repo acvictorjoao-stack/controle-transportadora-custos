@@ -7,8 +7,10 @@ import {createClient} from '@/supabase/server';
 
 import {
   type CompanyMembership,
+  getCompanyAccessContext,
   getUserCompanyMembership,
 } from './company';
+import {getMasterActingCompany} from './master-company-context';
 import {isPortalOwner} from './portal';
 import {
   getTenantAccessDeniedLoginUrl,
@@ -29,40 +31,68 @@ export interface TenantAccessResult {
   companyId?: string;
 }
 
+async function validateActiveCompany(
+  supabase: SupabaseClient,
+  companyId: string,
+): Promise<TenantAccessResult> {
+  const {data, error} = await supabase
+    .from('companies')
+    .select('id, status')
+    .eq('id', companyId)
+    .is('deleted_at', null)
+    .maybeSingle();
+
+  if (error || !data) {
+    return {valid: false, reason: 'company_missing', companyId};
+  }
+
+  if (data.status !== 'active') {
+    return {valid: false, reason: 'company_inactive', companyId};
+  }
+
+  return {valid: true, companyId};
+}
+
 /**
- * Valida se o usuário autenticado possui membership ativa
- * vinculada a uma empresa existente e ativa.
+ * Valida acesso tenant:
+ * - Membros: membership ativa + empresa ativa
+ * - Master: contexto portal_acting_companies validado (sem company_members)
  */
 export async function checkTenantAccess(
   supabase: SupabaseClient,
 ): Promise<TenantAccessResult> {
+  if (await isPortalOwner(supabase)) {
+    const acting = await getMasterActingCompany(supabase);
+    if (!acting) {
+      return {valid: false, reason: 'no_membership'};
+    }
+
+    const companyCheck = await validateActiveCompany(supabase, acting.companyId);
+    if (!companyCheck.valid) {
+      return companyCheck;
+    }
+
+    const access = await getCompanyAccessContext(supabase, acting.companyId);
+    if (!access) {
+      return {valid: false, reason: 'no_membership', companyId: acting.companyId};
+    }
+
+    return {valid: true, membership: access, companyId: acting.companyId};
+  }
+
   const membership = await getUserCompanyMembership(supabase);
 
   if (!membership) {
     return {valid: false, reason: 'no_membership'};
   }
 
-  const {data, error} = await supabase
-    .from('companies')
-    .select('id, status')
-    .eq('id', membership.companyId)
-    .is('deleted_at', null)
-    .maybeSingle();
+  const companyCheck = await validateActiveCompany(
+    supabase,
+    membership.companyId,
+  );
 
-  if (error || !data) {
-    return {
-      valid: false,
-      reason: 'company_missing',
-      companyId: membership.companyId,
-    };
-  }
-
-  if (data.status !== 'active') {
-    return {
-      valid: false,
-      reason: 'company_inactive',
-      companyId: membership.companyId,
-    };
+  if (!companyCheck.valid) {
+    return {...companyCheck, membership};
   }
 
   return {valid: true, membership, companyId: membership.companyId};
@@ -87,7 +117,7 @@ export async function invalidateTenantSession(
 
 /**
  * Exige acesso tenant válido em Server Components.
- * Portal owners sem empresa são redirecionados para /master.
+ * Portal owners sem contexto de empresa vão para a tela de escolha (/acesso).
  */
 export async function requireTenantAccess(
   supabase: SupabaseClient,
@@ -99,7 +129,7 @@ export async function requireTenantAccess(
   }
 
   if (await isPortalOwner(supabase)) {
-    redirect(ROUTES.master);
+    redirect(ROUTES.acesso);
   }
 
   return invalidateTenantSession(supabase);

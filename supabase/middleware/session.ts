@@ -3,6 +3,7 @@ import {type NextRequest, NextResponse} from 'next/server';
 
 import {ROUTES} from '@/constants/routes/paths';
 import {
+  isAccessChoiceRoute,
   isAuthRoute,
   isMasterRoute,
   isPasswordUpdateRoute,
@@ -204,6 +205,8 @@ export async function updateSession(request: NextRequest) {
   if (user && isProtectedRoute(pathname) && !isMasterRoute(pathname)) {
     const role = await fetchPortalUserRole(supabase);
 
+    // OWNER: tenant validity is via portal_acting_companies (layout), not membership.
+    // Non-owner: must have active company membership.
     if (role !== 'OWNER' && !(await hasValidTenantAccess(supabase))) {
       return invalidateSessionAndRedirectToLogin(
         supabase,
@@ -213,7 +216,7 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
-  if (user && isMasterRoute(pathname)) {
+  if (user && (isMasterRoute(pathname) || isAccessChoiceRoute(pathname))) {
     const role = await fetchPortalUserRole(supabase);
 
     if (role !== 'OWNER') {

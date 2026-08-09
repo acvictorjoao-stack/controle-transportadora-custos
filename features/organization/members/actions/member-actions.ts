@@ -14,10 +14,11 @@ import {generateTemporaryPassword} from '@/features/master/provisioning/services
 import {
   assertCompanyPermission,
   COMPANY_ACCESS_DENIED,
+  getCompanyAccessContext,
   getCurrentCompanyId,
   getServerSupabaseClient,
-  getUserCompanyMembership,
 } from '@/lib/auth/company';
+import {isPortalOwner} from '@/lib/auth/portal';
 import {zodFieldErrors} from '@/lib/validators/zod-field-errors';
 import {createAdminClient} from '@/supabase/server/admin';
 
@@ -55,6 +56,7 @@ function revalidateMembersPath() {
 /**
  * Resolve company context ONLY from the authenticated session.
  * Never accepts company_id from the client.
+ * Master acting context is allowed without company_members.
  */
 async function resolveMemberAccess(
   permission: MemberPermission | MemberPermission[],
@@ -66,14 +68,16 @@ async function resolveMemberAccess(
     return {success: false, error: 'Empresa não encontrada.'};
   }
 
-  const membership = await getUserCompanyMembership(supabase, companyId);
-  if (!membership) {
+  const access = await getCompanyAccessContext(supabase, companyId);
+  if (!access || access.companyId !== companyId) {
     return {success: false, error: COMPANY_ACCESS_DENIED};
   }
 
-  // Defense: membership must match the resolved company (never trust client tenant).
-  if (membership.companyId !== companyId) {
-    return {success: false, error: COMPANY_ACCESS_DENIED};
+  if (access.isMasterActing) {
+    if (!(await isPortalOwner(supabase))) {
+      return {success: false, error: COMPANY_ACCESS_DENIED};
+    }
+    return {success: true, data: {companyId, profileId: access.profileId}};
   }
 
   const permissions = Array.isArray(permission) ? permission : [permission];
@@ -89,7 +93,7 @@ async function resolveMemberAccess(
     return {success: false, error: COMPANY_ACCESS_DENIED};
   }
 
-  return {success: true, data: {companyId, profileId: membership.profileId}};
+  return {success: true, data: {companyId, profileId: access.profileId}};
 }
 
 function mapAuthCreateError(message: string): string {

@@ -8,6 +8,7 @@ import {logPortalAudit, PORTAL_AUDIT_ACTIONS} from '@/features/master/audit';
 import {DEFAULT_PASSWORD_POLICY} from '@/features/master/settings/types';
 import {getAppBaseUrl} from '@/lib/auth/app-url';
 import {AuthError, logAuthError, normalizeAuthError} from '@/lib/auth/auth-errors';
+import {clearMasterActingCompany} from '@/lib/auth/master-company-context';
 import {isPortalOwner} from '@/lib/auth/portal';
 import {
   DEFAULT_POST_LOGOUT_REDIRECT,
@@ -155,6 +156,10 @@ export async function signOutAction(): Promise<void> {
   } = await supabase.auth.getUser();
 
   const isOwner = user ? await isPortalOwner(supabase) : false;
+
+  if (isOwner) {
+    await clearMasterActingCompany(supabase);
+  }
 
   const {error} = await supabase.auth.signOut();
 

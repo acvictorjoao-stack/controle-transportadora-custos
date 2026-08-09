@@ -15,6 +15,7 @@ export const PORTAL_AUDIT_ACTIONS = {
   COMPANY_SUSPEND: 'company_suspend',
   COMPANY_REACTIVATE: 'company_reactivate',
   SETTINGS_UPDATE: 'settings_update',
+  COMPANY_ACCESS: 'company_access',
 } as const;
 
 export type PortalAuditAction =
@@ -37,6 +38,7 @@ export const PORTAL_AUDIT_ACTION_LABELS: Record<PortalAuditAction, string> = {
   company_suspend: 'Suspensão de empresa',
   company_reactivate: 'Reativação de empresa',
   settings_update: 'Atualização de configurações',
+  company_access: 'Acesso a empresa (Master)',
 };
 
 export interface PortalAuditLogRow {

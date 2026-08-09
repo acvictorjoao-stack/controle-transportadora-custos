@@ -1,9 +1,12 @@
 import type {SupabaseClient} from '@supabase/supabase-js';
 
 import {getCurrentUserId} from '@/lib/auth/company';
+import {getMasterActingCompanyId} from '@/lib/auth/master-company-context';
+import {isPortalOwner} from '@/lib/auth/portal';
 
 /**
  * Recupera os códigos de permissão do membro ativo na empresa.
+ * Master em contexto de empresa recebe wildcard (não usa role de funcionário).
  */
 export async function getCompanyMemberPermissions(
   supabase: SupabaseClient,
@@ -11,6 +14,13 @@ export async function getCompanyMemberPermissions(
 ): Promise<string[]> {
   const userId = await getCurrentUserId(supabase);
   if (!userId) return [];
+
+  if (await isPortalOwner(supabase)) {
+    const actingCompanyId = await getMasterActingCompanyId(supabase);
+    if (actingCompanyId === companyId) {
+      return ['*'];
+    }
+  }
 
   const {data: member, error: memberError} = await supabase
     .from('company_members')

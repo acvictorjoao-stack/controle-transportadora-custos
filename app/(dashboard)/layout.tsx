@@ -6,6 +6,7 @@ import {getPlanCatalog} from '@/features/master/plans';
 import {
   getServerSupabaseClient,
 } from '@/lib/auth/company';
+import {getMasterActingCompany} from '@/lib/auth/master-company-context';
 import {getCompanyMemberPermissions} from '@/lib/auth/queries/permissions';
 import {requireTenantAccess} from '@/lib/auth/tenant-access';
 import {mapCompanyToShellTenant} from '@/lib/shell/map-company-tenant';
@@ -19,6 +20,9 @@ export default async function DashboardGroupLayout({
   const membership = await requireTenantAccess(supabase);
   const companyId = membership.companyId;
   const permissions = await getCompanyMemberPermissions(supabase, companyId);
+  const masterActing = membership.isMasterActing
+    ? await getMasterActingCompany(supabase)
+    : null;
 
   const [company, plans] = await Promise.all([
     getCurrentCompanyProfile(supabase, companyId),
@@ -30,7 +34,9 @@ export default async function DashboardGroupLayout({
   return (
     <NavPermissionsProvider permissions={permissions}>
       <ShellProvider tenant={shellTenant}>
-        <DashboardLayout>{children}</DashboardLayout>
+        <DashboardLayout masterCompanyName={masterActing?.companyName ?? null}>
+          {children}
+        </DashboardLayout>
       </ShellProvider>
     </NavPermissionsProvider>
   );

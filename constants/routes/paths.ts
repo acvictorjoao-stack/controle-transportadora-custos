@@ -83,12 +83,19 @@ export const ROUTES = {
   tenantRoot: (slug: string) => `/${slug}`,
   tenantDashboard: (slug: string) => `/${slug}/dashboard`,
 
+  // Escolha de acesso (Master)
+  acesso: '/acesso',
+  acessoEmpresas: '/acesso/empresas',
+
   // Portal Master (SaaS admin)
   master: '/master',
   masterEmpresas: '/master/empresas',
   masterEmpresaDetail: (id: string) => `/master/empresas/${id}`,
   masterPlanos: '/master/planos',
   masterUsuarios: '/master/usuarios',
+  masterRoles: '/master/roles',
+  masterRoleDetail: (name: string) =>
+    `/master/roles/${encodeURIComponent(name)}`,
   masterLogs: '/master/logs',
   masterConfiguracoes: '/master/configuracoes',
 } as const;

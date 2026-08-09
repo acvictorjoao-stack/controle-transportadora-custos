@@ -97,9 +97,16 @@ export function isMasterRoute(pathname: string): boolean {
   return pathname === ROUTES.master || pathname.startsWith(`${ROUTES.master}/`);
 }
 
+/** Tela de escolha de acesso do Master (/acesso*). */
+export function isAccessChoiceRoute(pathname: string): boolean {
+  return (
+    pathname === ROUTES.acesso || pathname.startsWith(`${ROUTES.acesso}/`)
+  );
+}
+
 /**
  * Define destino pós-login com base no papel do Portal Master.
- * OWNER é redirecionado para /master, exceto se returnTo já for rota master.
+ * OWNER vai para a tela de escolha (/acesso), exceto returnTo master/acesso.
  */
 export function resolvePostLoginRedirect(
   returnTo: string | null | undefined,
@@ -108,14 +115,14 @@ export function resolvePostLoginRedirect(
   const safeReturnTo = getSafeReturnTo(returnTo);
 
   if (isOwner) {
-    if (isMasterRoute(safeReturnTo)) {
+    if (isMasterRoute(safeReturnTo) || isAccessChoiceRoute(safeReturnTo)) {
       return safeReturnTo;
     }
 
-    return ROUTES.master;
+    return ROUTES.acesso;
   }
 
-  if (isMasterRoute(safeReturnTo)) {
+  if (isMasterRoute(safeReturnTo) || isAccessChoiceRoute(safeReturnTo)) {
     return DEFAULT_POST_LOGIN_REDIRECT;
   }
 

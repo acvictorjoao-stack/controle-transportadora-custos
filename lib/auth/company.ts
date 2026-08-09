@@ -1,5 +1,7 @@
 import type {SupabaseClient} from '@supabase/supabase-js';
 
+import {getMasterActingCompanyId} from '@/lib/auth/master-company-context';
+import {isPortalOwner} from '@/lib/auth/portal';
 import {createClient} from '@/supabase/server';
 
 export const COMPANY_ACCESS_DENIED =
@@ -10,6 +12,8 @@ export interface CompanyMembership {
   profileId: string;
   roleId: string;
   defaultBranchId: string | null;
+  /** True when access comes from Portal Master acting context (not company_members). */
+  isMasterActing?: boolean;
 }
 
 export async function getServerSupabaseClient() {
@@ -55,11 +59,52 @@ export async function getUserCompanyMembership(
   };
 }
 
+/**
+ * Resolves current company from:
+ * 1) Master acting context (portal owner + validated portal_acting_companies)
+ * 2) Active company_members row
+ * Never accepts company_id from the client.
+ */
 export async function getCurrentCompanyId(
   supabase: SupabaseClient,
 ): Promise<string | null> {
+  if (await isPortalOwner(supabase)) {
+    const actingCompanyId = await getMasterActingCompanyId(supabase);
+    if (actingCompanyId) return actingCompanyId;
+  }
+
   const membership = await getUserCompanyMembership(supabase);
   return membership?.companyId ?? null;
+}
+
+/**
+ * Membership or Master acting context for the current company.
+ * Master path does not invent a real company_members row.
+ */
+export async function getCompanyAccessContext(
+  supabase: SupabaseClient,
+  companyId?: string,
+): Promise<CompanyMembership | null> {
+  const userId = await getCurrentUserId(supabase);
+  if (!userId) return null;
+
+  if (await isPortalOwner(supabase)) {
+    const actingCompanyId = await getMasterActingCompanyId(supabase);
+    if (
+      actingCompanyId &&
+      (!companyId || companyId === actingCompanyId)
+    ) {
+      return {
+        companyId: actingCompanyId,
+        profileId: userId,
+        roleId: '',
+        defaultBranchId: null,
+        isMasterActing: true,
+      };
+    }
+  }
+
+  return getUserCompanyMembership(supabase, companyId);
 }
 
 export async function hasCompanyPermission(
@@ -89,9 +134,9 @@ export async function requireCompanyMembership(
   supabase: SupabaseClient,
   companyId?: string,
 ): Promise<CompanyMembership> {
-  const membership = await getUserCompanyMembership(supabase, companyId);
-  if (!membership) {
+  const access = await getCompanyAccessContext(supabase, companyId);
+  if (!access) {
     throw new Error('Empresa não encontrada ou acesso negado.');
   }
-  return membership;
+  return access;
 }
