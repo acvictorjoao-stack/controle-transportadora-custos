@@ -9,6 +9,7 @@ import {
 } from '../queries';
 import type {
   PaginatedSuppliers,
+  SupplierCategory,
   SupplierDetailData,
   SupplierListFilters,
   SupplierSelectOption,
@@ -34,7 +35,12 @@ export async function getSuppliersPage(
 export async function getSuppliersForSelect(
   supabase: SupabaseClient,
   companyId: string,
-  options?: {includeInactive?: boolean; search?: string; limit?: number},
+  options?: {
+    includeInactive?: boolean;
+    search?: string;
+    limit?: number;
+    category?: SupplierCategory;
+  },
 ): Promise<SupplierSelectOption[]> {
   return listSuppliersForSelect(supabase, companyId, options);
 }

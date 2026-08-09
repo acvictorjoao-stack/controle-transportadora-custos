@@ -104,6 +104,22 @@ async function hasDuplicateSameDay(
   return (count ?? 0) > 0;
 }
 
+function assertOdometerNotRegressive(
+  odometerKm: number | null,
+  previousOdometerKm: number | null,
+): void {
+  if (odometerKm === null || previousOdometerKm === null) return;
+  if (odometerKm >= previousOdometerKm) return;
+
+  const formatted = previousOdometerKm.toLocaleString('pt-BR', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+  throw new Error(
+    `Odômetro inválido. Este veículo possui último odômetro registrado de ${formatted} km. Informe um valor igual ou superior.`,
+  );
+}
+
 async function resolveMetrics(
   supabase: SupabaseClient,
   companyId: string,
@@ -118,16 +134,19 @@ async function resolveMetrics(
     hasDuplicateSameDay(supabase, companyId, vehicleId, fueledAt, excludeId),
   ]);
 
-  return calculateFuelMetrics({
-    quantityLiters: input.quantityLiters,
-    pricePerLiter: input.pricePerLiter ?? 0,
-    totalAmount: input.totalAmount ?? 0,
-    odometerKm: input.odometerKm ?? null,
+  return {
     previousOdometerKm,
-    fueledAt,
-    tankCapacityLiters,
-    duplicateSameDay,
-  });
+    metrics: calculateFuelMetrics({
+      quantityLiters: input.quantityLiters,
+      pricePerLiter: input.pricePerLiter ?? 0,
+      totalAmount: input.totalAmount ?? 0,
+      odometerKm: input.odometerKm ?? null,
+      previousOdometerKm,
+      fueledAt,
+      tankCapacityLiters,
+      duplicateSameDay,
+    }),
+  };
 }
 
 async function fetchVehicleTankCapacity(
@@ -274,7 +293,7 @@ export async function createFuelRecord(
   profileId: string,
 ): Promise<FuelRecord> {
   const tankCapacity = await fetchVehicleTankCapacity(supabase, companyId, input.vehicleId);
-  const metrics = await resolveMetrics(
+  const {previousOdometerKm, metrics} = await resolveMetrics(
     supabase,
     companyId,
     input,
@@ -283,6 +302,7 @@ export async function createFuelRecord(
     undefined,
     tankCapacity,
   );
+  assertOdometerNotRegressive(input.odometerKm ?? null, previousOdometerKm);
   const payload = buildFuelPayload(input, profileId, metrics, true);
 
   const {data, error} = await supabase
@@ -315,7 +335,7 @@ export async function updateFuelRecord(
   profileId: string,
 ): Promise<FuelRecord> {
   const tankCapacity = await fetchVehicleTankCapacity(supabase, companyId, input.vehicleId);
-  const metrics = await resolveMetrics(
+  const {previousOdometerKm, metrics} = await resolveMetrics(
     supabase,
     companyId,
     input,
@@ -324,6 +344,7 @@ export async function updateFuelRecord(
     fuelRecordId,
     tankCapacity,
   );
+  assertOdometerNotRegressive(input.odometerKm ?? null, previousOdometerKm);
   const payload = buildFuelPayload(input, profileId, metrics, false);
 
   const {data, error} = await supabase

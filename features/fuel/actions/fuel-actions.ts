@@ -30,6 +30,21 @@ import {
 
 type FuelPermission = 'fuel:read' | 'fuel:create' | 'fuel:update' | 'fuel:delete';
 
+function mapFuelMutationError(
+  error: unknown,
+  fallback: string,
+): ActionResult<never> {
+  const message = error instanceof Error ? error.message : fallback;
+  if (message.startsWith('Odômetro inválido')) {
+    return {
+      success: false,
+      error: message,
+      fieldErrors: {odometerKm: 'Odômetro inválido'},
+    };
+  }
+  return {success: false, error: message};
+}
+
 function revalidateFuelPaths(fuelRecordId?: string) {
   revalidatePath(ROUTES.abastecimentos);
   revalidatePath(ROUTES.dashboard);
@@ -87,10 +102,7 @@ export async function createFuelRecordAction(
     revalidateFuelPaths();
     return {success: true, data};
   } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Erro ao registrar abastecimento.',
-    };
+    return mapFuelMutationError(error, 'Erro ao registrar abastecimento.');
   }
 }
 
@@ -122,10 +134,7 @@ export async function updateFuelRecordAction(
     revalidateFuelPaths(fuelRecordId);
     return {success: true, data};
   } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Erro ao atualizar abastecimento.',
-    };
+    return mapFuelMutationError(error, 'Erro ao atualizar abastecimento.');
   }
 }
 

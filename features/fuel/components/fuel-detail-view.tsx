@@ -29,6 +29,7 @@ import {
 import {
   formatCurrencyBr,
   formatDateTimeBr,
+  formatInconsistencyReasons,
   formatKmPerLiter,
   formatLiters,
 } from '../utils/fuel-format';
@@ -101,6 +102,8 @@ function FuelDetailView({
     ['Observações', record.notes ?? '—'],
   ];
 
+  const inconsistencyReason = formatInconsistencyReasons(record.inconsistencyFlags);
+
   return (
     <PageTemplate
       title={`Abastecimento — ${record.vehiclePlate ?? record.id.slice(0, 8)}`}
@@ -123,7 +126,14 @@ function FuelDetailView({
     >
       <div className="mb-6 flex flex-wrap items-center gap-3">
         {record.isInconsistent ? (
-          <Badge variant="destructive">Inconsistente</Badge>
+          <div className="flex max-w-xl flex-col gap-0.5">
+            <Badge variant="destructive">Inconsistente</Badge>
+            {inconsistencyReason ? (
+              <span className="text-xs text-muted-foreground" title={inconsistencyReason}>
+                Motivo: {inconsistencyReason}
+              </span>
+            ) : null}
+          </div>
         ) : (
           <Badge variant="secondary">Consistente</Badge>
         )}

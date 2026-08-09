@@ -17,6 +17,7 @@ import {
 import type {
   PaginatedSuppliers,
   Supplier,
+  SupplierCategory,
   SupplierFinancialSnippet,
   SupplierListFilters,
   SupplierRow,
@@ -305,7 +306,12 @@ export async function softDeleteSupplier(
 export async function listSuppliersForSelect(
   supabase: SupabaseClient,
   companyId: string,
-  options?: {includeInactive?: boolean; search?: string; limit?: number},
+  options?: {
+    includeInactive?: boolean;
+    search?: string;
+    limit?: number;
+    category?: SupplierCategory;
+  },
 ): Promise<SupplierSelectOption[]> {
   const search = sanitizeSearchTerm(options?.search ?? '');
   const limit = options?.limit ?? 200;
@@ -320,6 +326,10 @@ export async function listSuppliersForSelect(
 
   if (!options?.includeInactive) {
     query = query.eq('active', true);
+  }
+
+  if (options?.category) {
+    query = query.contains('categories', [options.category]);
   }
 
   if (search) {

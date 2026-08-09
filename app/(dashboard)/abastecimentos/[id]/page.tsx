@@ -49,7 +49,7 @@ export default async function AbastecimentoDetailPage({params}: AbastecimentoDet
       listBranchesForSelect(supabase, companyId),
       listDriversForSelect(supabase, companyId),
       listVehiclesForSelect(supabase, companyId),
-      getSuppliersForSelect(supabase, companyId),
+      getSuppliersForSelect(supabase, companyId, {category: 'posto'}),
     ]);
   } catch {
     notFound();

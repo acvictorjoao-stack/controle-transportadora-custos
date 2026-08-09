@@ -36,6 +36,7 @@ import {FUEL_TYPE_LABELS} from '../types';
 import {
   formatCurrencyBr,
   formatDateTimeBr,
+  formatInconsistencyReasons,
   formatKmPerLiter,
   formatLiters,
 } from '../utils/fuel-format';
@@ -179,12 +180,24 @@ function FuelList({
     {
       id: 'status',
       header: 'Status',
-      cell: (row: FuelRecord) =>
-        row.isInconsistent ? (
-          <Badge variant="destructive">Inconsistente</Badge>
-        ) : (
-          <Badge variant="secondary">OK</Badge>
-        ),
+      cell: (row: FuelRecord) => {
+        if (!row.isInconsistent) {
+          return <Badge variant="secondary">OK</Badge>;
+        }
+        const reason = formatInconsistencyReasons(row.inconsistencyFlags);
+        return (
+          <div className="flex max-w-[16rem] flex-col gap-0.5">
+            <Badge variant="destructive" title={reason || undefined}>
+              Inconsistente
+            </Badge>
+            {reason ? (
+              <span className="text-xs leading-snug text-muted-foreground" title={reason}>
+                {reason}
+              </span>
+            ) : null}
+          </div>
+        );
+      },
     },
     {
       id: 'actions',

@@ -83,7 +83,7 @@ export default async function AbastecimentosPage({searchParams}: AbastecimentosP
       listBranchesForSelect(supabase, companyId),
       listDriversForSelect(supabase, companyId),
       listVehiclesForSelect(supabase, companyId),
-      getSuppliersForSelect(supabase, companyId),
+      getSuppliersForSelect(supabase, companyId, {category: 'posto'}),
     ]);
   } catch (err) {
     error = err instanceof Error ? err.message : 'Erro ao carregar abastecimentos.';

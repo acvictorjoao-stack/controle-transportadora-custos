@@ -39,6 +39,11 @@ export const FUEL_INCONSISTENCY_LABELS: Record<FuelInconsistencyFlag, string> = 
   duplicate_same_day: 'Possível duplicidade no mesmo dia',
 };
 
+export function formatInconsistencyReasons(flags: FuelInconsistencyFlag[]): string {
+  if (flags.length === 0) return '';
+  return flags.map((flag) => FUEL_INCONSISTENCY_LABELS[flag]).join(' · ');
+}
+
 export function formatCurrencyBr(value: number): string {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
