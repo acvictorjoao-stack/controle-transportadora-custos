@@ -8,6 +8,7 @@ import {
 
 import {
   getOperationalDreCustomerTripDetails,
+  getOperationalDreDriverTripDetails,
   getOperationalDreRouteTripDetails,
   getOperationalDreVehicleTripDetails,
 } from '../loaders';
@@ -120,6 +121,43 @@ export async function loadOperationalDreVehicleTripsAction(input: {
         err instanceof Error
           ? err.message
           : 'Erro ao carregar viagens do veículo.',
+    };
+  }
+}
+
+/**
+ * Lazy load do detalhe de viagens ao expandir um motorista.
+ */
+export async function loadOperationalDreDriverTripsAction(input: {
+  dimensionKey: string;
+  filters: OperationalDreFilters;
+}): Promise<ActionResult<OperationalDreTripMetrics[]>> {
+  const supabase = await getServerSupabaseClient();
+  const companyId = await getCurrentCompanyId(supabase);
+
+  if (!companyId) {
+    return {success: false, error: 'Empresa não encontrada.'};
+  }
+
+  if (!input.dimensionKey) {
+    return {success: false, error: 'Motorista não informado.'};
+  }
+
+  try {
+    const trips = await getOperationalDreDriverTripDetails(
+      supabase,
+      companyId,
+      input.dimensionKey,
+      input.filters ?? {},
+    );
+    return {success: true, data: trips};
+  } catch (err) {
+    return {
+      success: false,
+      error:
+        err instanceof Error
+          ? err.message
+          : 'Erro ao carregar viagens do motorista.',
     };
   }
 }

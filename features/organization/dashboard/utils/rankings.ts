@@ -60,6 +60,21 @@ export interface VehicleRankingRow {
   status: MarginStatus;
 }
 
+export interface DriverRankingRow {
+  id: string;
+  name: string;
+  tripCount: number;
+  revenue: number;
+  costs: number;
+  profit: number;
+  marginPercent: number | null;
+  totalKm: number;
+  revenuePerTrip: number | null;
+  costPerTrip: number | null;
+  profitPerTrip: number | null;
+  status: MarginStatus;
+}
+
 export interface VehicleHighlightItem {
   id: string;
   name: string;
@@ -191,6 +206,30 @@ export function buildVehicleRankingRows(
         profitPerKm,
         tripCount: group.tripCount,
         marginPercent: group.marginPercent,
+        status: classifyMarginStatus(group.marginPercent),
+      };
+    });
+}
+
+export function buildDriverRankingRows(
+  groups: OperationalDreDimensionGroup[],
+): DriverRankingRow[] {
+  return sortByProfitDesc(groups)
+    .filter((group) => group.dimensionKey !== '__none__')
+    .map((group) => {
+      const tripCount = group.tripCount;
+      return {
+        id: group.dimensionKey,
+        name: group.label,
+        tripCount,
+        revenue: group.totalRevenue,
+        costs: group.totalCost,
+        profit: group.totalProfit,
+        marginPercent: group.marginPercent,
+        totalKm: group.totalKm,
+        revenuePerTrip: tripCount > 0 ? group.totalRevenue / tripCount : null,
+        costPerTrip: tripCount > 0 ? group.totalCost / tripCount : null,
+        profitPerTrip: tripCount > 0 ? group.totalProfit / tripCount : null,
         status: classifyMarginStatus(group.marginPercent),
       };
     });

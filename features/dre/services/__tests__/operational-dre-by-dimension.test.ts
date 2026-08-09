@@ -23,6 +23,7 @@ function makeTrip(
     customerId: 'customer-1',
     routeId: 'route-1',
     vehicleId: 'vehicle-1',
+    driverId: 'driver-1',
     contractedFreightValue: 1000,
     actualFreightValue: null,
     distanceKm: 100,

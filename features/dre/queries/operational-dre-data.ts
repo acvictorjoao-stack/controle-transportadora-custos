@@ -12,7 +12,7 @@ import type {
 import {formatOperationalDreRouteLabel} from '../utils/route-label';
 
 const DRE_TRIP_COLUMNS = `
-  id, branch_id, customer_id, route_id, vehicle_id,
+  id, branch_id, customer_id, route_id, vehicle_id, driver_id,
   contracted_freight_value, actual_freight_value,
   initial_odometer_km, final_odometer_km, planned_distance_km
 `;
@@ -63,6 +63,7 @@ type TripRawRow = {
   customer_id: string | null;
   route_id: string | null;
   vehicle_id: string | null;
+  driver_id: string | null;
   contracted_freight_value: number | null;
   actual_freight_value: number | null;
   initial_odometer_km: number | null;
@@ -71,7 +72,6 @@ type TripRawRow = {
 };
 
 type TripDetailRawRow = TripRawRow & {
-  driver_id: string | null;
   trip_number: string;
   completed_at: string | null;
   client_name: string | null;
@@ -198,6 +198,8 @@ export interface FetchOperationalDreTripsOptions {
   unassignedCustomerOnly?: boolean;
   /** Quando true, restringe a viagens sem `vehicle_id` (grupo "Sem veículo"). */
   unassignedVehicleOnly?: boolean;
+  /** Quando true, restringe a viagens sem `driver_id` (grupo "Sem motorista"). */
+  unassignedDriverOnly?: boolean;
 }
 
 function mapTripDistance(row: TripRawRow): number {
@@ -217,6 +219,7 @@ function mapTripRow(row: TripRawRow): OperationalDreTripRow {
     customerId: row.customer_id,
     routeId: row.route_id,
     vehicleId: row.vehicle_id,
+    driverId: row.driver_id,
     contractedFreightValue:
       row.contracted_freight_value !== null
         ? asNumber(row.contracted_freight_value)
@@ -254,7 +257,9 @@ function applyTripFilters<T extends {
   } else if (filters.vehicleId) {
     next = next.eq('vehicle_id', filters.vehicleId);
   }
-  if (filters.driverId) {
+  if (options.unassignedDriverOnly) {
+    next = next.is('driver_id', null);
+  } else if (filters.driverId) {
     next = next.eq('driver_id', filters.driverId);
   }
   if (filters.dateFrom) next = next.gte('completed_at', filters.dateFrom);
@@ -353,6 +358,35 @@ export async function fetchOperationalDreVehicleLabels(
 
   for (const row of data ?? []) {
     labels.set(row.id, formatPlate(row.plate));
+  }
+
+  return labels;
+}
+
+/**
+ * Rótulos de motorista em uma única query.
+ */
+export async function fetchOperationalDreDriverLabels(
+  supabase: SupabaseClient,
+  companyId: string,
+  driverIds: string[],
+): Promise<Map<string, string>> {
+  const uniqueIds = Array.from(new Set(driverIds.filter(Boolean)));
+  const labels = new Map<string, string>();
+  if (uniqueIds.length === 0) return labels;
+
+  const {data, error} = await supabase
+    .from('drivers')
+    .select('id, name')
+    .eq('company_id', companyId)
+    .in('id', uniqueIds);
+
+  if (error) {
+    throw new Error(mapDatabaseError(error));
+  }
+
+  for (const row of data ?? []) {
+    labels.set(row.id, row.name);
   }
 
   return labels;

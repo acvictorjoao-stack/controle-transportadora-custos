@@ -4,6 +4,7 @@ import {getTripFreightValue} from '@/features/trips/utils/trip-lifecycle';
 import type {
   OperationalDreCustomerGroup,
   OperationalDreDimensionGroup,
+  OperationalDreDriverGroup,
   OperationalDreExpenseRow,
   OperationalDreFilters,
   OperationalDreGroupDimension,
@@ -70,7 +71,7 @@ export function resolveTripDimensionKey(
       raw = trip.vehicleId;
       break;
     case 'driver':
-      raw = 'driverId' in trip ? (trip.driverId ?? null) : null;
+      raw = trip.driverId;
       break;
     case 'cost_center':
       raw = null;
@@ -371,6 +372,40 @@ export function calculateOperationalDreByVehicle(
       ...group,
       dimensionType: 'vehicle' as const,
       vehicle: {
+        id: group.dimensionKey,
+        label: group.label,
+      },
+    }));
+}
+
+export type CalculateOperationalDreByDriverOptions =
+  CalculateOperationalDreByRouteOptions;
+
+/**
+ * Consolida custos por motorista a partir das mesmas linhas da DRE.
+ * `trips` permanece vazio — detalhe via lazy load.
+ */
+export function calculateOperationalDreByDriver(
+  trips: OperationalDreTripRow[],
+  expenses: OperationalDreExpenseRow[],
+  filters: OperationalDreFilters = {},
+  driverLabels: Map<string, string> = new Map(),
+  options: CalculateOperationalDreByDriverOptions = {},
+): OperationalDreDriverGroup[] {
+  return groupOperationalDreByDimension(trips, expenses, filters, {
+    dimension: 'driver',
+    labels: driverLabels,
+    includeTrips: false,
+    allocationBaseTrips: options.allocationBaseTrips,
+    unlinkedVehicleExpenses: options.unlinkedVehicleExpenses,
+  })
+    .filter(
+      (group) => group.dimensionKey !== OPERATIONAL_DRE_UNASSIGNED_DIMENSION_KEY,
+    )
+    .map((group) => ({
+      ...group,
+      dimensionType: 'driver' as const,
+      driver: {
         id: group.dimensionKey,
         label: group.label,
       },

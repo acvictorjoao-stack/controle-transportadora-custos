@@ -13,6 +13,7 @@ export {
 export {
   buildTripMetrics,
   calculateOperationalDreByCustomer,
+  calculateOperationalDreByDriver,
   calculateOperationalDreByRoute,
   calculateOperationalDreByVehicle,
   calculateOperationalDreDimensionTrips,

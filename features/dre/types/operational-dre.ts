@@ -90,6 +90,7 @@ export interface OperationalDreTripRow {
   customerId: string | null;
   routeId: string | null;
   vehicleId: string | null;
+  driverId: string | null;
   contractedFreightValue: number | null;
   actualFreightValue: number | null;
   distanceKm: number;
@@ -222,11 +223,24 @@ export interface OperationalDreByVehicleData {
   filters: OperationalDreFilters;
 }
 
+/** Alias tipado do agrupamento por motorista. */
+export interface OperationalDreDriverGroup extends OperationalDreDimensionGroup {
+  dimensionType: 'driver';
+  driver: {
+    id: string | null;
+    label: string;
+  };
+}
+
+export interface OperationalDreByDriverData {
+  groups: OperationalDreDriverGroup[];
+  filters: OperationalDreFilters;
+}
+
 /** Linha enriquecida para detalhe de viagem (lazy load). */
 export interface OperationalDreTripDetailRow extends OperationalDreTripRow {
   tripNumber: string;
   completedAt: string | null;
-  driverId: string | null;
   vehicleLabel: string | null;
   driverLabel: string | null;
   customerLabel: string | null;

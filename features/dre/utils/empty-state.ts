@@ -1,5 +1,6 @@
 import type {
   OperationalDreByCustomerData,
+  OperationalDreByDriverData,
   OperationalDreByRouteData,
   OperationalDreByVehicleData,
   OperationalDreData,
@@ -47,6 +48,11 @@ export const EMPTY_OPERATIONAL_DRE_BY_CUSTOMER: OperationalDreByCustomerData = {
 };
 
 export const EMPTY_OPERATIONAL_DRE_BY_VEHICLE: OperationalDreByVehicleData = {
+  groups: [],
+  filters: {},
+};
+
+export const EMPTY_OPERATIONAL_DRE_BY_DRIVER: OperationalDreByDriverData = {
   groups: [],
   filters: {},
 };

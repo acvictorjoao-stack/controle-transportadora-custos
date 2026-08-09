@@ -91,7 +91,6 @@ export const navigationGroups: NavGroup[] = [
         href: ROUTES.dashboardRentabilidadeMotoristas,
         icon: Car,
         permission: 'financeiro:read',
-        badge: 'Em breve',
       },
       {
         id: 'inteligencia-operacional',
