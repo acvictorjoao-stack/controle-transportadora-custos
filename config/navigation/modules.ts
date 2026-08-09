@@ -272,11 +272,9 @@ export const navigationGroups: NavGroup[] = [
         id: 'usuarios',
         title: 'Usuários',
         description: 'Gestão de usuários',
-        href: ROUTES.configuracoes,
+        href: ROUTES.usuarios,
         icon: Users,
-        permission: 'configuracoes:read',
-        disabled: true,
-        badge: 'Em breve',
+        permission: 'members:read',
       },
       {
         id: 'perfis',
