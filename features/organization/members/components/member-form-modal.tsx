@@ -63,8 +63,8 @@ function MemberFormModal({
         credentials
           ? 'Guarde as credenciais antes de fechar'
           : mode === 'create'
-            ? 'Crie um usuário individual para esta empresa'
-            : 'Atualize os dados do usuário'
+            ? 'Cadastre um funcionário vinculado a esta empresa'
+            : 'Atualize os dados do usuário da empresa'
       }
     >
       {credentials ? (

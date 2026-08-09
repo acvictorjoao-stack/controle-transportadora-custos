@@ -37,10 +37,20 @@ export interface MemberCredentials {
 
 type MemberPermission = 'members:read' | 'members:write' | 'members:invite';
 
+/** Create / edit / toggle / reset — invite or write. */
+const MANAGE_MEMBER_PERMISSIONS: MemberPermission[] = [
+  'members:invite',
+  'members:write',
+];
+
 function revalidateMembersPath() {
   revalidatePath(ROUTES.usuarios);
 }
 
+/**
+ * Resolve company context ONLY from the authenticated session.
+ * Never accepts company_id from the client.
+ */
 async function resolveMemberAccess(
   permission: MemberPermission | MemberPermission[],
 ): Promise<ActionResult<{companyId: string; profileId: string}>> {
@@ -53,6 +63,11 @@ async function resolveMemberAccess(
 
   const membership = await getUserCompanyMembership(supabase, companyId);
   if (!membership) {
+    return {success: false, error: COMPANY_ACCESS_DENIED};
+  }
+
+  // Defense: membership must match the resolved company (never trust client tenant).
+  if (membership.companyId !== companyId) {
     return {success: false, error: COMPANY_ACCESS_DENIED};
   }
 
@@ -80,10 +95,28 @@ function mapAuthCreateError(message: string): string {
   return message;
 }
 
+async function isPortalMasterProfile(profileId: string): Promise<boolean> {
+  const admin = createAdminClient();
+  const {data, error} = await admin
+    .from('portal_users')
+    .select('id')
+    .eq('profile_id', profileId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return Boolean(data);
+}
+
 export async function listCompanyRolesAction(): Promise<
   ActionResult<CompanyRoleOption[]>
 > {
-  const resolved = await resolveMemberAccess(['members:read', 'members:write', 'members:invite']);
+  const resolved = await resolveMemberAccess([
+    'members:read',
+    ...MANAGE_MEMBER_PERMISSIONS,
+  ]);
   if (!resolved.success) return resolved;
 
   try {
@@ -101,7 +134,7 @@ export async function listCompanyRolesAction(): Promise<
 export async function createCompanyMemberAction(
   input: unknown,
 ): Promise<ActionResult<MemberCredentials>> {
-  const resolved = await resolveMemberAccess(['members:invite', 'members:write']);
+  const resolved = await resolveMemberAccess(MANAGE_MEMBER_PERMISSIONS);
   if (!resolved.success) return resolved;
 
   const parsed = createMemberSchema.safeParse(input);
@@ -146,17 +179,12 @@ export async function createCompanyMemberAction(
       await waitForProfile(authUser.id);
 
       const admin = createAdminClient();
-      const profileUpdate: {
-        phone: string | null;
-        full_name: string;
-      } = {
-        phone,
-        full_name: fullName.trim(),
-      };
-
       const {error: profileError} = await admin
         .from('profiles')
-        .update(profileUpdate)
+        .update({
+          phone,
+          full_name: fullName.trim(),
+        })
         .eq('id', authUser.id);
 
       if (profileError) {
@@ -164,6 +192,7 @@ export async function createCompanyMemberAction(
       }
 
       const nowIso = new Date().toISOString();
+      // company_id always from session — never from client payload.
       const {error: memberError} = await supabase.from('company_members').insert({
         company_id: companyId,
         profile_id: authUser.id,
@@ -205,7 +234,7 @@ export async function updateCompanyMemberAction(
   memberId: string,
   input: unknown,
 ): Promise<ActionResult<CompanyMemberListItem>> {
-  const resolved = await resolveMemberAccess('members:write');
+  const resolved = await resolveMemberAccess(MANAGE_MEMBER_PERMISSIONS);
   if (!resolved.success) return resolved;
 
   const parsed = updateMemberSchema.safeParse(input);
@@ -308,7 +337,7 @@ export async function toggleCompanyMemberStatusAction(
   memberId: string,
   status: MemberStatus,
 ): Promise<ActionResult<CompanyMemberListItem>> {
-  const resolved = await resolveMemberAccess('members:write');
+  const resolved = await resolveMemberAccess(MANAGE_MEMBER_PERMISSIONS);
   if (!resolved.success) return resolved;
 
   const {companyId, profileId: actorProfileId} = resolved.data;
@@ -360,7 +389,7 @@ export async function toggleCompanyMemberStatusAction(
 export async function resetCompanyMemberPasswordAction(
   memberId: string,
 ): Promise<ActionResult<MemberCredentials>> {
-  const resolved = await resolveMemberAccess('members:write');
+  const resolved = await resolveMemberAccess(MANAGE_MEMBER_PERMISSIONS);
   if (!resolved.success) return resolved;
 
   const {companyId, profileId: actorProfileId} = resolved.data;
@@ -376,6 +405,15 @@ export async function resetCompanyMemberPasswordAction(
         success: false,
         error:
           'Use a recuperação de senha do login para alterar a sua própria senha.',
+      };
+    }
+
+    // Never reset Portal Master credentials through the company members UI.
+    if (await isPortalMasterProfile(existing.profileId)) {
+      return {
+        success: false,
+        error:
+          'Não é permitido redefinir senha de usuário do Portal Master por este fluxo.',
       };
     }
 

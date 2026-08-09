@@ -271,7 +271,7 @@ export const navigationGroups: NavGroup[] = [
       {
         id: 'usuarios',
         title: 'Usuários',
-        description: 'Gestão de usuários',
+        description: 'Usuários da empresa',
         href: ROUTES.usuarios,
         icon: Users,
         permission: 'members:read',

@@ -38,8 +38,8 @@ export interface MembersListProps {
   initialSearch: string;
   initialStatus: MemberStatusFilter;
   currentProfileId: string | null;
-  canWrite: boolean;
-  canInvite: boolean;
+  /** members:invite ou members:write — criar/editar/status/reset */
+  canManage: boolean;
   error: string | null;
 }
 
@@ -66,8 +66,7 @@ function MembersList({
   initialSearch,
   initialStatus,
   currentProfileId,
-  canWrite,
-  canInvite,
+  canManage,
   error: initialError,
 }: MembersListProps) {
   const router = useRouter();
@@ -119,7 +118,7 @@ function MembersList({
   }
 
   async function handleToggleStatus(member: CompanyMemberListItem) {
-    if (!canWrite) return;
+    if (!canManage) return;
 
     const nextStatus = member.status === 'active' ? 'inactive' : 'active';
     if (member.profileId === currentProfileId && nextStatus === 'inactive') {
@@ -156,7 +155,7 @@ function MembersList({
   }
 
   async function handleResetPassword(member: CompanyMemberListItem) {
-    if (!canWrite) return;
+    if (!canManage) return;
 
     if (member.profileId === currentProfileId) {
       toast.error('Use a recuperação de senha do login para a sua própria senha.');
@@ -227,7 +226,7 @@ function MembersList({
       header: '',
       className: 'w-12',
       cell: (row: CompanyMemberListItem) => {
-        if (!canWrite) return null;
+        if (!canManage) return null;
 
         const isSelf = row.profileId === currentProfileId;
 
@@ -289,9 +288,9 @@ function MembersList({
     <>
       <PageTemplate
         title="Usuários"
-        description="Gerencie os usuários individuais desta empresa"
+        description="Funcionários e acessos da sua empresa"
         actions={
-          canInvite || canWrite ? (
+          canManage ? (
             <Button size="sm" onClick={openCreate}>
               <Plus className="size-4" />
               Novo usuário

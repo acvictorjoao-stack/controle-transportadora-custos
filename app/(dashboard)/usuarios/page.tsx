@@ -20,6 +20,10 @@ function parseStatusFilter(value: string | undefined): MemberStatusFilter {
   return 'all';
 }
 
+/**
+ * Gestão de usuários da EMPRESA autenticada (tenant).
+ * company_id vem exclusivamente da sessão/membership — nunca do client.
+ */
 export default async function UsuariosPage({searchParams}: UsuariosPageProps) {
   const supabase = await getServerSupabaseClient();
   const companyId = await getCurrentCompanyId(supabase);
@@ -33,9 +37,8 @@ export default async function UsuariosPage({searchParams}: UsuariosPageProps) {
     redirect(ROUTES.dashboard);
   }
 
-  const canWrite = await assertCompanyPermission(supabase, companyId, 'members:write');
-  const canInvite =
-    canWrite ||
+  const canManage =
+    (await assertCompanyPermission(supabase, companyId, 'members:write')) ||
     (await assertCompanyPermission(supabase, companyId, 'members:invite'));
 
   const params = await searchParams;
@@ -48,6 +51,7 @@ export default async function UsuariosPage({searchParams}: UsuariosPageProps) {
   let error: string | null = null;
 
   try {
+    // Admin client only after members:read; always scoped by session companyId.
     data = await listCompanyMembers(supabase, {
       companyId,
       search,
@@ -66,8 +70,7 @@ export default async function UsuariosPage({searchParams}: UsuariosPageProps) {
       initialSearch={search}
       initialStatus={status}
       currentProfileId={currentProfileId}
-      canWrite={canWrite}
-      canInvite={canInvite}
+      canManage={canManage}
       error={error}
     />
   );
