@@ -113,6 +113,16 @@ function AnalyticalExpandableTable<TGroup, TDetail>({
   const detailHydratedRef = React.useRef(false);
   const loadDetailsRef = React.useRef(loadDetails);
   loadDetailsRef.current = loadDetails;
+  const getGroupKeyRef = React.useRef(getGroupKey);
+  getGroupKeyRef.current = getGroupKey;
+  const getDetailKeyRef = React.useRef(getDetailKey);
+  getDetailKeyRef.current = getDetailKey;
+  const onActiveTrailChangeRef = React.useRef(onActiveTrailChange);
+  onActiveTrailChangeRef.current = onActiveTrailChange;
+  const lastNotifiedTrailRef = React.useRef<{
+    groupKey: string | null;
+    detailKey: string | null;
+  } | null>(null);
 
   React.useEffect(() => {
     const stored = readStoredKeys(expansionStorageKey);
@@ -274,33 +284,46 @@ function AnalyticalExpandableTable<TGroup, TDetail>({
     });
   };
 
+  // Trail → breadcrumb. getGroupKey/getDetailKey/onActiveTrailChange chegam
+  // como lambdas inline dos callers; não podem ir nas deps senão o efeito
+  // re-dispara a cada render, setState no pai (breadcrumb) e trava a navegação.
   React.useEffect(() => {
-    if (!onActiveTrailChange) return;
+    const notify = onActiveTrailChangeRef.current;
+    if (!notify) return;
 
     const activeGroupKey = Array.from(expandedKeys).at(-1) ?? null;
     const activeGroup =
       activeGroupKey == null
         ? null
-        : (groups.find((group) => getGroupKey(group) === activeGroupKey) ?? null);
+        : (groups.find(
+            (group) => getGroupKeyRef.current(group) === activeGroupKey,
+          ) ?? null);
 
     const activeDetailKey = Array.from(expandedDetailKeys).at(-1) ?? null;
     let activeDetail: TDetail | null = null;
     if (activeDetailKey && activeGroupKey) {
       const details = detailsByKey[activeGroupKey] ?? [];
       activeDetail =
-        details.find((detail) => getDetailKey(detail) === activeDetailKey) ?? null;
+        details.find(
+          (detail) => getDetailKeyRef.current(detail) === activeDetailKey,
+        ) ?? null;
     }
 
-    onActiveTrailChange({group: activeGroup, detail: activeDetail});
-  }, [
-    expandedKeys,
-    expandedDetailKeys,
-    detailsByKey,
-    groups,
-    getGroupKey,
-    getDetailKey,
-    onActiveTrailChange,
-  ]);
+    const nextTrail = {
+      groupKey: activeGroupKey,
+      detailKey: activeDetail ? activeDetailKey : null,
+    };
+    const prev = lastNotifiedTrailRef.current;
+    if (
+      prev &&
+      prev.groupKey === nextTrail.groupKey &&
+      prev.detailKey === nextTrail.detailKey
+    ) {
+      return;
+    }
+    lastNotifiedTrailRef.current = nextTrail;
+    notify({group: activeGroup, detail: activeDetail});
+  }, [expandedKeys, expandedDetailKeys, detailsByKey, groups]);
 
   const heading = title?.trim() ? (
     <h3 className="mb-3 text-sm font-medium text-muted-foreground">{title}</h3>
