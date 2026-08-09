@@ -199,7 +199,12 @@ function MaintenanceFormContent({
     }
 
     onSaved(result.data);
-    toast.success(isEdit ? 'Manutenção atualizada com sucesso' : 'Manutenção criada com sucesso');
+    if (result.warning) {
+      toast.success(isEdit ? 'Manutenção atualizada com sucesso' : 'Manutenção criada com sucesso');
+      toast.error(result.warning);
+    } else {
+      toast.success(isEdit ? 'Manutenção atualizada com sucesso' : 'Manutenção criada com sucesso');
+    }
     onClose();
   }
 

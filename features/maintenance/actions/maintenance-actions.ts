@@ -104,14 +104,18 @@ export async function createMaintenanceRecordAction(
 
   try {
     const supabase = await getServerSupabaseClient();
-    const data = await createMaintenanceRecord(
+    const result = await createMaintenanceRecord(
       supabase,
       resolved.data.companyId,
       parsed.data,
       resolved.data.profileId,
     );
     revalidateMaintenancePaths();
-    return {success: true, data};
+    return {
+      success: true,
+      data: result.record,
+      ...(result.financialSyncWarning ? {warning: result.financialSyncWarning} : {}),
+    };
   } catch (error) {
     return {
       success: false,
@@ -138,7 +142,7 @@ export async function updateMaintenanceRecordAction(
 
   try {
     const supabase = await getServerSupabaseClient();
-    const data = await updateMaintenanceRecord(
+    const result = await updateMaintenanceRecord(
       supabase,
       resolved.data.companyId,
       maintenanceRecordId,
@@ -146,7 +150,11 @@ export async function updateMaintenanceRecordAction(
       resolved.data.profileId,
     );
     revalidateMaintenancePaths(maintenanceRecordId);
-    return {success: true, data};
+    return {
+      success: true,
+      data: result.record,
+      ...(result.financialSyncWarning ? {warning: result.financialSyncWarning} : {}),
+    };
   } catch (error) {
     return {
       success: false,

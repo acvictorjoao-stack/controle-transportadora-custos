@@ -316,6 +316,12 @@ export interface MaintenanceDetailData extends MaintenanceIntegrationSections {
   } | null;
 }
 
+/** Result of create/update when financial sync may fail without rolling back the record. */
+export interface MaintenanceRecordMutationResult {
+  record: MaintenanceRecord;
+  financialSyncWarning?: string;
+}
+
 export {
   MAINTENANCE_TYPE_LABELS,
   MAINTENANCE_PRIORITY_LABELS,

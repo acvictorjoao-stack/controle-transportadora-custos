@@ -1,6 +1,7 @@
 import type {SupabaseClient} from '@supabase/supabase-js';
 
 import {mapDatabaseError} from '@/features/master/companies/utils/database-error';
+import {logError} from '@/lib/logging/error-logger';
 
 import {
   MAINTENANCE_DETAIL_COLUMNS,
@@ -23,6 +24,7 @@ import type {
   MaintenanceListFilters,
   MaintenancePart,
   MaintenanceRecord,
+  MaintenanceRecordMutationResult,
   MaintenanceRecordRow,
   MaintenanceSchedule,
   MaintenanceService,
@@ -41,6 +43,10 @@ import type {
   UpdateMaintenanceRecordInput,
   UpdateMaintenanceServiceInput,
 } from '../validation';
+
+/** Shown when the maintenance row was persisted but Contas a Pagar / ledger sync failed. */
+export const MAINTENANCE_FINANCIAL_SYNC_WARNING =
+  'A manutenção foi salva, mas o lançamento financeiro não foi sincronizado. Edite e salve novamente para tentar.';
 
 export interface ListMaintenanceRecordsOptions {
   companyId: string;
@@ -191,22 +197,35 @@ export async function getMaintenanceRecordById(
   return mapMaintenanceRecordRow(data as unknown as MaintenanceRecordRow);
 }
 
+/**
+ * Syncs Contas a Pagar / ledger for a maintenance record.
+ * Failures are logged and returned as a warning — they must not roll back the maintenance save.
+ * Upsert remains idempotent via (company_id, maintenance_record_id, installment_number).
+ */
 async function syncMaintenanceFinancialEntry(
   supabase: SupabaseClient,
   companyId: string,
   maintenanceRecordId: string,
   profileId: string,
-): Promise<void> {
+): Promise<string | null> {
   const record = await getMaintenanceRecordById(supabase, companyId, maintenanceRecordId);
-  if (!record) return;
+  if (!record) return null;
 
   try {
     const {onMaintenanceRecordCreated} = await import(
       '@/features/financial/services/integration-events'
     );
     await onMaintenanceRecordCreated(supabase, companyId, record, profileId);
-  } catch {
-    // Financial integration must not block maintenance operations
+    return null;
+  } catch (error) {
+    const err = error instanceof Error ? error : new Error(String(error));
+    logError(err, `maintenance.financialSync:${maintenanceRecordId}`);
+    console.error('[maintenance] Financial sync failed', {
+      companyId,
+      maintenanceRecordId,
+      message: err.message,
+    });
+    return MAINTENANCE_FINANCIAL_SYNC_WARNING;
   }
 }
 
@@ -215,7 +234,7 @@ export async function createMaintenanceRecord(
   companyId: string,
   input: CreateMaintenanceRecordInput,
   profileId: string,
-): Promise<MaintenanceRecord> {
+): Promise<MaintenanceRecordMutationResult> {
   const metrics = calculateMaintenanceMetrics({
     openedAt: input.openedAt,
     completedAt: input.completedAt,
@@ -237,9 +256,17 @@ export async function createMaintenanceRecord(
 
   const record = mapMaintenanceRecordRow(data as unknown as MaintenanceRecordRow);
 
-  await syncMaintenanceFinancialEntry(supabase, companyId, record.id, profileId);
+  const financialSyncWarning = await syncMaintenanceFinancialEntry(
+    supabase,
+    companyId,
+    record.id,
+    profileId,
+  );
 
-  return record;
+  return {
+    record,
+    ...(financialSyncWarning ? {financialSyncWarning} : {}),
+  };
 }
 
 export async function updateMaintenanceRecord(
@@ -248,7 +275,7 @@ export async function updateMaintenanceRecord(
   maintenanceRecordId: string,
   input: UpdateMaintenanceRecordInput,
   profileId: string,
-): Promise<MaintenanceRecord> {
+): Promise<MaintenanceRecordMutationResult> {
   const metrics = calculateMaintenanceMetrics({
     openedAt: input.openedAt,
     completedAt: input.completedAt,
@@ -273,9 +300,17 @@ export async function updateMaintenanceRecord(
 
   const record = mapMaintenanceRecordRow(data as unknown as MaintenanceRecordRow);
 
-  await syncMaintenanceFinancialEntry(supabase, companyId, record.id, profileId);
+  const financialSyncWarning = await syncMaintenanceFinancialEntry(
+    supabase,
+    companyId,
+    record.id,
+    profileId,
+  );
 
-  return record;
+  return {
+    record,
+    ...(financialSyncWarning ? {financialSyncWarning} : {}),
+  };
 }
 
 export async function softDeleteMaintenanceRecord(
@@ -289,8 +324,14 @@ export async function softDeleteMaintenanceRecord(
       '@/features/financial/services/integration-events'
     );
     await onLinkedFinancialEntryDeleted(supabase, companyId, profileId, {maintenanceRecordId});
-  } catch {
-    // Financial integration must not block maintenance operations
+  } catch (error) {
+    const err = error instanceof Error ? error : new Error(String(error));
+    logError(err, `maintenance.financialDelete:${maintenanceRecordId}`);
+    console.error('[maintenance] Financial soft-delete sync failed', {
+      companyId,
+      maintenanceRecordId,
+      message: err.message,
+    });
   }
 
   const {error} = await supabase
