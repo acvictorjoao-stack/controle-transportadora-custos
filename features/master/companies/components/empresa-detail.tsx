@@ -28,6 +28,8 @@ import {
 import {Input} from '@/components/ui/input';
 import {Textarea} from '@/components/ui/textarea';
 import {ROUTES} from '@/constants/routes/paths';
+import {useAuth} from '@/contexts/auth/use-auth';
+import {useConfirm} from '@/contexts/feedback/confirm-context';
 import {getPlanLabel, type PlanCatalogItem} from '@/features/master/plans';
 
 import {
@@ -79,6 +81,8 @@ function getProvisionVariant(status: CompanyDetail['provisionStatus']) {
 
 function EmpresaDetail({company: initialCompany, plans}: EmpresaDetailProps) {
   const router = useRouter();
+  const {user} = useAuth();
+  const confirm = useConfirm();
   const [company, setCompany] = React.useState(initialCompany);
   const [editing, setEditing] = React.useState(false);
   const [formData, setFormData] = React.useState<UpdateCompanyInput>(() => ({
@@ -204,6 +208,21 @@ function EmpresaDetail({company: initialCompany, plans}: EmpresaDetailProps) {
   }
 
   async function handleResetPassword() {
+    const isSelfReset = Boolean(
+      user?.id && company.admin?.profileId && user.id === company.admin.profileId,
+    );
+
+    if (isSelfReset) {
+      const confirmed = await confirm({
+        title: 'Você está redefinindo a sua própria senha',
+        description:
+          'Ao redefinir sua própria senha, sua sessão atual será encerrada automaticamente e será necessário fazer login novamente utilizando a nova senha temporária. Deseja continuar?',
+        cancelLabel: 'Cancelar',
+        confirmLabel: 'Redefinir senha',
+      });
+      if (!confirmed) return;
+    }
+
     setActionLoading('reset');
     setFormError(null);
     const result = await resetAdminPasswordAction(company.id);
