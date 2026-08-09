@@ -119,7 +119,7 @@ function SidebarGroup({
           transitionDuration: `${SIDEBAR_ACCORDION_DURATION_MS}ms`,
         }}
       >
-        <div className="min-h-0 overflow-hidden">
+        <div className={cn('min-h-0', open ? 'overflow-visible' : 'overflow-hidden')}>
           <div className="space-y-0.5 pb-1 pl-1 pr-0.5 pt-0.5">
             {items.map((item) => (
               <SidebarItem
