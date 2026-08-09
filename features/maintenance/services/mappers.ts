@@ -60,7 +60,9 @@ export function mapMaintenanceRecordRow(row: MaintenanceRecordRow): MaintenanceR
     finalAmount: row.final_amount !== null ? Number(row.final_amount) : null,
     partsTotal: Number(row.parts_total),
     servicesTotal: Number(row.services_total),
-    totalCost: Number(row.total_cost),
+    // final_amount (Valor) tem prioridade sobre total_cost (peças+serviços)
+    totalCost:
+      row.final_amount !== null ? Number(row.final_amount) : Number(row.total_cost),
     costPerKm: row.cost_per_km !== null ? Number(row.cost_per_km) : null,
     responsible: row.responsible,
     paymentType: row.payment_type === 'credit' ? 'credit' : 'cash',

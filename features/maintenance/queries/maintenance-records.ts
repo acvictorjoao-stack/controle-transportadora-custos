@@ -92,6 +92,7 @@ function buildMaintenancePayload(
     notes: input.notes,
     estimated_amount: input.estimatedAmount,
     final_amount: input.finalAmount ?? metrics.totalCost,
+    total_cost: metrics.totalCost,
     cost_per_km: metrics.costPerKm,
     responsible: input.responsible,
     payment_type: input.paymentType ?? 'cash',
