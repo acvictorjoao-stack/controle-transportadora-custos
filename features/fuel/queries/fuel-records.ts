@@ -51,12 +51,14 @@ function sanitizeSearchTerm(value: string): string {
   return value.replace(/[%(),]/g, '').trim();
 }
 
-async function getPreviousOdometer(
+async function getLastFuelOdometerForVehicle(
   supabase: SupabaseClient,
   companyId: string,
   vehicleId: string,
-  fueledAt: string,
-  excludeId?: string,
+  options?: {
+    beforeFueledAt?: string;
+    excludeId?: string;
+  },
 ): Promise<number | null> {
   let query = supabase
     .from('fuel_records')
@@ -65,17 +67,33 @@ async function getPreviousOdometer(
     .eq('vehicle_id', vehicleId)
     .is('deleted_at', null)
     .not('odometer_km', 'is', null)
-    .lt('fueled_at', fueledAt)
     .order('fueled_at', {ascending: false})
     .limit(1);
 
-  if (excludeId) {
-    query = query.neq('id', excludeId);
+  if (options?.beforeFueledAt) {
+    query = query.lt('fueled_at', options.beforeFueledAt);
+  }
+
+  if (options?.excludeId) {
+    query = query.neq('id', options.excludeId);
   }
 
   const {data, error} = await query.maybeSingle();
-  if (error || !data?.odometer_km) return null;
+  if (error || data == null || data.odometer_km == null) return null;
   return Number(data.odometer_km);
+}
+
+async function getPreviousOdometer(
+  supabase: SupabaseClient,
+  companyId: string,
+  vehicleId: string,
+  fueledAt: string,
+  excludeId?: string,
+): Promise<number | null> {
+  return getLastFuelOdometerForVehicle(supabase, companyId, vehicleId, {
+    beforeFueledAt: fueledAt,
+    excludeId,
+  });
 }
 
 async function hasDuplicateSameDay(
@@ -116,7 +134,7 @@ function assertOdometerNotRegressive(
     maximumFractionDigits: 2,
   });
   throw new Error(
-    `Odômetro inválido. Este veículo possui último odômetro registrado de ${formatted} km. Informe um valor igual ou superior.`,
+    `Odômetro inválido. O último odômetro registrado para este veículo em abastecimentos é ${formatted} km.`,
   );
 }
 
@@ -284,6 +302,19 @@ export async function getFuelRecordById(
 
   if (!data) return null;
   return mapFuelRecordRow(data as unknown as FuelRecordRow);
+}
+
+/** Último odômetro em `fuel_records` do veículo (somente abastecimentos). */
+export async function getVehicleLastFuelOdometer(
+  supabase: SupabaseClient,
+  companyId: string,
+  vehicleId: string,
+  options?: {
+    beforeFueledAt?: string;
+    excludeId?: string;
+  },
+): Promise<number | null> {
+  return getLastFuelOdometerForVehicle(supabase, companyId, vehicleId, options);
 }
 
 export async function createFuelRecord(

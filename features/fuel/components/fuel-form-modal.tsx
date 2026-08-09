@@ -19,7 +19,7 @@ import {useSupplierOptions} from '@/features/suppliers/hooks/use-supplier-option
 import type {SupplierSelectOption} from '@/features/suppliers/types';
 import type {VehicleSelectOption} from '@/features/vehicles/types';
 
-import {createFuelRecordAction, updateFuelRecordAction} from '../actions';
+import {createFuelRecordAction, getVehicleLastFuelOdometerAction, updateFuelRecordAction} from '../actions';
 import {FUEL_TYPES} from '../constants/enums';
 import type {FuelRecord, FuelType} from '../types';
 import {FUEL_TYPE_LABELS} from '../types';
@@ -38,6 +38,13 @@ export interface FuelFormModalProps {
 }
 
 type FieldErrors = Partial<Record<keyof CreateFuelRecordInput, string>>;
+
+function formatOdometerKm(value: number): string {
+  return value.toLocaleString('pt-BR', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+}
 
 function toLocalDateTimeValue(iso: string | null | undefined): string {
   if (!iso) return '';
@@ -134,7 +141,48 @@ function FuelFormContent({
   const [fieldErrors, setFieldErrors] = React.useState<FieldErrors>({});
   const [formError, setFormError] = React.useState<string | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
+  const [lastFuelOdometerKm, setLastFuelOdometerKm] = React.useState<number | null>(null);
+  const [lastFuelOdometerLoading, setLastFuelOdometerLoading] = React.useState(false);
   const toast = useToast();
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    async function loadLastFuelOdometer() {
+      if (!formData.vehicleId) {
+        setLastFuelOdometerKm(null);
+        setLastFuelOdometerLoading(false);
+        return;
+      }
+
+      setLastFuelOdometerLoading(true);
+
+      const beforeFueledAt =
+        isEdit && formData.fueledAt
+          ? new Date(formData.fueledAt).toISOString()
+          : null;
+
+      const result = await getVehicleLastFuelOdometerAction({
+        vehicleId: formData.vehicleId,
+        beforeFueledAt,
+        excludeId: isEdit && record?.id ? record.id : null,
+      });
+
+      if (cancelled) return;
+
+      if (result.success) {
+        setLastFuelOdometerKm(result.data);
+      } else {
+        setLastFuelOdometerKm(null);
+      }
+      setLastFuelOdometerLoading(false);
+    }
+
+    void loadLastFuelOdometer();
+    return () => {
+      cancelled = true;
+    };
+  }, [formData.vehicleId, formData.fueledAt, isEdit, record?.id]);
 
   function updateField<K extends keyof CreateFuelRecordInput>(
     field: K,
@@ -392,6 +440,13 @@ function FuelFormContent({
               updateField('odometerKm', e.target.value ? Number(e.target.value) : null)
             }
           />
+          <p className="text-xs text-muted-foreground">
+            {lastFuelOdometerLoading
+              ? 'Último odômetro em abastecimentos: carregando...'
+              : lastFuelOdometerKm === null
+                ? 'Último odômetro em abastecimentos: Nenhum registro'
+                : `Último odômetro em abastecimentos: ${formatOdometerKm(lastFuelOdometerKm)} km`}
+          </p>
         </FormField>
         <FormField label="Responsável" htmlFor="fuel-responsible" error={fieldErrors.responsible}>
           <Input

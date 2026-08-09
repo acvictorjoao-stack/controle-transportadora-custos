@@ -4,4 +4,5 @@ export {
   deleteFuelRecordAction,
   registerFuelFileAction,
   deleteFuelDocumentAction,
+  getVehicleLastFuelOdometerAction,
 } from './fuel-actions';

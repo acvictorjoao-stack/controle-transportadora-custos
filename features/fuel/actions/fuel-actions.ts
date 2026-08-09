@@ -17,6 +17,7 @@ import {
   createFuelDocument,
   createFuelRecord,
   getFuelRecordById,
+  getVehicleLastFuelOdometer,
   softDeleteFuelDocument,
   softDeleteFuelRecord,
   updateFuelRecord,
@@ -74,6 +75,38 @@ async function resolveFuelAccess(
   }
 
   return {success: true, data: {companyId, profileId: membership.profileId}};
+}
+
+export async function getVehicleLastFuelOdometerAction(input: {
+  vehicleId: string;
+  beforeFueledAt?: string | null;
+  excludeId?: string | null;
+}): Promise<ActionResult<number | null>> {
+  const resolved = await resolveFuelAccess('fuel:read');
+  if (!resolved.success) return resolved;
+
+  if (!input.vehicleId) {
+    return {success: true, data: null};
+  }
+
+  try {
+    const supabase = await getServerSupabaseClient();
+    const data = await getVehicleLastFuelOdometer(
+      supabase,
+      resolved.data.companyId,
+      input.vehicleId,
+      {
+        beforeFueledAt: input.beforeFueledAt ?? undefined,
+        excludeId: input.excludeId ?? undefined,
+      },
+    );
+    return {success: true, data};
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Erro ao buscar odômetro.',
+    };
+  }
 }
 
 export async function createFuelRecordAction(

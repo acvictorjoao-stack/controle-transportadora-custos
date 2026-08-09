@@ -1,6 +1,7 @@
 export {
   listFuelRecords,
   getFuelRecordById,
+  getVehicleLastFuelOdometer,
   createFuelRecord,
   updateFuelRecord,
   softDeleteFuelRecord,
