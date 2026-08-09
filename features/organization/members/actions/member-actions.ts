@@ -22,6 +22,11 @@ import {zodFieldErrors} from '@/lib/validators/zod-field-errors';
 import {createAdminClient} from '@/supabase/server/admin';
 
 import {
+  getLastSuperAdminBlockMessage,
+  isBusinessRoleName,
+  isSuperAdminRoleName,
+} from '../business-roles';
+import {
   findActiveMembershipByEmail,
   getCompanyMemberById,
   getCompanyRoleById,
@@ -110,6 +115,69 @@ async function isPortalMasterProfile(profileId: string): Promise<boolean> {
   return Boolean(data);
 }
 
+async function countActiveSuperAdmins(companyId: string): Promise<number> {
+  const supabase = await getServerSupabaseClient();
+
+  const {data, error} = await supabase
+    .from('company_members')
+    .select('id, roles!inner(name, is_system, status, deleted_at)')
+    .eq('company_id', companyId)
+    .eq('status', 'active')
+    .is('deleted_at', null)
+    .eq('roles.name', 'Super Admin')
+    .eq('roles.is_system', true)
+    .eq('roles.status', 'active')
+    .is('roles.deleted_at', null);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data?.length ?? 0;
+}
+
+function assertAssignableBusinessRole(
+  role: CompanyRoleOption | null,
+): ActionResult<CompanyRoleOption> {
+  if (!role) {
+    return {success: false, error: 'Perfil (role) inválido para esta empresa.'};
+  }
+  if (!isBusinessRoleName(role.name)) {
+    return {
+      success: false,
+      error: 'Perfil (role) inválido. Selecione um dos perfis de negócio disponíveis.',
+    };
+  }
+  return {success: true, data: role};
+}
+
+async function assertLastSuperAdminSafe(input: {
+  companyId: string;
+  existing: CompanyMemberListItem;
+  nextRoleName: string;
+  nextStatus: MemberStatus;
+}): Promise<ActionResult<null>> {
+  const willDeactivate =
+    input.existing.status === 'active' && input.nextStatus === 'inactive';
+  const willDemote =
+    isSuperAdminRoleName(input.existing.roleName) &&
+    !isSuperAdminRoleName(input.nextRoleName);
+
+  const blockMessage = getLastSuperAdminBlockMessage({
+    targetIsActiveSuperAdmin:
+      input.existing.status === 'active' && isSuperAdminRoleName(input.existing.roleName),
+    activeSuperAdminCount: await countActiveSuperAdmins(input.companyId),
+    willDeactivate,
+    willDemote,
+  });
+
+  if (blockMessage) {
+    return {success: false, error: blockMessage};
+  }
+
+  return {success: true, data: null};
+}
+
 export async function listCompanyRolesAction(): Promise<
   ActionResult<CompanyRoleOption[]>
 > {
@@ -151,10 +219,10 @@ export async function createCompanyMemberAction(
 
   try {
     const supabase = await getServerSupabaseClient();
-    const role = await getCompanyRoleById(supabase, companyId, roleId);
-    if (!role) {
-      return {success: false, error: 'Perfil (role) inválido para esta empresa.'};
-    }
+    const roleResult = assertAssignableBusinessRole(
+      await getCompanyRoleById(supabase, companyId, roleId),
+    );
+    if (!roleResult.success) return roleResult;
 
     const existingMember = await findActiveMembershipByEmail(companyId, email);
     if (existingMember) {
@@ -262,10 +330,18 @@ export async function updateCompanyMemberAction(
     }
 
     const supabase = await getServerSupabaseClient();
-    const role = await getCompanyRoleById(supabase, companyId, parsed.data.roleId);
-    if (!role) {
-      return {success: false, error: 'Perfil (role) inválido para esta empresa.'};
-    }
+    const roleResult = assertAssignableBusinessRole(
+      await getCompanyRoleById(supabase, companyId, parsed.data.roleId),
+    );
+    if (!roleResult.success) return roleResult;
+
+    const lastSuperAdminGuard = await assertLastSuperAdminSafe({
+      companyId,
+      existing,
+      nextRoleName: roleResult.data.name,
+      nextStatus: parsed.data.status,
+    });
+    if (!lastSuperAdminGuard.success) return lastSuperAdminGuard;
 
     if (parsed.data.email.toLowerCase() !== existing.email.toLowerCase()) {
       const duplicate = await findActiveMembershipByEmail(companyId, parsed.data.email);
@@ -354,6 +430,14 @@ export async function toggleCompanyMemberStatusAction(
         error: 'Você não pode desativar o próprio usuário.',
       };
     }
+
+    const lastSuperAdminGuard = await assertLastSuperAdminSafe({
+      companyId,
+      existing,
+      nextRoleName: existing.roleName,
+      nextStatus: status,
+    });
+    if (!lastSuperAdminGuard.success) return lastSuperAdminGuard;
 
     const supabase = await getServerSupabaseClient();
     const {error} = await supabase

@@ -298,9 +298,16 @@ function MembersList({
           ) : undefined
         }
       >
+        {(actionError || initialError) && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertDescription>{actionError ?? initialError}</AlertDescription>
+          </Alert>
+        )}
+
         <TableContainer
           title="Usuários da empresa"
           description={`${data.total} usuário(s) encontrado(s)`}
+          className="h-auto max-h-none"
           toolbar={
             <>
               <SearchInput
@@ -322,14 +329,6 @@ function MembersList({
             </>
           }
         >
-          {(actionError || initialError) && (
-            <div className="px-6 pt-4">
-              <Alert variant="destructive">
-                <AlertDescription>{actionError ?? initialError}</AlertDescription>
-              </Alert>
-            </div>
-          )}
-
           <DataTable
             columns={columns}
             data={data.items}
@@ -338,16 +337,16 @@ function MembersList({
             emptyTitle="Nenhum usuário encontrado"
             emptyDescription="Cadastre o primeiro usuário individual desta empresa."
           />
-
-          <ListPagination
-            page={data.page}
-            pageSize={data.pageSize}
-            total={data.total}
-            totalPages={data.totalPages}
-            itemLabel="usuário"
-            onPageChange={handlePageChange}
-          />
         </TableContainer>
+
+        <ListPagination
+          page={data.page}
+          pageSize={data.pageSize}
+          total={data.total}
+          totalPages={data.totalPages}
+          itemLabel="usuário"
+          onPageChange={handlePageChange}
+        />
       </PageTemplate>
 
       <MemberFormModal

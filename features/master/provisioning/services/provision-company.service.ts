@@ -30,7 +30,7 @@ export class ProvisionCompanyError extends Error {
  *
  * Etapas automáticas via trigger DB (após insert em companies):
  * - Filial HQ em branches
- * - Roles Super Admin, Admin, Manager, Operator + role_permissions
+ * - Roles Super Admin, Administrador, Financeiro, Operacional, Cadastro, Consulta + role_permissions
  *
  * Etapas deste serviço:
  * 1. Insert companies (provision_status = in_progress)

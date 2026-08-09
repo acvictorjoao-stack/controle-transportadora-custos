@@ -130,7 +130,7 @@ function MemberFormBody({
       setRoles(result.data);
       if (!roleId && result.data.length > 0) {
         const preferred =
-          result.data.find((role) => role.name === 'Operator') ?? result.data[0];
+          result.data.find((role) => role.name === 'Consulta') ?? result.data[0];
         setRoleId(preferred.id);
       }
       setRolesLoading(false);

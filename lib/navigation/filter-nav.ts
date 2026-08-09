@@ -1,4 +1,4 @@
-import {hasPermission} from '@/hooks/use-nav-permissions';
+import {hasPermission} from '@/lib/navigation/has-permission';
 import type {NavGroup, NavItem, Permission} from '@/types/global/navigation';
 
 function filterNavItemChildren(

@@ -2748,6 +2748,12 @@ export type Database = {
         };
         Returns: undefined;
       };
+      count_active_super_admins: {
+        Args: {
+          p_company_id: string;
+        };
+        Returns: number;
+      };
       company_has_active_members: {
         Args: {
           p_company_id: string;

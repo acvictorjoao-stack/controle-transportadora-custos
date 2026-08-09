@@ -20,7 +20,9 @@ function TableContainer({
     <div
       data-slot="table-container"
       className={cn(
-        'overflow-hidden rounded-xl border border-border bg-card shadow-card',
+        // No overflow-y / overflow-hidden here: the card must grow with rows so the
+        // page (ScrollableArea) scrolls — not an inner table scrollbar.
+        'rounded-xl border border-border bg-card shadow-card',
         className,
       )}
       {...props}
@@ -38,7 +40,9 @@ function TableContainer({
           {toolbar && <div className="flex items-center gap-2">{toolbar}</div>}
         </div>
       )}
-      <div className="overflow-x-auto">{children}</div>
+      {/* Horizontal scroll only. overflow-y-clip avoids the CSS quirk where
+          overflow-x:auto forces overflow-y:auto (nested vertical scrollbar). */}
+      <div className="overflow-x-auto overflow-y-clip">{children}</div>
     </div>
   );
 }

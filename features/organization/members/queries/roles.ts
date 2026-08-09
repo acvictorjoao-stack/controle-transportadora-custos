@@ -1,5 +1,6 @@
 import type {SupabaseClient} from '@supabase/supabase-js';
 
+import {filterAssignableBusinessRoles} from '../business-roles';
 import type {CompanyRoleOption} from '../types';
 
 export async function listCompanyRoles(
@@ -18,12 +19,15 @@ export async function listCompanyRoles(
     throw new Error(error.message);
   }
 
-  return (data ?? []).map((row) => ({
+  const roles = (data ?? []).map((row) => ({
     id: row.id,
     name: row.name,
     description: row.description,
     isSystem: row.is_system,
   }));
+
+  // UI assignment list: business profiles only (no Manager/Operator/Admin).
+  return filterAssignableBusinessRoles(roles);
 }
 
 export async function getCompanyRoleById(
