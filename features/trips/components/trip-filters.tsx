@@ -7,6 +7,7 @@ import type {BranchSelectOption} from '@/features/organization/branches/types';
 import type {DriverSelectOption} from '@/features/drivers/types';
 import type {RouteFilterOptions, RouteSelectOption} from '@/features/routes/types';
 import type {VehicleSelectOption} from '@/features/vehicles/types';
+import {scheduleQueryUrlSync} from '@/lib/navigation/sync-query-url';
 
 import {SIMPLE_TRIP_STATUSES} from '../constants/enums';
 import type {TripListFilters, TripSortOptions, TripStatus} from '../types';
@@ -38,14 +39,10 @@ function TripFilters({
   const [sort, setSort] = React.useState(initialSort);
 
   React.useEffect(() => {
-    const timer = window.setTimeout(() => {
+    return scheduleQueryUrlSync(router, () => {
       const search = new URLSearchParams(window.location.search).get('q') ?? '';
-      const next = buildTripsListUrl({search, filters, sort});
-      const current = `${window.location.pathname}${window.location.search}`;
-      if (current !== next) router.push(next);
-    }, 300);
-
-    return () => window.clearTimeout(timer);
+      return buildTripsListUrl({search, filters, sort});
+    });
   }, [filters, sort, router]);
 
   function updateFilter<K extends keyof TripListFilters>(

@@ -12,8 +12,10 @@ const nextConfig: NextConfig = {
     // PPR (`ppr: 'incremental'`) exige Next.js canary nesta linha (15.4.x).
     // Rotas piloto já usam Suspense/streaming e ficam prontas para opt-in quando
     // a versão estável/canary do projeto habilitar PPR.
+    // dynamic: 0 = padrão do Next 15 (sempre refetch do segmento de página na
+    // soft navigation). Evita conteúdo preso no Client Router Cache.
     staleTimes: {
-      dynamic: 30,
+      dynamic: 0,
       static: 180,
     },
   },

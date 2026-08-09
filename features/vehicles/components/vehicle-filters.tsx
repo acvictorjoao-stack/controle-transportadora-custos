@@ -5,6 +5,8 @@ import * as React from 'react';
 
 import type {BranchSelectOption} from '@/features/organization/branches/types';
 
+import {scheduleQueryUrlSync} from '@/lib/navigation/sync-query-url';
+
 import type {VehicleAssetStatus, VehicleListFilters, VehicleSortOptions} from '../types';
 import {VEHICLE_ASSET_STATUS_LABELS, VEHICLE_TYPE_OPTIONS} from '../types';
 import {buildVehiclesListUrl} from '../utils/list-url';
@@ -23,14 +25,10 @@ function VehicleFilters({branches, initialFilters, initialSort}: VehicleFiltersP
   const [sort, setSort] = React.useState(initialSort);
 
   React.useEffect(() => {
-    const timer = window.setTimeout(() => {
+    return scheduleQueryUrlSync(router, () => {
       const search = new URLSearchParams(window.location.search).get('q') ?? '';
-      const next = buildVehiclesListUrl({search, filters, sort});
-      const current = `${window.location.pathname}${window.location.search}`;
-      if (current !== next) router.push(next);
-    }, 300);
-
-    return () => window.clearTimeout(timer);
+      return buildVehiclesListUrl({search, filters, sort});
+    });
   }, [filters, sort, router]);
 
   function updateFilter<K extends keyof VehicleListFilters>(

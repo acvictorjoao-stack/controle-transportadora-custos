@@ -14,6 +14,7 @@ import {
   formatPercent,
 } from '@/features/financial/utils/financial-format';
 import {VEHICLE_NATIVE_SELECT_CLASS} from '@/features/vehicles/utils/form-styles';
+import {scheduleQueryUrlSync} from '@/lib/navigation/sync-query-url';
 import {cn} from '@/lib/utils';
 
 import type {
@@ -84,20 +85,14 @@ function OperationalDreVehicleCosts({
   }
 
   React.useEffect(() => {
-    const nextFilters: OperationalDreFilters = {
-      ...filters,
-      dateFrom: period.dateFrom || undefined,
-      dateTo: period.dateTo || undefined,
-    };
-    const next = buildOperationalDreUrl(nextFilters, basePath);
-    const current = `${window.location.pathname}${window.location.search}`;
-    if (current === next) return;
-
-    const timer = window.setTimeout(() => {
-      router.push(next);
-    }, 300);
-
-    return () => window.clearTimeout(timer);
+    return scheduleQueryUrlSync(router, () => {
+      const nextFilters: OperationalDreFilters = {
+        ...filters,
+        dateFrom: period.dateFrom || undefined,
+        dateTo: period.dateTo || undefined,
+      };
+      return buildOperationalDreUrl(nextFilters, basePath);
+    });
   }, [basePath, period, filters, router]);
 
   const filtersKey = React.useMemo(

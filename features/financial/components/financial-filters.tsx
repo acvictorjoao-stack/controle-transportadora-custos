@@ -6,6 +6,7 @@ import * as React from 'react';
 import type {BranchSelectOption} from '@/features/organization/branches/types';
 import type {DriverSelectOption} from '@/features/drivers/types';
 import type {TripSelectOption} from '@/features/trips/types';
+import {scheduleQueryUrlSync} from '@/lib/navigation/sync-query-url';
 
 import {FINANCIAL_ENTRY_STATUSES, FINANCIAL_ENTRY_TYPES} from '../constants/enums';
 import type {
@@ -49,14 +50,10 @@ function FinancialFilters({
   const [sort, setSort] = React.useState(initialSort);
 
   React.useEffect(() => {
-    const timer = window.setTimeout(() => {
+    return scheduleQueryUrlSync(router, () => {
       const search = new URLSearchParams(window.location.search).get('q') ?? '';
-      const next = buildFinancialListUrl({search, filters, sort});
-      const current = `${window.location.pathname}${window.location.search}`;
-      if (current !== next) router.push(next);
-    }, 300);
-
-    return () => window.clearTimeout(timer);
+      return buildFinancialListUrl({search, filters, sort});
+    });
   }, [filters, sort, router]);
 
   function updateFilter<K extends keyof FinancialListFilters>(

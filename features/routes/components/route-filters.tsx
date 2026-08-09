@@ -3,6 +3,8 @@
 import {useRouter} from 'next/navigation';
 import * as React from 'react';
 
+import {scheduleQueryUrlSync} from '@/lib/navigation/sync-query-url';
+
 import {ROUTE_TYPES} from '../constants/enums';
 import type {
   RouteFilterOptions,
@@ -34,14 +36,10 @@ function RouteFilters({
   const [sort, setSort] = React.useState(initialSort);
 
   React.useEffect(() => {
-    const timer = window.setTimeout(() => {
+    return scheduleQueryUrlSync(router, () => {
       const search = new URLSearchParams(window.location.search).get('q') ?? '';
-      const next = buildRoutesListUrl({search, filters, sort});
-      const current = `${window.location.pathname}${window.location.search}`;
-      if (current !== next) router.push(next);
-    }, 300);
-
-    return () => window.clearTimeout(timer);
+      return buildRoutesListUrl({search, filters, sort});
+    });
   }, [filters, sort, router]);
 
   function updateFilter<K extends keyof RouteListFilters>(

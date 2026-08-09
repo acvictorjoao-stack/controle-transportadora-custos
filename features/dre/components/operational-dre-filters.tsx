@@ -5,6 +5,7 @@ import * as React from 'react';
 
 import {ROUTES} from '@/constants/routes/paths';
 import {VEHICLE_NATIVE_SELECT_CLASS} from '@/features/vehicles/utils/form-styles';
+import {scheduleQueryUrlSync} from '@/lib/navigation/sync-query-url';
 
 import type {OperationalDreFilterOptions, OperationalDreFilters} from '../types';
 import {buildOperationalDreUrl} from '../utils/list-url';
@@ -25,13 +26,9 @@ function OperationalDreFiltersBar({
   const [filters, setFilters] = React.useState(initialFilters);
 
   React.useEffect(() => {
-    const timer = window.setTimeout(() => {
-      const next = buildOperationalDreUrl(filters, basePath);
-      const current = `${window.location.pathname}${window.location.search}`;
-      if (current !== next) router.push(next);
-    }, 300);
-
-    return () => window.clearTimeout(timer);
+    return scheduleQueryUrlSync(router, () =>
+      buildOperationalDreUrl(filters, basePath),
+    );
   }, [basePath, filters, router]);
 
   return (

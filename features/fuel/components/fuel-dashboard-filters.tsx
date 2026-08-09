@@ -5,6 +5,7 @@ import * as React from 'react';
 
 import type {BranchSelectOption} from '@/features/organization/branches/types';
 import type {VehicleSelectOption} from '@/features/vehicles/types';
+import {scheduleQueryUrlSync} from '@/lib/navigation/sync-query-url';
 
 import type {FuelConsumptionDashboardFilters} from '../types';
 import {buildFuelConsumptionDashboardUrl} from '../utils/consumption-dashboard-url';
@@ -26,13 +27,9 @@ function FuelDashboardFilters({branches, vehicles, initialFilters}: FuelDashboar
   const [filters, setFilters] = React.useState(initialFilters);
 
   React.useEffect(() => {
-    const timer = window.setTimeout(() => {
-      const next = buildFuelConsumptionDashboardUrl(filters);
-      const current = `${window.location.pathname}${window.location.search}`;
-      if (current !== next) router.push(next);
-    }, 300);
-
-    return () => window.clearTimeout(timer);
+    return scheduleQueryUrlSync(router, () =>
+      buildFuelConsumptionDashboardUrl(filters),
+    );
   }, [filters, router]);
 
   function updateVehicle(vehicleId: string) {

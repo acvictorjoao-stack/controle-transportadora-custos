@@ -5,6 +5,7 @@ import * as React from 'react';
 
 import {financialInputClassName} from '@/features/financial/utils/form-styles';
 import {ACCOUNTS_RECEIVABLE_STATUS_LABELS} from '@/features/financial/types/financial-entry';
+import {scheduleQueryUrlSync} from '@/lib/navigation/sync-query-url';
 
 import {ACCOUNTS_RECEIVABLE_STATUSES} from '../constants';
 import type {
@@ -31,14 +32,10 @@ function AccountsReceivableFilters({
   const [sort, setSort] = React.useState(initialSort);
 
   React.useEffect(() => {
-    const timer = window.setTimeout(() => {
+    return scheduleQueryUrlSync(router, () => {
       const search = new URLSearchParams(window.location.search).get('q') ?? '';
-      const next = buildAccountsReceivableListUrl({search, filters, sort});
-      const current = `${window.location.pathname}${window.location.search}`;
-      if (current !== next) router.push(next);
-    }, 300);
-
-    return () => window.clearTimeout(timer);
+      return buildAccountsReceivableListUrl({search, filters, sort});
+    });
   }, [filters, sort, router]);
 
   function updateFilter<K extends keyof AccountsReceivableListFilters>(

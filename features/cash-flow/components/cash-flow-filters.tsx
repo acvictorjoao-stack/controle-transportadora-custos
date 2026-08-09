@@ -4,6 +4,7 @@ import {useRouter} from 'next/navigation';
 import * as React from 'react';
 
 import {financialInputClassName} from '@/features/financial/utils/form-styles';
+import {scheduleQueryUrlSync} from '@/lib/navigation/sync-query-url';
 
 import {
   CASH_FLOW_STATUS_LABELS,
@@ -23,14 +24,10 @@ function CashFlowFilters({initialFilters}: CashFlowFiltersProps) {
   const [filters, setFilters] = React.useState(initialFilters);
 
   React.useEffect(() => {
-    const timer = window.setTimeout(() => {
+    return scheduleQueryUrlSync(router, () => {
       const search = new URLSearchParams(window.location.search).get('q') ?? '';
-      const next = buildCashFlowListUrl({search, filters});
-      const current = `${window.location.pathname}${window.location.search}`;
-      if (current !== next) router.push(next);
-    }, 300);
-
-    return () => window.clearTimeout(timer);
+      return buildCashFlowListUrl({search, filters});
+    });
   }, [filters, router]);
 
   function updateFilter<K extends keyof CashFlowListFilters>(

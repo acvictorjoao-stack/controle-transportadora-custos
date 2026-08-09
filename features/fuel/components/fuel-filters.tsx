@@ -5,6 +5,7 @@ import * as React from 'react';
 
 import type {BranchSelectOption} from '@/features/organization/branches/types';
 import type {DriverSelectOption} from '@/features/drivers/types';
+import {scheduleQueryUrlSync} from '@/lib/navigation/sync-query-url';
 
 import {FUEL_TYPES} from '../constants/enums';
 import type {FuelListFilters, FuelSortOptions, FuelType} from '../types';
@@ -32,14 +33,10 @@ function FuelFilters({
   const [sort, setSort] = React.useState(initialSort);
 
   React.useEffect(() => {
-    const timer = window.setTimeout(() => {
+    return scheduleQueryUrlSync(router, () => {
       const search = new URLSearchParams(window.location.search).get('q') ?? '';
-      const next = buildFuelListUrl({search, filters, sort});
-      const current = `${window.location.pathname}${window.location.search}`;
-      if (current !== next) router.push(next);
-    }, 300);
-
-    return () => window.clearTimeout(timer);
+      return buildFuelListUrl({search, filters, sort});
+    });
   }, [filters, sort, router]);
 
   function updateFilter<K extends keyof FuelListFilters>(
