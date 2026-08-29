@@ -91,8 +91,8 @@ export async function measureMiddlewareSupabase<T>(
   client: object,
   operation: string,
   step: string,
-  callback: () => Promise<T>,
-): Promise<T> {
+  callback: () => T,
+): Promise<Awaited<T>> {
   const context = getTimingContext(client);
   const startedAt = performance.now();
 
