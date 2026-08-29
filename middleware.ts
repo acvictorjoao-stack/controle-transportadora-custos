@@ -1,9 +1,10 @@
 import {type NextRequest} from 'next/server';
 
 import {updateSession} from '@/supabase/middleware';
+import {createMiddlewareRequestId} from '@/supabase/middleware/timing';
 
 export async function middleware(request: NextRequest) {
-  return updateSession(request);
+  return updateSession(request, createMiddlewareRequestId());
 }
 
 export const config = {

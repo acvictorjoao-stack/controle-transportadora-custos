@@ -2,6 +2,7 @@ import type {SupabaseClient} from '@supabase/supabase-js';
 
 import {isPortalOwner} from '@/lib/auth/portal';
 import {createClient} from '@/supabase/server';
+import {measureMiddlewareSupabase} from '@/supabase/middleware/timing';
 import type {Database} from '@/supabase/types';
 
 type Supabase = SupabaseClient<Database>;
@@ -24,21 +25,33 @@ export async function getMasterActingCompany(
     return null;
   }
 
-  const {data: acting, error: actingError} = await client
-    .from('portal_acting_companies')
-    .select('company_id')
-    .maybeSingle();
+  const {data: acting, error: actingError} = await measureMiddlewareSupabase(
+    client,
+    'portal_acting_companies',
+    'acting_company',
+    () =>
+      client
+        .from('portal_acting_companies')
+        .select('company_id')
+        .maybeSingle(),
+  );
 
   if (actingError || !acting?.company_id) {
     return null;
   }
 
-  const {data: company, error: companyError} = await client
-    .from('companies')
-    .select('id, trade_name, legal_name, status')
-    .eq('id', acting.company_id)
-    .is('deleted_at', null)
-    .maybeSingle();
+  const {data: company, error: companyError} = await measureMiddlewareSupabase(
+    client,
+    'companies',
+    'companies',
+    () =>
+      client
+        .from('companies')
+        .select('id, trade_name, legal_name, status')
+        .eq('id', acting.company_id)
+        .is('deleted_at', null)
+        .maybeSingle(),
+  );
 
   if (companyError || !company || company.status !== 'active') {
     return null;

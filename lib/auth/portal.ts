@@ -2,6 +2,7 @@ import type {SupabaseClient} from '@supabase/supabase-js';
 
 import {type PortalRole} from '@/lib/auth/permissions';
 import {getServerSupabase, getServerUser} from '@/supabase/auth/server';
+import {measureMiddlewareSupabase} from '@/supabase/middleware/timing';
 import type {Database} from '@/supabase/types';
 import type {PortalUser} from '@/types/portal/user';
 
@@ -28,7 +29,12 @@ async function resolveAuthUserId(
   if (supabase) {
     const {
       data: {user},
-    } = await client.auth.getUser();
+    } = await measureMiddlewareSupabase(
+      client,
+      'auth.getUser',
+      'auth_getUser',
+      () => client.auth.getUser(),
+    );
     return user?.id ?? null;
   }
 
@@ -37,7 +43,12 @@ async function resolveAuthUserId(
 }
 
 async function rpcGetMyPortalRole(client: Supabase): Promise<PortalRole | null> {
-  const {data, error} = await client.rpc('get_my_portal_role');
+  const {data, error} = await measureMiddlewareSupabase(
+    client,
+    'get_my_portal_role',
+    'portal_role',
+    () => client.rpc('get_my_portal_role'),
+  );
 
   if (error) {
     throw error;
@@ -47,7 +58,12 @@ async function rpcGetMyPortalRole(client: Supabase): Promise<PortalRole | null> 
 }
 
 async function rpcIsPortalOwner(client: Supabase): Promise<boolean> {
-  const {data, error} = await client.rpc('is_portal_owner');
+  const {data, error} = await measureMiddlewareSupabase(
+    client,
+    'is_portal_owner',
+    'is_portal_owner',
+    () => client.rpc('is_portal_owner'),
+  );
 
   if (error) {
     throw error;

@@ -13,6 +13,16 @@ import {
 } from '@/lib/auth/redirect';
 import {checkTenantAccess} from '@/lib/auth/tenant-access';
 import type {Database} from '@/supabase/types';
+import {
+  logMiddlewareStep,
+  logMiddlewareStepForClient,
+  logMiddlewareTotal,
+  logMiddlewareStart,
+  measureMiddlewareSupabase,
+  registerMiddlewareTimingContext,
+  createMiddlewareRequestId,
+  type MiddlewareTimingContext,
+} from '@/supabase/middleware/timing';
 
 type PortalRole = 'OWNER' | 'SUPPORT' | 'FINANCE';
 
@@ -56,13 +66,24 @@ function getMiddlewareSupabaseEnv(): {
 async function fetchPortalUserRole(
   supabase: MiddlewareSupabase,
 ): Promise<PortalRole | null> {
-  const {data, error} = await supabase.rpc('get_my_portal_role');
+  const startedAt = performance.now();
 
-  if (error) {
-    return null;
+  try {
+    const {data, error} = await measureMiddlewareSupabase(
+      supabase,
+      'get_my_portal_role',
+      'portal_role',
+      () => supabase.rpc('get_my_portal_role'),
+    );
+
+    if (error) {
+      return null;
+    }
+
+    return (data as PortalRole | null) ?? null;
+  } finally {
+    logMiddlewareStepForClient(supabase, 'portal_role', startedAt);
   }
-
-  return (data as PortalRole | null) ?? null;
 }
 
 function copyCookies(source: NextResponse, target: NextResponse): void {
@@ -89,24 +110,38 @@ async function invalidateSessionAndRedirectToLogin(
   supabase: MiddlewareSupabase,
   request: NextRequest,
   supabaseResponse: NextResponse,
+  timingContext: MiddlewareTimingContext,
 ): Promise<NextResponse> {
-  await supabase.auth.signOut();
+  await measureMiddlewareSupabase(
+    supabase,
+    'auth.signOut',
+    'auth_signOut',
+    () => supabase.auth.signOut(),
+  );
 
   const loginUrl = request.nextUrl.clone();
   loginUrl.pathname = ROUTES.login;
   loginUrl.search = '';
   loginUrl.searchParams.set('reason', TENANT_ACCESS_DENIED_REASON);
 
+  const redirectStartedAt = performance.now();
   const redirectResponse = NextResponse.redirect(loginUrl);
   copyCookies(supabaseResponse, redirectResponse);
+  logMiddlewareStep(timingContext, 'redirect', redirectStartedAt);
   return redirectResponse;
 }
 
 async function hasValidTenantAccess(
   supabase: MiddlewareSupabase,
 ): Promise<boolean> {
-  const access = await checkTenantAccess(supabase);
-  return access.valid;
+  const startedAt = performance.now();
+
+  try {
+    const access = await checkTenantAccess(supabase);
+    return access.valid;
+  } finally {
+    logMiddlewareStepForClient(supabase, 'tenant_access', startedAt);
+  }
 }
 
 /**
@@ -142,7 +177,38 @@ function buildAuthCallbackFunnelUrl(request: NextRequest): URL | null {
   return callbackUrl;
 }
 
-export async function updateSession(request: NextRequest) {
+export async function updateSession(
+  request: NextRequest,
+  requestId = createMiddlewareRequestId(),
+) {
+  const timingContext: MiddlewareTimingContext = {
+    requestId,
+    pathname: request.nextUrl.pathname,
+  };
+  const startedAt = performance.now();
+  let result: 'success' | 'error' = 'success';
+
+  logMiddlewareStart(timingContext, startedAt, request.method);
+
+  try {
+    return await updateSessionInternal(request, timingContext);
+  } catch (error) {
+    result = 'error';
+    throw error;
+  } finally {
+    logMiddlewareTotal(
+      timingContext,
+      startedAt,
+      result,
+      result === 'error' ? 'exception' : undefined,
+    );
+  }
+}
+
+async function updateSessionInternal(
+  request: NextRequest,
+  timingContext: MiddlewareTimingContext,
+) {
   const supabaseEnv = getMiddlewareSupabaseEnv();
 
   if (!supabaseEnv) {
@@ -151,7 +217,10 @@ export async function updateSession(request: NextRequest) {
 
   const authCallbackFunnel = buildAuthCallbackFunnelUrl(request);
   if (authCallbackFunnel) {
-    return NextResponse.redirect(authCallbackFunnel);
+    const redirectStartedAt = performance.now();
+    const redirectResponse = NextResponse.redirect(authCallbackFunnel);
+    logMiddlewareStep(timingContext, 'redirect', redirectStartedAt);
+    return redirectResponse;
   }
 
   let supabaseResponse = NextResponse.next({request});
@@ -182,10 +251,16 @@ export async function updateSession(request: NextRequest) {
       },
     },
   );
+  registerMiddlewareTimingContext(supabase, timingContext);
 
   const {
     data: {user},
-  } = await supabase.auth.getUser();
+  } = await measureMiddlewareSupabase(
+    supabase,
+    'auth.getUser',
+    'auth_getUser',
+    () => supabase.auth.getUser(),
+  );
 
   const {pathname} = request.nextUrl;
 
@@ -199,7 +274,10 @@ export async function updateSession(request: NextRequest) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = ROUTES.login;
     loginUrl.searchParams.set('returnTo', pathname);
-    return NextResponse.redirect(loginUrl);
+    const redirectStartedAt = performance.now();
+    const redirectResponse = NextResponse.redirect(loginUrl);
+    logMiddlewareStep(timingContext, 'redirect', redirectStartedAt);
+    return redirectResponse;
   }
 
   if (user && isProtectedRoute(pathname) && !isMasterRoute(pathname)) {
@@ -212,6 +290,7 @@ export async function updateSession(request: NextRequest) {
         supabase,
         request,
         supabaseResponse,
+        timingContext,
       );
     }
   }
@@ -220,11 +299,14 @@ export async function updateSession(request: NextRequest) {
     const role = await fetchPortalUserRole(supabase);
 
     if (role !== 'OWNER') {
-      return buildRedirectWithCookies(
+      const redirectStartedAt = performance.now();
+      const redirectResponse = buildRedirectWithCookies(
         request,
         supabaseResponse,
         ROUTES.home,
       );
+      logMiddlewareStep(timingContext, 'redirect', redirectStartedAt);
+      return redirectResponse;
     }
   }
 
@@ -241,7 +323,14 @@ export async function updateSession(request: NextRequest) {
       role === 'OWNER',
     );
 
-    return buildRedirectWithCookies(request, supabaseResponse, destination);
+    const redirectStartedAt = performance.now();
+    const redirectResponse = buildRedirectWithCookies(
+      request,
+      supabaseResponse,
+      destination,
+    );
+    logMiddlewareStep(timingContext, 'redirect', redirectStartedAt);
+    return redirectResponse;
   }
 
   return supabaseResponse;

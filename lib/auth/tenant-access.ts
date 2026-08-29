@@ -4,6 +4,7 @@ import {redirect} from 'next/navigation';
 
 import {ROUTES} from '@/constants/routes/paths';
 import {createClient} from '@/supabase/server';
+import {measureMiddlewareSupabase} from '@/supabase/middleware/timing';
 
 import {
   type CompanyMembership,
@@ -35,12 +36,18 @@ async function validateActiveCompany(
   supabase: SupabaseClient,
   companyId: string,
 ): Promise<TenantAccessResult> {
-  const {data, error} = await supabase
-    .from('companies')
-    .select('id, status')
-    .eq('id', companyId)
-    .is('deleted_at', null)
-    .maybeSingle();
+  const {data, error} = await measureMiddlewareSupabase(
+    supabase,
+    'companies',
+    'companies',
+    () =>
+      supabase
+        .from('companies')
+        .select('id, status')
+        .eq('id', companyId)
+        .is('deleted_at', null)
+        .maybeSingle(),
+  );
 
   if (error || !data) {
     return {valid: false, reason: 'company_missing', companyId};

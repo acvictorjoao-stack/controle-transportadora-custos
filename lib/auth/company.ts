@@ -3,6 +3,7 @@ import type {SupabaseClient} from '@supabase/supabase-js';
 import {getMasterActingCompanyId} from '@/lib/auth/master-company-context';
 import {isPortalOwner} from '@/lib/auth/portal';
 import {createClient} from '@/supabase/server';
+import {measureMiddlewareSupabase} from '@/supabase/middleware/timing';
 
 export const COMPANY_ACCESS_DENIED =
   'Você não tem permissão para realizar esta ação nesta empresa.';
@@ -23,7 +24,12 @@ export async function getServerSupabaseClient() {
 export async function getCurrentUserId(
   supabase: SupabaseClient,
 ): Promise<string | null> {
-  const {data, error} = await supabase.auth.getUser();
+  const {data, error} = await measureMiddlewareSupabase(
+    supabase,
+    'auth.getUser',
+    'auth_getUser',
+    () => supabase.auth.getUser(),
+  );
   if (error || !data.user) return null;
   return data.user.id;
 }
@@ -47,7 +53,12 @@ export async function getUserCompanyMembership(
     query = query.eq('company_id', companyId);
   }
 
-  const {data, error} = await query.maybeSingle();
+  const {data, error} = await measureMiddlewareSupabase(
+    supabase,
+    'company_members',
+    'company_members',
+    () => query.maybeSingle(),
+  );
 
   if (error || !data) return null;
 
