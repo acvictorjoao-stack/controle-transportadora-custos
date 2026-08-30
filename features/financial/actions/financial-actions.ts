@@ -39,6 +39,9 @@ type FinancialPermission =
   | 'financeiro:update'
   | 'financeiro:delete';
 
+const PAYROLL_ORIGIN_ERROR =
+  'Despesas de pessoal devem ser alteradas pelo módulo de Despesas de Pessoal.';
+
 function revalidateFinancialPaths(entryId?: string) {
   revalidatePath(ROUTES.financeiro);
   revalidatePath(ROUTES.contasAPagar);
@@ -70,6 +73,17 @@ async function resolveFinancialAccess(
   }
 
   return {success: true, data: {companyId, profileId: membership.profileId}};
+}
+
+async function assertPayrollManagedByOrigin(
+  supabase: Awaited<ReturnType<typeof getServerSupabaseClient>>,
+  companyId: string,
+  entryId: string,
+): Promise<void> {
+  const entry = await getFinancialEntryById(supabase, companyId, entryId);
+  if (entry?.sourceModule === 'payroll') {
+    throw new Error(PAYROLL_ORIGIN_ERROR);
+  }
 }
 
 export async function createFinancialEntryAction(
@@ -124,6 +138,7 @@ export async function updateFinancialEntryAction(
 
   try {
     const supabase = await getServerSupabaseClient();
+    await assertPayrollManagedByOrigin(supabase, resolved.data.companyId, entryId);
     const data = await updateFinancialEntry(
       supabase,
       resolved.data.companyId,
@@ -183,6 +198,7 @@ export async function cancelFinancialEntryAction(
 
   try {
     const supabase = await getServerSupabaseClient();
+    await assertPayrollManagedByOrigin(supabase, resolved.data.companyId, entryId);
     const data = await cancelFinancialEntry(
       supabase,
       resolved.data.companyId,
@@ -213,6 +229,7 @@ export async function reverseFinancialEntryAction(
 
   try {
     const supabase = await getServerSupabaseClient();
+    await assertPayrollManagedByOrigin(supabase, resolved.data.companyId, entryId);
     const data = await reverseFinancialEntry(
       supabase,
       resolved.data.companyId,
@@ -238,6 +255,7 @@ export async function deleteFinancialEntryAction(
 
   try {
     const supabase = await getServerSupabaseClient();
+    await assertPayrollManagedByOrigin(supabase, resolved.data.companyId, entryId);
     await softDeleteFinancialEntry(
       supabase,
       resolved.data.companyId,

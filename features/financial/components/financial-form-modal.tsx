@@ -145,6 +145,17 @@ function FinancialFormContent({
   const [submitting, setSubmitting] = React.useState(false);
   const toast = useToast();
 
+  // Estorno só existe pelo fluxo de estorno, que preenche reversed_entry_id.
+  // O banco rejeita reversal sem original e original com reversed_entry_id,
+  // então o tipo não pode ser escolhido nem trocado à mão.
+  const entryTypeOptions = React.useMemo<FinancialEntryType[]>(
+    () =>
+      entry?.entryType === 'reversal'
+        ? ['reversal']
+        : FINANCIAL_ENTRY_TYPES.filter((type) => type !== 'reversal'),
+    [entry?.entryType],
+  );
+
   function updateField<K extends keyof CreateFinancialEntryInput>(
     field: K,
     value: CreateFinancialEntryInput[K],
@@ -202,7 +213,7 @@ function FinancialFormContent({
             className={financialInputClassName}
             required
           >
-            {FINANCIAL_ENTRY_TYPES.map((type) => (
+            {entryTypeOptions.map((type) => (
               <option key={type} value={type}>
                 {FINANCIAL_ENTRY_TYPE_LABELS[type]}
               </option>

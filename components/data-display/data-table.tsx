@@ -16,6 +16,7 @@ export interface DataTableProps<T> {
   columns: DataTableColumn<T>[];
   data: T[];
   getRowKey: (row: T) => string;
+  getRowClassName?: (row: T) => string | undefined;
   loading?: boolean;
   emptyTitle?: string;
   emptyDescription?: string;
@@ -30,6 +31,7 @@ function DataTable<T>({
   columns,
   data,
   getRowKey,
+  getRowClassName,
   loading = false,
   emptyTitle = 'Nenhum registro encontrado',
   emptyDescription = 'Não há dados para exibir no momento.',
@@ -81,7 +83,10 @@ function DataTable<T>({
         {data.map((row) => (
           <tr
             key={getRowKey(row)}
-            className="border-b border-border transition-colors last:border-0 hover:bg-muted/30"
+            className={cn(
+              'border-b border-border transition-colors last:border-0 hover:bg-muted/30',
+              getRowClassName?.(row),
+            )}
           >
             {columns.map((column) => (
               <td

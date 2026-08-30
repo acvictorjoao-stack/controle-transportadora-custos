@@ -261,6 +261,14 @@ export const navigationGroups: NavGroup[] = [
         icon: Wallet,
         permission: 'financeiro_fluxo:read',
       },
+      {
+        id: 'despesas-de-pessoal',
+        title: 'Despesas de Pessoal',
+        description: 'Folha, encargos e benefícios',
+        href: ROUTES.despesasDePessoal,
+        icon: Users,
+        permission: 'financeiro:read',
+      },
     ],
   },
   {

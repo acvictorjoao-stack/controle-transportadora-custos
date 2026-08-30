@@ -51,6 +51,7 @@ export const ROUTES = {
   contasAPagarDetail: (id: string) => `/financeiro/contas-a-pagar/${id}`,
   contasAReceber: '/financeiro/contas-a-receber',
   contasAReceberDetail: (id: string) => `/financeiro/contas-a-receber/${id}`,
+  despesasDePessoal: '/financeiro/despesas-de-pessoal',
 
   // Manutenção
   manutencoes: '/manutencoes',

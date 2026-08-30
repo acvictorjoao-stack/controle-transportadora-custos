@@ -50,6 +50,8 @@ export interface CreateFinancialEntryFromOperationInput {
   costCenterId?: string | null;
   metadata?: Record<string, unknown>;
   relations?: OperationFinancialRelationIds;
+  /** Critical integrations may not hide cleanup failures. */
+  failOnCleanupError?: boolean;
 }
 
 async function resolveOperationCostCenterId(
@@ -169,6 +171,9 @@ async function listExistingOperationEntries(
     .eq('source_id', input.sourceId)
     .is('deleted_at', null)
     .neq('entry_status', 'reversed')
+    // Um estorno carrega o mesmo (source_module, source_id) do original, mas
+    // nunca é a origem: sincronizá-lo reescreveria o lançamento de estorno.
+    .neq('entry_type', 'reversal')
     .order('created_at', {ascending: true})
     .limit(limit);
 
@@ -229,6 +234,7 @@ async function createInstallmentEntry(
       source_id: input.sourceId,
       is_system_generated: true,
       paid_at: payment.paidAt,
+      paid_amount: payment.entryStatus === 'paid' ? installment.amount : null,
       installment_number: installment.number,
       installment_total: installmentTotal,
       metadata: {
@@ -263,9 +269,16 @@ async function syncInstallmentEntry(
 
   // Preserve settlement done in Contas a Pagar / Fluxo de Caixa.
   const alreadyPaid = existing.entryStatus === 'paid';
+  if (alreadyPaid && existing.paidAmount != null && existing.paidAmount > installment.amount) {
+    throw new Error(
+      'O valor do lançamento não pode ficar abaixo do valor já pago.',
+    );
+  }
   const entryStatus = alreadyPaid ? 'paid' : payment.entryStatus;
   const dueDate = alreadyPaid ? existing.dueDate : payment.dueDate;
   const paidAt = alreadyPaid ? existing.paidAt : payment.paidAt;
+  const paidAmount =
+    entryStatus === 'paid' ? (existing.paidAmount ?? installment.amount) : null;
 
   const {error} = await supabase
     .from('financial_entries')
@@ -275,6 +288,7 @@ async function syncInstallmentEntry(
       entry_date: input.entryDate.slice(0, 10),
       due_date: dueDate,
       paid_at: paidAt,
+      paid_amount: paidAmount,
       description: buildInstallmentDescription(
         input.description,
         installment.number,
@@ -381,8 +395,10 @@ export async function upsertFinancialInstallmentsFromOperation(
     if (leftover.entryStatus === 'reversed') continue;
     try {
       await softDeleteFinancialEntry(supabase, companyId, leftover.id, profileId);
-    } catch {
-      // Financial integration must not block source record updates
+    } catch (error) {
+      if (input.failOnCleanupError) {
+        throw error;
+      }
     }
   }
 

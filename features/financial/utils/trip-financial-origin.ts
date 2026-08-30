@@ -58,6 +58,8 @@ export function resolveTripFinancialOriginLabel(sourceModule: string | null): st
       return 'Abrir compra';
     case 'trips':
       return 'Abrir viagem';
+    case 'payroll':
+      return 'Abrir despesa de pessoal';
     case 'manual':
     case 'financeiro':
     case 'accounts_payable':

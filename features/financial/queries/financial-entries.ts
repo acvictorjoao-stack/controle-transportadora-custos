@@ -35,6 +35,7 @@ export interface ListFinancialEntriesOptions {
   pageSize?: number;
   filters?: FinancialListFilters;
   sort?: FinancialSortOptions;
+  excludeReversed?: boolean;
 }
 
 const SORT_COLUMNS: Record<NonNullable<FinancialSortOptions['sortBy']>, string> = {
@@ -223,6 +224,10 @@ export async function listFinancialEntries(
     .select(FINANCIAL_LIST_COLUMNS, {count: 'exact'})
     .eq('company_id', options.companyId)
     .is('deleted_at', null);
+
+  if (options.excludeReversed) {
+    query = query.neq('entry_status', 'reversed');
+  }
 
   if (filters.branchId) query = query.eq('branch_id', filters.branchId);
   if (filters.vehicleId) query = query.eq('vehicle_id', filters.vehicleId);
@@ -487,6 +492,14 @@ export async function reverseFinancialEntry(
     throw new Error('Lançamento já estornado.');
   }
 
+  if (original.entryStatus === 'cancelled') {
+    throw new Error('Não é possível estornar um lançamento cancelado.');
+  }
+
+  if (original.entryType === 'reversal') {
+    throw new Error('Não é possível estornar um lançamento de estorno.');
+  }
+
   const reversal = await createFinancialEntry(
     supabase,
     companyId,
@@ -522,7 +535,7 @@ export async function reverseFinancialEntry(
     },
   );
 
-  await supabase
+  const {error: updateError} = await supabase
     .from('financial_entries')
     .update({
       entry_status: 'reversed',
@@ -530,6 +543,10 @@ export async function reverseFinancialEntry(
     })
     .eq('id', entryId)
     .eq('company_id', companyId);
+
+  if (updateError) {
+    throw new Error(mapDatabaseError(updateError));
+  }
 
   return reversal;
 }

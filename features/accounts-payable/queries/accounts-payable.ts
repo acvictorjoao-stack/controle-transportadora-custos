@@ -36,6 +36,9 @@ import {
   isManualAccountsPayableEntry,
 } from '../utils/origin';
 
+const PAYROLL_ORIGIN_ERROR =
+  'Despesas de pessoal devem ser alteradas pelo módulo de Despesas de Pessoal.';
+
 function assertAccountsPayableEntry(entry: FinancialEntry | null): AccountsPayableEntry {
   if (!entry || !isAccountsPayableManagedEntry(entry)) {
     throw new Error('Conta a pagar não encontrada.');
@@ -71,6 +74,7 @@ export async function listAccountsPayable(
       // À vista (cash) ops have null due_date and stay out of Contas a Pagar.
       hasDueDate: true,
     },
+    excludeReversed: true,
     sort: {
       sortBy: options.sort?.sortBy ?? 'due_date',
       sortOrder: options.sort?.sortOrder ?? 'asc',
@@ -257,10 +261,31 @@ export async function markAccountsPayablePaid(
     ? input.paidAt
     : `${input.paidAt}T12:00:00.000Z`;
 
-  return markFinancialEntryPaid(supabase, companyId, entryId, profileId, {
+  const paidEntry = await markFinancialEntryPaid(supabase, companyId, entryId, profileId, {
     paidAt: paidAtIso,
     paidAmount: input.paidAmount,
   });
+
+  if (existing.sourceModule === 'payroll' && existing.sourceId) {
+    const {data: sourceExpense, error} = await supabase
+      .from('payroll_expenses')
+      .update({
+        expense_status: 'paid',
+        paid_at: paidAtIso.slice(0, 10),
+        updated_by: profileId,
+      })
+      .eq('id', existing.sourceId)
+      .eq('company_id', companyId)
+      .is('deleted_at', null)
+      .select('id')
+      .maybeSingle();
+
+    if (error || !sourceExpense) {
+      throw new Error(error?.message ?? 'Despesa de pessoal de origem não encontrada.');
+    }
+  }
+
+  return paidEntry;
 }
 
 export async function cancelAccountsPayable(
@@ -269,7 +294,12 @@ export async function cancelAccountsPayable(
   entryId: string,
   profileId: string,
 ): Promise<AccountsPayableEntry> {
-  assertAccountsPayableEntry(await getFinancialEntryById(supabase, companyId, entryId));
+  const entry = assertAccountsPayableEntry(
+    await getFinancialEntryById(supabase, companyId, entryId),
+  );
+  if (entry.sourceModule === 'payroll') {
+    throw new Error(PAYROLL_ORIGIN_ERROR);
+  }
   return cancelFinancialEntry(supabase, companyId, entryId, profileId);
 }
 
@@ -279,6 +309,11 @@ export async function deleteAccountsPayable(
   entryId: string,
   profileId: string,
 ): Promise<void> {
-  assertAccountsPayableEntry(await getFinancialEntryById(supabase, companyId, entryId));
+  const entry = assertAccountsPayableEntry(
+    await getFinancialEntryById(supabase, companyId, entryId),
+  );
+  if (entry.sourceModule === 'payroll') {
+    throw new Error(PAYROLL_ORIGIN_ERROR);
+  }
   await softDeleteFinancialEntry(supabase, companyId, entryId, profileId);
 }

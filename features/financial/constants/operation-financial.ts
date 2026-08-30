@@ -10,6 +10,13 @@ export const OPERATION_FINANCIAL_SOURCE_MODULES = [
 export type OperationFinancialSourceModule =
   (typeof OPERATION_FINANCIAL_SOURCE_MODULES)[number];
 
+/**
+ * Folha de pagamento (RC 29.0). Fica fora de OPERATION_FINANCIAL_SOURCE_MODULES
+ * porque o centro de custo é escolhido pelo usuário (RH/ADMINISTRATIVO/…) e não
+ * deve ser resolvido automaticamente para OPERACIONAL.
+ */
+export const PAYROLL_SOURCE_MODULE = 'payroll';
+
 /** Payment settlement for operational costs. */
 export const OPERATION_PAYMENT_TYPES = ['cash', 'credit'] as const;
 
@@ -41,6 +48,7 @@ export const OPERATION_SOURCE_LABELS: Record<string, string> = {
   accounts_payable: 'Manual',
   manual: 'Manual',
   trips: 'Viagem',
+  payroll: 'Folha',
 };
 
 export const OPERATION_SOURCE_ICONS: Record<string, string> = {
@@ -52,4 +60,5 @@ export const OPERATION_SOURCE_ICONS: Record<string, string> = {
   accounts_payable: '📄',
   manual: '📄',
   trips: '🗺️',
+  payroll: '👤',
 };

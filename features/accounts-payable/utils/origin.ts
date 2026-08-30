@@ -66,6 +66,9 @@ export function getAccountsPayableOriginHref(
       return ROUTES.manutencaoDetail(entry.sourceId);
     case 'tires':
       return ROUTES.pneuDetail(entry.sourceId);
+    case 'payroll':
+      // A folha não tem página de detalhe: a origem é a listagem filtrável.
+      return `${ROUTES.despesasDePessoal}?sourceId=${encodeURIComponent(entry.sourceId)}`;
     default:
       return null;
   }
