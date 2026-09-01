@@ -24,3 +24,12 @@ export const PAYROLL_PAYMENT_METHODS = [
 ] as const;
 
 export const PAYROLL_PERSON_KINDS = ['driver', 'employee'] as const;
+
+export const EMPLOYEE_CONTRACT_TYPES = [
+  'clt',
+  'pj',
+  'autonomo',
+  'estagio',
+  'temporario',
+  'outros',
+] as const;

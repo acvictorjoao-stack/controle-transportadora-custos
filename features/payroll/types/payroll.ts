@@ -2,6 +2,7 @@ import type {FinancialEntryStatus} from '@/features/financial/types';
 import type {EntityStatus} from '@/features/organization/companies/types';
 
 import type {
+  EMPLOYEE_CONTRACT_TYPES,
   PAYROLL_EXPENSE_STATUSES,
   PAYROLL_EXPENSE_TYPES,
   PAYROLL_PAYMENT_METHODS,
@@ -14,6 +15,7 @@ export type PayrollPaymentMethod = (typeof PAYROLL_PAYMENT_METHODS)[number];
 
 /** Origem da pessoa vinculada à despesa: cadastro operacional ou colaborador. */
 export type PayrollPersonKind = (typeof PAYROLL_PERSON_KINDS)[number];
+export type EmployeeContractType = (typeof EMPLOYEE_CONTRACT_TYPES)[number];
 
 export interface PayrollPersonOption {
   id: string;
@@ -84,6 +86,30 @@ export interface Employee {
   notes: string | null;
   status: EntityStatus;
   active: boolean;
+}
+
+export interface EmployeeListItem extends Employee {
+  positionName: string | null;
+  positionCode: string | null;
+  costCenterName: string | null;
+  costCenterCode: string | null;
+  branchName: string | null;
+}
+
+export interface PaginatedPositions {
+  items: Position[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface PaginatedEmployees {
+  items: EmployeeListItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
 }
 
 type EmbeddedNamed = {id: string; name: string} | {id: string; name: string}[] | null;
@@ -212,4 +238,18 @@ export const PAYROLL_PAYMENT_METHOD_LABELS: Record<PayrollPaymentMethod, string>
 export const PAYROLL_PERSON_KIND_LABELS: Record<PayrollPersonKind, string> = {
   driver: 'Motorista',
   employee: 'Colaborador',
+};
+
+export const EMPLOYEE_CONTRACT_TYPE_LABELS: Record<EmployeeContractType, string> = {
+  clt: 'CLT',
+  pj: 'PJ',
+  autonomo: 'Autônomo',
+  estagio: 'Estágio',
+  temporario: 'Temporário',
+  outros: 'Outros',
+};
+
+export const PERSONNEL_STATUS_LABELS: Record<'active' | 'inactive', string> = {
+  active: 'Ativo',
+  inactive: 'Inativo',
 };

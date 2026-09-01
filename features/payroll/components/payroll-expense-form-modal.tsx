@@ -1,6 +1,7 @@
 'use client';
 
 import {Loader2, Save} from 'lucide-react';
+import Link from 'next/link';
 import * as React from 'react';
 
 import {FormField} from '@/components/master/shared/form-field';
@@ -11,6 +12,7 @@ import {Input} from '@/components/ui/input';
 import {Textarea} from '@/components/ui/textarea';
 import {useConfirm} from '@/contexts/feedback/confirm-context';
 import {useToast} from '@/contexts/feedback/toast-context';
+import {ROUTES} from '@/constants/routes/paths';
 import {
   formatCurrencyInput,
   maskCurrencyInput,
@@ -267,42 +269,76 @@ function PayrollExpenseFormContent({
             htmlFor="pay-person"
             error={fieldErrors.personId}
             hint={
-              selectedPerson
-                ? `Origem: ${PAYROLL_PERSON_KIND_LABELS[selectedPerson.kind]}`
-                : 'Motoristas vêm do cadastro operacional; demais cargos, de colaboradores.'
+              people.length === 0
+                ? 'Nenhum funcionário cadastrado.'
+                : selectedPerson
+                  ? `Origem: ${PAYROLL_PERSON_KIND_LABELS[selectedPerson.kind]}`
+                  : 'Motoristas vêm do cadastro operacional; demais cargos, de colaboradores.'
             }
             required
           >
-            <select
-              id="pay-person"
-              value={formData.personId}
-              onChange={(e) => handlePersonChange(e.target.value)}
-              className={financialInputClassName}
-              required
-            >
-              <option value="">Selecione</option>
-              {people.map((person) => (
-                <option key={person.id} value={person.id}>
-                  {person.name} · {PAYROLL_PERSON_KIND_LABELS[person.kind]}
-                </option>
-              ))}
-            </select>
+            {people.length === 0 ? (
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">Nenhum funcionário cadastrado.</p>
+                <Link
+                  href={ROUTES.administracaoFuncionarios}
+                  className="inline-flex h-8 items-center justify-center rounded-md border border-input bg-background px-3 text-sm font-medium hover:bg-accent hover:text-accent-foreground"
+                >
+                  Cadastrar funcionário
+                </Link>
+              </div>
+            ) : (
+              <select
+                id="pay-person"
+                value={formData.personId}
+                onChange={(e) => handlePersonChange(e.target.value)}
+                className={financialInputClassName}
+                required
+              >
+                <option value="">Selecione</option>
+                {people.map((person) => (
+                  <option key={person.id} value={person.id}>
+                    {person.name} · {PAYROLL_PERSON_KIND_LABELS[person.kind]}
+                  </option>
+                ))}
+              </select>
+            )}
           </FormField>
 
-          <FormField label="Cargo" htmlFor="pay-position" error={fieldErrors.positionId}>
+          <FormField
+            label="Cargo"
+            htmlFor="pay-position"
+            error={fieldErrors.positionId}
+            hint={
+              positions.length === 0
+                ? 'Nenhum cargo cadastrado. Cadastre em Administração → Cargos.'
+                : undefined
+            }
+          >
             <select
               id="pay-position"
               value={formData.positionId}
               onChange={(e) => updateField('positionId', e.target.value)}
               className={financialInputClassName}
+              disabled={positions.length === 0}
             >
-              <option value="">Não informado</option>
+              <option value="">
+                {positions.length === 0 ? 'Cadastre um cargo primeiro' : 'Não informado'}
+              </option>
               {positions.map((position) => (
                 <option key={position.id} value={position.id}>
                   {position.name}
                 </option>
               ))}
             </select>
+            {positions.length === 0 ? (
+              <Link
+                href={ROUTES.administracaoCargos}
+                className="mt-1 inline-block text-sm font-medium text-primary underline-offset-4 hover:underline"
+              >
+                Cadastrar cargo
+              </Link>
+            ) : null}
           </FormField>
         </div>
       </div>

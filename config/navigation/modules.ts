@@ -20,6 +20,8 @@ import {
   Users,
   Wallet,
   Wrench,
+  Briefcase,
+  IdCard,
 } from 'lucide-react';
 
 import {ROUTES} from '@/constants/routes/paths';
@@ -283,6 +285,22 @@ export const navigationGroups: NavGroup[] = [
         href: ROUTES.usuarios,
         icon: Users,
         permission: 'members:read',
+      },
+      {
+        id: 'funcionarios',
+        title: 'Funcionários',
+        description: 'Pessoal · colaboradores da empresa',
+        href: ROUTES.administracaoFuncionarios,
+        icon: IdCard,
+        permission: 'financeiro:read',
+      },
+      {
+        id: 'cargos',
+        title: 'Cargos',
+        description: 'Pessoal · cargos e funções',
+        href: ROUTES.administracaoCargos,
+        icon: Briefcase,
+        permission: 'financeiro:read',
       },
       {
         id: 'perfis',

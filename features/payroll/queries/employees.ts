@@ -1,10 +1,11 @@
 import type {SupabaseClient} from '@supabase/supabase-js';
 
 import {mapDatabaseError} from '@/features/master/companies/utils/database-error';
+import type {EntityStatus} from '@/features/organization/companies/types';
 
-import {EMPLOYEE_LIST_COLUMNS} from '../constants';
-import {mapEmployeeRow} from '../services/mappers';
-import type {Employee, EmployeeRow, PayrollPersonOption} from '../types';
+import {EMPLOYEE_LIST_COLUMNS, EMPLOYEE_LIST_WITH_RELATIONS_COLUMNS, EMPLOYEES_PAGE_SIZE} from '../constants';
+import {mapEmployeeListRow, mapEmployeeRow} from '../services/mappers';
+import type {Employee, EmployeeListItem, EmployeeRow, PaginatedEmployees, PayrollPersonOption} from '../types';
 import type {CreateEmployeeInput, UpdateEmployeeInput} from '../validation';
 
 function buildEmployeePayload(
@@ -24,6 +25,7 @@ function buildEmployeePayload(
     hired_at: input.hiredAt,
     terminated_at: input.terminatedAt,
     notes: input.notes,
+    status: input.status ?? 'active',
     updated_by: profileId,
   };
 }
@@ -51,6 +53,53 @@ export async function listEmployees(
   }
 
   return (data ?? []).map((row) => mapEmployeeRow(row as unknown as EmployeeRow));
+}
+
+export interface ListEmployeesOptions {
+  companyId: string;
+  search?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export async function listEmployeesPaginated(
+  supabase: SupabaseClient,
+  options: ListEmployeesOptions,
+): Promise<PaginatedEmployees> {
+  const search = options.search?.trim() ?? '';
+  const page = options.page ?? 1;
+  const pageSize = options.pageSize ?? EMPLOYEES_PAGE_SIZE;
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  let query = supabase
+    .from('employees')
+    .select(EMPLOYEE_LIST_WITH_RELATIONS_COLUMNS, {count: 'exact'})
+    .eq('company_id', options.companyId)
+    .is('deleted_at', null)
+    .order('name', {ascending: true});
+
+  if (search) {
+    query = query.or(
+      `name.ilike.%${search}%,cpf.ilike.%${search}%,registration_number.ilike.%${search}%,email.ilike.%${search}%`,
+    );
+  }
+
+  const {data, error, count} = await query.range(from, to);
+
+  if (error) {
+    throw new Error(mapDatabaseError(error));
+  }
+
+  const total = count ?? 0;
+
+  return {
+    items: (data ?? []).map((row) => mapEmployeeListRow(row as never)),
+    total,
+    page,
+    pageSize,
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
+  };
 }
 
 export async function getEmployeeById(
@@ -157,6 +206,29 @@ export async function softDeleteEmployee(
   if (error) {
     throw new Error(mapDatabaseError(error));
   }
+}
+
+export async function setEmployeeStatus(
+  supabase: SupabaseClient,
+  companyId: string,
+  employeeId: string,
+  status: Extract<EntityStatus, 'active' | 'inactive'>,
+  profileId: string,
+): Promise<Employee> {
+  const {data, error} = await supabase
+    .from('employees')
+    .update({status, updated_by: profileId})
+    .eq('id', employeeId)
+    .eq('company_id', companyId)
+    .is('deleted_at', null)
+    .select(EMPLOYEE_LIST_COLUMNS)
+    .single();
+
+  if (error) {
+    throw new Error(mapDatabaseError(error));
+  }
+
+  return mapEmployeeRow(data as unknown as EmployeeRow);
 }
 
 /**

@@ -1,5 +1,6 @@
 import type {
   Employee,
+  EmployeeListItem,
   EmployeeRow,
   PayrollExpense,
   PayrollExpenseRow,
@@ -11,6 +12,12 @@ function firstOrNull<T>(value: T | T[] | null | undefined): T | null {
   if (!value) return null;
   return Array.isArray(value) ? (value[0] ?? null) : value;
 }
+
+type EmployeeListRow = EmployeeRow & {
+  positions?: {id: string; code: string; name: string} | {id: string; code: string; name: string}[] | null;
+  cost_centers?: {id: string; code: string; name: string} | {id: string; code: string; name: string}[] | null;
+  branches?: {id: string; code: string; name: string} | {id: string; code: string; name: string}[] | null;
+};
 
 export function mapPositionRow(row: PositionRow): Position {
   return {
@@ -43,6 +50,22 @@ export function mapEmployeeRow(row: EmployeeRow): Employee {
     notes: row.notes,
     status: row.status,
     active: row.status === 'active',
+  };
+}
+
+export function mapEmployeeListRow(row: EmployeeListRow): EmployeeListItem {
+  const position = firstOrNull(row.positions);
+  const costCenter = firstOrNull(row.cost_centers);
+  const branch = firstOrNull(row.branches);
+  const employee = mapEmployeeRow(row);
+
+  return {
+    ...employee,
+    positionName: position?.name ?? null,
+    positionCode: position?.code ?? null,
+    costCenterName: costCenter?.name ?? null,
+    costCenterCode: costCenter?.code ?? null,
+    branchName: branch?.name ?? null,
   };
 }
 

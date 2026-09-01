@@ -68,6 +68,8 @@ export const ROUTES = {
   // Sistema
   configuracoes: '/configuracoes',
   usuarios: '/usuarios',
+  administracaoFuncionarios: '/administracao/funcionarios',
+  administracaoCargos: '/administracao/cargos',
 
   // Auth
   login: '/login',

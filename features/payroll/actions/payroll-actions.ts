@@ -1,25 +1,13 @@
 'use server';
 
-import {revalidatePath} from 'next/cache';
-
-import {ROUTES} from '@/constants/routes/paths';
 import {getCostCenterById} from '@/features/cost-centers/queries';
 import type {ActionResult} from '@/features/organization/shared/action-result';
-import {
-  assertCompanyPermission,
-  COMPANY_ACCESS_DENIED,
-  getCompanyAccessContext,
-  getCurrentCompanyId,
-  getServerSupabaseClient,
-} from '@/lib/auth/company';
-import {isPortalOwner} from '@/lib/auth/portal';
+import {getServerSupabaseClient} from '@/lib/auth/company';
 import {zodFieldErrors} from '@/lib/validators/zod-field-errors';
 
 import {PAYROLL_DUPLICATE_FIELD} from '../constants';
 import {
-  createEmployee,
   createPayrollExpense,
-  createPosition,
   getPayrollExpenseById,
   getPayrollPersonById,
   getPositionById,
@@ -32,59 +20,13 @@ import {
   syncPayrollFinancialEntry,
 } from '../services/payroll-financial.service';
 import {buildPayrollDuplicateMessage, findPayrollDuplicate} from '../services/payroll-rules';
-import type {Employee, PayrollExpense, Position} from '../types';
+import type {PayrollExpense} from '../types';
 import {
-  createEmployeeSchema,
   createPayrollExpenseSchema,
-  createPositionSchema,
   updatePayrollExpenseSchema,
 } from '../validation';
 import type {CreatePayrollExpenseInput} from '../validation';
-
-type PayrollPermission =
-  | 'financeiro:read'
-  | 'financeiro:create'
-  | 'financeiro:update'
-  | 'financeiro:delete';
-
-function revalidatePayrollPaths() {
-  revalidatePath(ROUTES.despesasDePessoal);
-  revalidatePath(ROUTES.contasAPagar);
-  revalidatePath(ROUTES.fluxoDeCaixa);
-  revalidatePath(ROUTES.financeiro);
-  revalidatePath(ROUTES.dashboard);
-}
-
-/**
- * Resolve empresa e permissão exclusivamente pela sessão autenticada.
- * Nunca aceita company_id enviado pelo client.
- */
-async function resolvePayrollAccess(
-  permission: PayrollPermission,
-): Promise<ActionResult<{companyId: string; profileId: string}>> {
-  const supabase = await getServerSupabaseClient();
-  const companyId = await getCurrentCompanyId(supabase);
-
-  if (!companyId) {
-    return {success: false, error: 'Empresa não encontrada.'};
-  }
-
-  const access = await getCompanyAccessContext(supabase, companyId);
-  if (
-    !access ||
-    access.companyId !== companyId ||
-    ((await isPortalOwner(supabase)) && !access.isMasterActing)
-  ) {
-    return {success: false, error: COMPANY_ACCESS_DENIED};
-  }
-
-  const allowed = await assertCompanyPermission(supabase, companyId, permission);
-  if (!allowed) {
-    return {success: false, error: COMPANY_ACCESS_DENIED};
-  }
-
-  return {success: true, data: {companyId, profileId: access.profileId}};
-}
+import {revalidatePayrollPaths, resolvePayrollAccess} from './payroll-access';
 
 /**
  * Garante que pessoa, cargo e centro de custo pertencem à empresa autenticada.
@@ -378,101 +320,6 @@ export async function deletePayrollExpenseAction(
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Erro ao excluir despesa de pessoal.',
-    };
-  }
-}
-
-export async function createEmployeeAction(input: unknown): Promise<ActionResult<Employee>> {
-  const resolved = await resolvePayrollAccess('financeiro:create');
-  if (!resolved.success) return resolved;
-
-  const parsed = createEmployeeSchema.safeParse(input);
-  if (!parsed.success) {
-    return {
-      success: false,
-      error: 'Verifique os campos do formulário.',
-      fieldErrors: zodFieldErrors(parsed.error.issues),
-    };
-  }
-
-  try {
-    const supabase = await getServerSupabaseClient();
-
-    if (parsed.data.costCenterId) {
-      const costCenter = await getCostCenterById(
-        supabase,
-        resolved.data.companyId,
-        parsed.data.costCenterId,
-      );
-      if (!costCenter) {
-        return {
-          success: false,
-          error: 'Centro de custo não encontrado nesta empresa.',
-          fieldErrors: {costCenterId: 'Selecione um centro de custo válido.'},
-        };
-      }
-    }
-
-    if (parsed.data.positionId) {
-      const position = await getPositionById(
-        supabase,
-        resolved.data.companyId,
-        parsed.data.positionId,
-      );
-      if (!position) {
-        return {
-          success: false,
-          error: 'Cargo não encontrado nesta empresa.',
-          fieldErrors: {positionId: 'Selecione um cargo válido.'},
-        };
-      }
-    }
-
-    const employee = await createEmployee(
-      supabase,
-      resolved.data.companyId,
-      {...parsed.data, branchId: null},
-      resolved.data.profileId,
-    );
-
-    revalidatePath(ROUTES.despesasDePessoal);
-    return {success: true, data: employee};
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Erro ao cadastrar colaborador.',
-    };
-  }
-}
-
-export async function createPositionAction(input: unknown): Promise<ActionResult<Position>> {
-  const resolved = await resolvePayrollAccess('financeiro:create');
-  if (!resolved.success) return resolved;
-
-  const parsed = createPositionSchema.safeParse(input);
-  if (!parsed.success) {
-    return {
-      success: false,
-      error: 'Verifique os campos do formulário.',
-      fieldErrors: zodFieldErrors(parsed.error.issues),
-    };
-  }
-
-  try {
-    const supabase = await getServerSupabaseClient();
-    const position = await createPosition(
-      supabase,
-      resolved.data.companyId,
-      parsed.data,
-      resolved.data.profileId,
-    );
-
-    revalidatePath(ROUTES.despesasDePessoal);
-    return {success: true, data: position};
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Erro ao cadastrar cargo.',
     };
   }
 }

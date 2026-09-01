@@ -1,4 +1,6 @@
 export const PAYROLL_EXPENSES_PAGE_SIZE = 10;
+export const POSITIONS_PAGE_SIZE = 10;
+export const EMPLOYEES_PAGE_SIZE = 10;
 
 export const PAYROLL_EXPENSE_LIST_COLUMNS = `
   id, company_id, branch_id, employee_id, driver_id, position_id, cost_center_id,
@@ -17,6 +19,15 @@ export const EMPLOYEE_LIST_COLUMNS = `
   id, company_id, branch_id, position_id, cost_center_id, name, cpf,
   registration_number, email, phone, contract_type, hired_at, terminated_at,
   notes, status, created_at, updated_at
+`;
+
+export const EMPLOYEE_LIST_WITH_RELATIONS_COLUMNS = `
+  id, company_id, branch_id, position_id, cost_center_id, name, cpf,
+  registration_number, email, phone, contract_type, hired_at, terminated_at,
+  notes, status, created_at, updated_at,
+  positions:position_id (id, code, name),
+  cost_centers:cost_center_id (id, code, name),
+  branches:branch_id (id, code, name)
 `;
 
 /** Categoria financeira já semeada por empresa (062/083) — não criar nova. */

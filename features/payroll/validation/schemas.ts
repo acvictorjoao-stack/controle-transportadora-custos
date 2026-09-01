@@ -1,6 +1,7 @@
 import {z} from 'zod';
 
 import {
+  EMPLOYEE_CONTRACT_TYPES,
   PAYROLL_EXPENSE_STATUSES,
   PAYROLL_EXPENSE_TYPES,
   PAYROLL_PAYMENT_METHODS,
@@ -69,14 +70,30 @@ const payrollExpenseBaseSchema = z
 export const createPayrollExpenseSchema = payrollExpenseBaseSchema;
 export const updatePayrollExpenseSchema = payrollExpenseBaseSchema;
 
+const optionalPositionCode = z
+  .string()
+  .trim()
+  .nullish()
+  .transform((v) => (v?.length ? v.toUpperCase() : null))
+  .refine(
+    (v) => v === null || /^[A-Z0-9_-]+$/.test(v),
+    'Use apenas letras, números, hífen ou underscore.',
+  )
+  .refine((v) => v === null || v.length <= 40, 'Código muito longo.');
+
+const personnelStatusSchema = z
+  .enum(['active', 'inactive'])
+  .optional()
+  .default('active');
+
 export const createEmployeeSchema = z.object({
   name: z
     .string()
     .trim()
     .min(1, 'Informe o nome.')
     .transform((v) => v.toUpperCase()),
-  positionId: optionalUuid,
-  costCenterId: optionalUuid,
+  positionId: z.string().uuid('Selecione o cargo.'),
+  costCenterId: z.string().uuid('Selecione o centro de custo.'),
   branchId: optionalUuid,
   cpf: z
     .string()
@@ -96,30 +113,26 @@ export const createEmployeeSchema = z.object({
     .refine((v) => v === null || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v), 'E-mail inválido.'),
   phone: optionalString,
   contractType: z
-    .enum(['clt', 'pj', 'autonomo', 'estagio', 'temporario', 'outros'])
+    .enum(EMPLOYEE_CONTRACT_TYPES)
     .nullish()
     .transform((v) => v ?? null),
   hiredAt: optionalDate,
   terminatedAt: optionalDate,
   notes: optionalString,
+  status: personnelStatusSchema,
 });
 
 export const updateEmployeeSchema = createEmployeeSchema;
 
 export const createPositionSchema = z.object({
-  code: z
-    .string()
-    .trim()
-    .min(1, 'Informe o código.')
-    .max(40, 'Código muito longo.')
-    .regex(/^[A-Za-z0-9_-]+$/, 'Use apenas letras, números, hífen ou underscore.')
-    .transform((v) => v.toUpperCase()),
+  code: optionalPositionCode,
   name: z
     .string()
     .trim()
     .min(1, 'Informe o nome.')
     .transform((v) => v.toUpperCase()),
   description: optionalString,
+  status: personnelStatusSchema,
 });
 
 export const updatePositionSchema = createPositionSchema;
