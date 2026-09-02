@@ -17,6 +17,7 @@ export default defineConfig({
       'features/**/*.test.ts',
       'hooks/**/*.test.ts',
       'constants/**/*.test.ts',
+      'database/seeds/**/*.test.ts',
     ],
   },
 });

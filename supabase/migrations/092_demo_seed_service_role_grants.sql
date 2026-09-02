@@ -1,0 +1,56 @@
+-- Grants para service_role em tabelas criadas após a migration 014.
+-- Tabelas novas recebem GRANT apenas para authenticated nas migrations de domínio;
+-- o seed demo (npm run seed:demo) usa SUPABASE_SERVICE_ROLE_KEY e precisa de DML.
+-- Não altera RLS, policies, roles, permissions nem dados.
+
+grant select, insert, update, delete on public.suppliers to service_role;
+grant select, insert, update, delete on public.customers to service_role;
+grant select, insert, update, delete on public.customer_addresses to service_role;
+grant select, insert, update, delete on public.customer_contacts to service_role;
+grant select, insert, update, delete on public.customer_contracts to service_role;
+grant select, insert, update, delete on public.customer_contract_items to service_role;
+grant select, insert, update, delete on public.customer_documents to service_role;
+grant select, insert, update, delete on public.customer_history to service_role;
+grant select, insert, update, delete on public.routes to service_role;
+grant select, insert, update, delete on public.route_history to service_role;
+grant select, insert, update, delete on public.route_documents to service_role;
+grant select, insert, update, delete on public.vehicles to service_role;
+grant select, insert, update, delete on public.vehicle_history to service_role;
+grant select, insert, update, delete on public.vehicle_documents to service_role;
+grant select, insert, update, delete on public.drivers to service_role;
+grant select, insert, update, delete on public.driver_history to service_role;
+grant select, insert, update, delete on public.driver_documents to service_role;
+grant select, insert, update, delete on public.trips to service_role;
+grant select, insert, update, delete on public.trip_history to service_role;
+grant select, insert, update, delete on public.trip_documents to service_role;
+grant select, insert, update, delete on public.trip_occurrences to service_role;
+grant select, insert, update, delete on public.trip_checklists to service_role;
+grant select, insert, update, delete on public.trip_expenses to service_role;
+grant select, insert, update, delete on public.trip_stops to service_role;
+grant select, insert, update, delete on public.trip_locations to service_role;
+grant select, insert, update, delete on public.fuel_records to service_role;
+grant select, insert, update, delete on public.fuel_history to service_role;
+grant select, insert, update, delete on public.fuel_documents to service_role;
+grant select, insert, update, delete on public.maintenance_records to service_role;
+grant select, insert, update, delete on public.maintenance_history to service_role;
+grant select, insert, update, delete on public.maintenance_documents to service_role;
+grant select, insert, update, delete on public.maintenance_parts to service_role;
+grant select, insert, update, delete on public.maintenance_services to service_role;
+grant select, insert, update, delete on public.maintenance_schedules to service_role;
+grant select, insert, update, delete on public.tires to service_role;
+grant select, insert, update, delete on public.tire_history to service_role;
+grant select, insert, update, delete on public.tire_movements to service_role;
+grant select, insert, update, delete on public.tire_inspections to service_role;
+grant select, insert, update, delete on public.tire_recaps to service_role;
+grant select, insert, update, delete on public.tire_documents to service_role;
+grant select, insert, update, delete on public.financial_entries to service_role;
+grant select, insert, update, delete on public.financial_history to service_role;
+grant select, insert, update, delete on public.financial_documents to service_role;
+grant select, insert, update, delete on public.financial_categories to service_role;
+grant select, insert, update, delete on public.financial_cost_centers to service_role;
+grant select, insert, update, delete on public.branches to service_role;
+grant select, insert, update, delete on public.companies to service_role;
+grant select, insert, update, delete on public.roles to service_role;
+grant select, insert, update, delete on public.role_permissions to service_role;
+grant select, insert, update, delete on public.company_members to service_role;
+grant select, insert, update, delete on public.portal_acting_companies to service_role;
