@@ -1,3 +1,4 @@
+import {PRINCIPAL_ADMIN_ROLE_NAMES} from '../constants';
 import {buildCompanyAccessUrl} from '@/features/master/provisioning/utils/access-url';
 
 import type {
@@ -97,19 +98,46 @@ export function mapCompanyDetail(
   };
 }
 
+export function isPrincipalAdminRoleName(name: string): boolean {
+  return (PRINCIPAL_ADMIN_ROLE_NAMES as readonly string[]).includes(name);
+}
+
+export function pickPrincipalAdminMember(
+  rows: AdminMemberRow[],
+): AdminMemberRow | null {
+  for (const roleName of PRINCIPAL_ADMIN_ROLE_NAMES) {
+    const match = rows.find(
+      (row) => row.roles?.name === roleName && row.profiles,
+    );
+    if (match) {
+      return match;
+    }
+  }
+
+  return null;
+}
+
 export function mapAdminMembersByCompany(
   rows: AdminMemberRow[],
 ): Map<string, {fullName: string; email: string}> {
   const map = new Map<string, {fullName: string; email: string}>();
+  const byCompany = new Map<string, AdminMemberRow[]>();
 
   for (const row of rows) {
-    if (row.roles?.name !== 'Super Admin' || !row.profiles) {
+    if (!isPrincipalAdminRoleName(row.roles?.name ?? '') || !row.profiles) {
       continue;
     }
-    if (!map.has(row.company_id)) {
-      map.set(row.company_id, {
-        fullName: row.profiles.full_name,
-        email: row.profiles.email,
+    const companyRows = byCompany.get(row.company_id) ?? [];
+    companyRows.push(row);
+    byCompany.set(row.company_id, companyRows);
+  }
+
+  for (const [companyId, companyRows] of byCompany) {
+    const principal = pickPrincipalAdminMember(companyRows);
+    if (principal?.profiles && !map.has(companyId)) {
+      map.set(companyId, {
+        fullName: principal.profiles.full_name,
+        email: principal.profiles.email,
       });
     }
   }

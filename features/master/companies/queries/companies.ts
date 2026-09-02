@@ -13,6 +13,7 @@ import {
   mapCompanyDetail,
   mapCompanyListRow,
   mapCompanyRow,
+  pickPrincipalAdminMember,
 } from '../services/mappers';
 import type {
   AdminMemberRow,
@@ -228,9 +229,9 @@ async function fetchCompanyAdmin(
     throw new Error(mapDatabaseError(error));
   }
 
-  const adminRow = (data ?? [])
-    .map((row) => normalizeAdminMemberRow(row as Record<string, unknown>))
-    .find((row) => row.roles?.name === 'Super Admin' && row.profiles);
+  const adminRow = pickPrincipalAdminMember(
+    (data ?? []).map((row) => normalizeAdminMemberRow(row as Record<string, unknown>)),
+  );
 
   if (!adminRow?.profiles) {
     return null;

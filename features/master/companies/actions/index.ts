@@ -4,6 +4,8 @@ export {
 
   fetchCompanyDetailById,
 
+  provisionCompanyAdministratorAction,
+
   reactivateCompanyAction,
 
   resendCredentialsAction,

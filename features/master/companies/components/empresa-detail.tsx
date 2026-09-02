@@ -42,9 +42,10 @@ import {
 } from '../actions';
 import {ENTITY_STATUS_LABELS, PROVISION_STATUS_LABELS} from '../constants';
 import {formatCompanyTaxIdDisplay} from '../services';
-import type {CompanyDetail, EntityStatus} from '../types';
+import type {CompanyDetail, CompanyAdmin, EntityStatus} from '../types';
 import type {UpdateCompanyInput} from '../validation';
 import {getDisplayName, slugify} from '../utils/format';
+import {ProvisionAdminModal} from './provision-admin-modal';
 
 export interface EmpresaDetailProps {
   company: CompanyDetail;
@@ -105,6 +106,7 @@ function EmpresaDetail({company: initialCompany, plans}: EmpresaDetailProps) {
   } | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
   const [actionLoading, setActionLoading] = React.useState<string | null>(null);
+  const [provisionModalOpen, setProvisionModalOpen] = React.useState(false);
 
   function updateField<K extends keyof UpdateCompanyInput>(
     field: K,
@@ -269,6 +271,16 @@ function EmpresaDetail({company: initialCompany, plans}: EmpresaDetailProps) {
       `E-mail: ${email}`,
       `Senha temporária: ${password}`,
     ].join('\n');
+  }
+
+  function handleAdminProvisioned(admin: CompanyAdmin) {
+    setCompany((prev) => ({
+      ...prev,
+      admin,
+      memberCount: prev.memberCount + 1,
+    }));
+    setActionMessage('Administrador provisionado com sucesso.');
+    router.refresh();
   }
 
   const selectClassName =
@@ -488,7 +500,12 @@ function EmpresaDetail({company: initialCompany, plans}: EmpresaDetailProps) {
                   />
                 </>
               ) : (
-                <p className="text-muted-foreground">Administrador não provisionado.</p>
+                <div className="space-y-3">
+                  <p className="text-muted-foreground">Administrador não provisionado.</p>
+                  <Button size="sm" onClick={() => setProvisionModalOpen(true)}>
+                    Provisionar administrador
+                  </Button>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -555,6 +572,20 @@ function EmpresaDetail({company: initialCompany, plans}: EmpresaDetailProps) {
           )}
         </div>
       )}
+
+      <ProvisionAdminModal
+        open={provisionModalOpen}
+        companyId={company.id}
+        onClose={() => setProvisionModalOpen(false)}
+        onProvisioned={(result) => {
+          handleAdminProvisioned(result.admin);
+          setCredentials({
+            adminEmail: result.adminEmail,
+            temporaryPassword: result.temporaryPassword,
+            accessUrl: result.accessUrl,
+          });
+        }}
+      />
     </div>
   );
 }

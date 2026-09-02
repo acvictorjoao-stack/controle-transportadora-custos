@@ -21,3 +21,6 @@ export const PROVISION_STATUS_LABELS: Record<ProvisionStatus, string> = {
   completed: 'Concluído',
   error: 'Erro',
 };
+
+/** Perfis aceitos como administrador principal no Portal Master. */
+export const PRINCIPAL_ADMIN_ROLE_NAMES = ['Super Admin', 'Administrador'] as const;

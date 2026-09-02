@@ -8,6 +8,7 @@ import {PORTAL_ACCESS_DENIED, guardPortalOwner} from '@/lib/auth/guards';
 import {zodFieldErrors} from '@/lib/validators/zod-field-errors';
 import {resetAdminPassword} from '@/features/master/provisioning/repositories/auth.repository';
 import {generateTemporaryPassword} from '@/features/master/provisioning/services/password';
+import {provisionCompanyAdministrator} from '@/features/master/provisioning/services/provision-company-administrator.service';
 import {createClient} from '@/supabase/server';
 
 import {readPlanSlugFromSettings} from '../utils/format';
@@ -18,8 +19,8 @@ import {
   updateCompany,
   updateCompanyStatus,
 } from '../queries';
-import type {Company, CompanyDetail} from '../types';
-import {updateCompanySchema} from '../validation';
+import type {Company, CompanyAdmin, CompanyDetail} from '../types';
+import {provisionCompanyAdministratorSchema, updateCompanySchema} from '../validation';
 
 export interface ActionError {
   success: false;
@@ -268,6 +269,68 @@ export async function resendCredentialsAction(
   companyId: string,
 ): Promise<ActionResult<AdminCredentialsResult>> {
   return resetAdminPasswordAction(companyId);
+}
+
+export async function provisionCompanyAdministratorAction(
+  companyId: string,
+  input: unknown,
+): Promise<ActionResult<AdminCredentialsResult & {admin: CompanyAdmin}>> {
+  const denied = await assertOwner();
+  if (denied) return denied;
+
+  const parsed = provisionCompanyAdministratorSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: 'Verifique os campos do formulário.',
+      fieldErrors: zodFieldErrors(parsed.error.issues),
+    };
+  }
+
+  try {
+    const supabase = await createClient();
+    const actor = await getActorContext();
+    const result = await provisionCompanyAdministrator(supabase, {
+      companyId,
+      fullName: parsed.data.fullName,
+      email: parsed.data.email,
+      actorProfileId: actor.profileId,
+    });
+
+    await logPortalAudit({
+      action: PORTAL_AUDIT_ACTIONS.COMPANY_PROVISION,
+      actorProfileId: actor.profileId,
+      actorEmail: actor.email,
+      targetType: 'company',
+      targetId: companyId,
+      targetLabel: parsed.data.fullName,
+      metadata: {
+        adminEmail: result.adminEmail,
+        role: 'Administrador',
+        flow: 'company_administrator',
+      },
+    });
+
+    revalidateCompanyPaths(companyId);
+
+    return {
+      success: true,
+      data: {
+        adminEmail: result.adminEmail,
+        temporaryPassword: result.temporaryPassword,
+        accessUrl: result.accessUrl,
+        admin: result.admin,
+      },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Erro ao provisionar administrador.',
+    };
+  }
 }
 
 export async function fetchCompanyDetailById(

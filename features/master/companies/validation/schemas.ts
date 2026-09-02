@@ -96,9 +96,24 @@ export const updateCompanySchema = z.object({
 
 
 
+export const provisionCompanyAdministratorSchema = z
+  .object({
+    fullName: z
+      .string()
+      .trim()
+      .min(1, 'Informe o nome completo.')
+      .max(120, 'Nome muito longo.'),
+    email: emailSchema,
+  })
+  .strict();
+
 export type CreateCompanyInput = z.infer<typeof createCompanySchema>;
 
 export type UpdateCompanyInput = z.infer<typeof updateCompanySchema>;
+
+export type ProvisionCompanyAdministratorInput = z.infer<
+  typeof provisionCompanyAdministratorSchema
+>;
 
 
 
