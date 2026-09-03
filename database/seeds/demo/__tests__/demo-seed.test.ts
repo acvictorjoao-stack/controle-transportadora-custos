@@ -7,9 +7,10 @@ import {
   buildDemoFuelDefinitions,
   buildDemoPayrollDefinitions,
   buildDemoTripDefinitions,
+  demoTripDaysAgo,
   getDemoCatalogMetadata,
 } from '../catalog';
-import {DEMO_COMPANY_SLUG, DEMO_INTEGRATION_SOURCE} from '../constants';
+import {DEMO_COMPANY_SLUG, DEMO_COUNTS, DEMO_INTEGRATION_SOURCE} from '../constants';
 import {demoExternalId, demoUuid} from '../ids';
 import {assertDemoCatalogInvariants, isDemoCompanyRecord} from '../validators';
 
@@ -64,6 +65,46 @@ describe('demo seed catalog', () => {
       true,
     );
     expect(trips.every((trip) => trip.freight > 0 && trip.distanceKm > 0)).toBe(true);
+  });
+
+  it('mantém proporção de status e cobertura temporal mista', () => {
+    const now = new Date(Date.UTC(2026, 8, 3));
+    const trips = buildDemoTripDefinitions(DEMO_COUNTS.trips, now);
+    const byStatus = {
+      completed: trips.filter((trip) => trip.status === 'completed').length,
+      in_progress: trips.filter((trip) => trip.status === 'in_progress').length,
+      planned: trips.filter((trip) => trip.status === 'planned').length,
+    };
+
+    expect(trips).toHaveLength(DEMO_COUNTS.trips);
+    expect(byStatus.completed).toBe(90);
+    expect(byStatus.in_progress).toBe(30);
+    expect(byStatus.planned).toBe(30);
+
+    const currentMonth = trips.filter((trip) => trip.daysAgo <= 3);
+    const older = trips.filter((trip) => trip.daysAgo > 30);
+    expect(currentMonth.length).toBeGreaterThanOrEqual(Math.floor(DEMO_COUNTS.trips * 0.2));
+    expect(older.length).toBeGreaterThan(0);
+    expect(Math.min(...trips.map((trip) => trip.daysAgo))).toBeGreaterThanOrEqual(1);
+    expect(Math.max(...trips.map((trip) => trip.daysAgo))).toBeLessThanOrEqual(180);
+  });
+
+  it('garante completed_at coerente com departed_at no contrato temporal do seed', () => {
+    const trips = buildDemoTripDefinitions().filter((trip) => trip.status === 'completed');
+    expect(trips.length).toBe(90);
+
+    for (const trip of trips) {
+      const completionOffset = Math.max(trip.daysAgo - 1, 0);
+      expect(completionOffset).toBeLessThanOrEqual(trip.daysAgo);
+    }
+  });
+
+  it('expõe daysAgo do mês corrente e históricos via demoTripDaysAgo', () => {
+    const now = new Date(Date.UTC(2026, 8, 3));
+    expect(demoTripDaysAgo(1, DEMO_COUNTS.trips, now)).toBeLessThanOrEqual(3);
+    expect(
+      demoTripDaysAgo(Math.ceil(DEMO_COUNTS.trips * 0.4) + 1, DEMO_COUNTS.trips, now),
+    ).toBeGreaterThan(30);
   });
 });
 

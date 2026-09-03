@@ -180,7 +180,40 @@ export const DEMO_ROUTES: DemoRouteDef[] = [
   {key: 'r18', name: 'Imperatriz → Caxias', code: 'IMP-CAX', origin: 'Imperatriz/MA', destination: 'Caxias/MA', distanceKm: 290, customerKey: 'c13'},
 ];
 
-export function buildDemoTripDefinitions(count = DEMO_COUNTS.trips) {
+/**
+ * Distribuição temporal das viagens DEMO (index 1-based).
+ * - ~20% no mês corrente (daysAgo 1..dia-do-mês UTC);
+ * - ~20% no restante dos últimos 30 dias;
+ * - ~60% históricas (31–180 dias).
+ * Garante amostra útil no Dashboard do mês atual sem concentrar tudo nele.
+ */
+export function demoTripDaysAgo(
+  index: number,
+  count = DEMO_COUNTS.trips,
+  now: Date = new Date(),
+): number {
+  const dayOfMonth = Math.max(now.getUTCDate(), 1);
+  const currentMonthBucket = Math.ceil(count * 0.2);
+  const recentBucket = Math.ceil(count * 0.2);
+
+  if (index <= currentMonthBucket) {
+    return ((index - 1) % dayOfMonth) + 1;
+  }
+
+  if (index <= currentMonthBucket + recentBucket) {
+    const local = index - currentMonthBucket;
+    const remainingRecentDays = Math.max(30 - dayOfMonth, 1);
+    return dayOfMonth + 1 + ((local - 1) % remainingRecentDays);
+  }
+
+  const olderIndex = index - currentMonthBucket - recentBucket;
+  return 31 + ((olderIndex - 1) % 150);
+}
+
+export function buildDemoTripDefinitions(
+  count = DEMO_COUNTS.trips,
+  now: Date = new Date(),
+) {
   const statuses = ['completed', 'completed', 'completed', 'in_progress', 'planned'] as const;
   const trips = [];
 
@@ -190,7 +223,7 @@ export function buildDemoTripDefinitions(count = DEMO_COUNTS.trips) {
     const driver = DEMO_DRIVERS[(index - 1) % DEMO_DRIVERS.length];
     const customer = DEMO_CUSTOMERS[(index - 1) % DEMO_CUSTOMERS.length];
     const status = statuses[index % statuses.length];
-    const daysAgo = (index % 180) + 1;
+    const daysAgo = demoTripDaysAgo(index, count, now);
     const freight = 2500 + (route.distanceKm * 3.2) + (index % 7) * 150;
 
     trips.push({

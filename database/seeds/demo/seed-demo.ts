@@ -428,7 +428,13 @@ async function seedTrips(
 
   for (const trip of buildDemoTripDefinitions()) {
     const departedAt = isoDaysAgo(trip.daysAgo);
-    const arrivedAt = trip.status === 'completed' ? isoDaysAgo(Math.max(trip.daysAgo - 1, 0)) : null;
+    // Alinhado a completeTrip: completed_at é o instante de conclusão;
+    // arrived_at usa o mesmo instante quando a viagem é concluída no seed.
+    const completedAt =
+      trip.status === 'completed'
+        ? isoDaysAgo(Math.max(trip.daysAgo - 1, 0))
+        : null;
+    const arrivedAt = completedAt;
     const vehicleId = maps.vehicles.get(trip.vehicleKey);
     const driverId = maps.drivers.get(trip.driverKey);
     const customerId = maps.customers.get(trip.customerKey);
@@ -456,6 +462,7 @@ async function seedTrips(
       final_odometer_km: trip.status === 'completed' ? finalOdometer : null,
       departed_at: departedAt,
       arrived_at: arrivedAt,
+      completed_at: completedAt,
       contracted_freight_value: trip.freight,
       actual_freight_value: trip.status === 'completed' ? trip.freight : null,
       status: 'active',

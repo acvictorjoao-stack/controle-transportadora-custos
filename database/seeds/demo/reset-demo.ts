@@ -1,8 +1,6 @@
-import type {SupabaseClient} from '@supabase/supabase-js';
+import {execSync} from 'node:child_process';
 
-import {mapPayrollExpenseRow} from '@/features/payroll/services/mappers';
-import {syncPayrollFinancialEntry} from '@/features/payroll/services/payroll-financial.service';
-import type {PayrollExpenseRow} from '@/features/payroll/types';
+import type {SupabaseClient} from '@supabase/supabase-js';
 
 import {createDemoSeedClient} from './client';
 import {DEMO_COMPANY_SLUG, DEMO_SETTINGS_FLAG} from './constants';
@@ -12,7 +10,7 @@ const DELETE_ORDER = [
   'financial_history',
   'financial_documents',
   'financial_entries',
-  'payroll_expenses',
+  // payroll_expenses: hard delete via set_config (ver deletePayrollExpensesForDemo)
   'employees',
   'fuel_history',
   'fuel_documents',
@@ -97,10 +95,30 @@ async function deleteByCompanyId(
   }
 }
 
+/**
+ * Hard delete de payroll_expenses exige set_config explícito (migration 091).
+ * Escopo estrito: somente company_id da DEMO.
+ */
+function deletePayrollExpensesForDemo(companyId: string): void {
+  const sql = `select set_config('app.allow_payroll_hard_delete', 'on', true); delete from public.payroll_expenses where company_id = '${companyId}';`;
+  try {
+    execSync(`npx supabase db query --linked ${JSON.stringify(sql)}`, {
+      stdio: ['ignore', 'pipe', 'pipe'],
+      encoding: 'utf8',
+      shell: process.platform === 'win32' ? (process.env.ComSpec ?? 'cmd.exe') : '/bin/sh',
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Falha ao remover payroll_expenses da DEMO: ${message}`);
+  }
+}
+
 export async function runDemoReset(): Promise<{removed: boolean; companyId: string | null}> {
   const supabase = createDemoSeedClient();
   const companyId = await findDemoCompanyId(supabase);
   if (!companyId) return {removed: false, companyId: null};
+
+  deletePayrollExpensesForDemo(companyId);
 
   for (const table of DELETE_ORDER) {
     await deleteByCompanyId(supabase, table, companyId);
