@@ -5,7 +5,6 @@ import {
   ChevronRight,
   KeyRound,
   Mail,
-  MoreHorizontal,
   Pencil,
   Plus,
   Power,
@@ -14,6 +13,7 @@ import {
 import {useRouter} from 'next/navigation';
 import * as React from 'react';
 
+import {RowActionsMenu, RowActionsMenuItem} from '@/components/common/row-actions-menu';
 import {DataTable} from '@/components/data-display/data-table';
 import {TableContainer} from '@/components/data-display/table-container';
 import {SearchInput} from '@/components/forms/search-input';
@@ -84,7 +84,7 @@ function PortalUsersList({
     email: string;
     role: PortalRole;
   } | null>(null);
-  const [actionMenuUserId, setActionMenuUserId] = React.useState<string | null>(null);
+  const [openMenuId, setOpenMenuId] = React.useState<string | null>(null);
   const [credentials, setCredentials] = React.useState<PortalUserCredentials | null>(null);
   const [credentialsTitle, setCredentialsTitle] = React.useState('');
   const [actionLoading, setActionLoading] = React.useState(false);
@@ -129,7 +129,7 @@ function PortalUsersList({
   async function handleToggleStatus(id: string, active: boolean) {
     setActionLoading(true);
     setActionError(null);
-    setActionMenuUserId(null);
+    setOpenMenuId(null);
     try {
       const result = await togglePortalUserStatusAction(id, active);
       if (!result.success) {
@@ -145,7 +145,7 @@ function PortalUsersList({
   async function handleResetPassword(id: string) {
     setActionLoading(true);
     setActionError(null);
-    setActionMenuUserId(null);
+    setOpenMenuId(null);
     try {
       const result = await resetPortalUserPasswordAction(id);
       if (!result.success) {
@@ -162,7 +162,7 @@ function PortalUsersList({
   async function handleResendInvite(id: string) {
     setActionLoading(true);
     setActionError(null);
-    setActionMenuUserId(null);
+    setOpenMenuId(null);
     try {
       const result = await resendPortalUserInviteAction(id);
       if (!result.success) {
@@ -224,72 +224,47 @@ function PortalUsersList({
       header: '',
       headerClassName: 'w-12',
       cell: (row: (typeof items)[number]) => (
-        <div className="relative flex justify-end">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label="Ações"
-            onClick={() =>
-              setActionMenuUserId((prev) => (prev === row.id ? null : row.id))
-            }
+        <div className="flex justify-end">
+          <RowActionsMenu
+            open={openMenuId === row.id}
+            onOpenChange={(open) => setOpenMenuId(open ? row.id : null)}
+            disabled={actionLoading}
           >
-            <MoreHorizontal className="size-4" />
-          </Button>
-          {actionMenuUserId === row.id && (
-            <div className="absolute right-0 top-full z-20 mt-1 min-w-44 rounded-lg border border-border bg-card py-1 shadow-lg">
-              <button
-                type="button"
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted"
-                onClick={() => {
-                  setEditUser({
-                    id: row.id,
-                    fullName: row.fullName,
-                    email: row.email,
-                    role: row.role,
-                  });
-                  setActionMenuUserId(null);
-                }}
-              >
-                <Pencil className="size-3.5" />
-                Editar
-              </button>
-              <button
-                type="button"
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted"
-                onClick={() => void handleResetPassword(row.id)}
-              >
-                <KeyRound className="size-3.5" />
-                Reset de senha
-              </button>
-              <button
-                type="button"
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted"
-                onClick={() => void handleResendInvite(row.id)}
-              >
-                <Mail className="size-3.5" />
-                Reenviar convite
-              </button>
-              <button
-                type="button"
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted"
-                onClick={() =>
-                  void handleToggleStatus(row.id, row.status !== 'active')
-                }
-              >
-                {row.status === 'active' ? (
-                  <>
-                    <PowerOff className="size-3.5" />
-                    Inativar
-                  </>
-                ) : (
-                  <>
-                    <Power className="size-3.5" />
-                    Ativar
-                  </>
-                )}
-              </button>
-            </div>
-          )}
+            <RowActionsMenuItem
+              onClick={() => {
+                setEditUser({
+                  id: row.id,
+                  fullName: row.fullName,
+                  email: row.email,
+                  role: row.role,
+                });
+                setOpenMenuId(null);
+              }}
+            >
+              <Pencil className="size-4" /> Editar
+            </RowActionsMenuItem>
+            <RowActionsMenuItem onClick={() => void handleResetPassword(row.id)}>
+              <KeyRound className="size-4" /> Reset de senha
+            </RowActionsMenuItem>
+            <RowActionsMenuItem onClick={() => void handleResendInvite(row.id)}>
+              <Mail className="size-4" /> Reenviar convite
+            </RowActionsMenuItem>
+            <RowActionsMenuItem
+              onClick={() =>
+                void handleToggleStatus(row.id, row.status !== 'active')
+              }
+            >
+              {row.status === 'active' ? (
+                <>
+                  <PowerOff className="size-4" /> Inativar
+                </>
+              ) : (
+                <>
+                  <Power className="size-4" /> Ativar
+                </>
+              )}
+            </RowActionsMenuItem>
+          </RowActionsMenu>
         </div>
       ),
     },
