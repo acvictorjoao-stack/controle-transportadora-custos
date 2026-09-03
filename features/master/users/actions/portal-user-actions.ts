@@ -404,6 +404,9 @@ export async function deletePortalUserAction(
       activeOwnerCount,
     });
 
+    const admin = createAdminClient();
+    await removePortalUserAccess(admin, existing);
+
     await logPortalAudit({
       action: PORTAL_AUDIT_ACTIONS.USER_DELETE,
       actorProfileId: actor.profileId,
@@ -418,9 +421,6 @@ export async function deletePortalUserAction(
         profileId: existing.profileId,
       },
     });
-
-    const admin = createAdminClient();
-    await removePortalUserAccess(admin, existing);
 
     revalidateUsersPath();
     return {success: true, data: undefined};

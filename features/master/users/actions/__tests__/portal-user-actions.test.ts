@@ -93,6 +93,7 @@ describe('deletePortalUserAction', () => {
 
     expect(result).toEqual({success: false, error: PORTAL_ACCESS_DENIED});
     expect(getPortalUserById).not.toHaveBeenCalled();
+    expect(logPortalAudit).not.toHaveBeenCalled();
     expect(removePortalUserAccess).not.toHaveBeenCalled();
   });
 
@@ -102,6 +103,7 @@ describe('deletePortalUserAction', () => {
     const result = await deletePortalUserAction('missing-id');
 
     expect(result).toEqual({success: false, error: 'Usuário não encontrado.'});
+    expect(logPortalAudit).not.toHaveBeenCalled();
     expect(removePortalUserAccess).not.toHaveBeenCalled();
   });
 
@@ -113,6 +115,7 @@ describe('deletePortalUserAction', () => {
     expect(result.success).toBe(false);
     if (result.success) throw new Error('expected failure');
     expect(result.error).toBe('Você não pode excluir o próprio usuário.');
+    expect(logPortalAudit).not.toHaveBeenCalled();
     expect(removePortalUserAccess).not.toHaveBeenCalled();
   });
 
@@ -130,6 +133,7 @@ describe('deletePortalUserAction', () => {
     expect(result.error).toBe(
       'Não é possível excluir o último proprietário da plataforma.',
     );
+    expect(logPortalAudit).not.toHaveBeenCalled();
     expect(removePortalUserAccess).not.toHaveBeenCalled();
   });
 
@@ -137,6 +141,7 @@ describe('deletePortalUserAction', () => {
     const result = await deletePortalUserAction(TARGET.id);
 
     expect(result).toEqual({success: true, data: undefined});
+    expect(removePortalUserAccess).toHaveBeenCalledWith(adminStub, TARGET);
     expect(logPortalAudit).toHaveBeenCalledWith(
       expect.objectContaining({
         action: 'user_delete',
@@ -144,7 +149,9 @@ describe('deletePortalUserAction', () => {
         targetLabel: TARGET.email,
       }),
     );
-    expect(removePortalUserAccess).toHaveBeenCalledWith(adminStub, TARGET);
+    expect(removePortalUserAccess.mock.invocationCallOrder[0]).toBeLessThan(
+      logPortalAudit.mock.invocationCallOrder[0],
+    );
     expect(revalidatePath).toHaveBeenCalledWith('/master/usuarios');
   });
 
@@ -154,6 +161,7 @@ describe('deletePortalUserAction', () => {
     const result = await deletePortalUserAction(TARGET.id);
 
     expect(result).toEqual({success: false, error: 'falha no admin'});
+    expect(logPortalAudit).not.toHaveBeenCalled();
     expect(revalidatePath).not.toHaveBeenCalled();
   });
 });
