@@ -16,7 +16,12 @@ import {generateTemporaryPassword} from '@/features/master/provisioning/services
 import {createClient} from '@/supabase/server';
 import {createAdminClient} from '@/supabase/server/admin';
 
-import {getPortalUserById} from '../queries';
+import {countActivePortalOwners, getPortalUserById} from '../queries';
+import {
+  assertPortalUserDeletion,
+  PORTAL_USER_DELETE_ERRORS,
+  removePortalUserAccess,
+} from '../services/delete-portal-user';
 import {
   createPortalUserSchema,
   updatePortalUserSchema,
@@ -375,6 +380,59 @@ export async function resendPortalUserInviteAction(
   id: string,
 ): Promise<ActionResult<PortalUserCredentials>> {
   return resetPortalUserPasswordAction(id);
+}
+
+export async function deletePortalUserAction(
+  id: string,
+): Promise<ActionResult<void>> {
+  const denied = await assertOwner();
+  if (denied) return denied;
+
+  try {
+    const supabase = await createClient();
+    const existing = await getPortalUserById(supabase, id);
+
+    if (!existing) {
+      return {success: false, error: PORTAL_USER_DELETE_ERRORS.NOT_FOUND};
+    }
+
+    const actor = await getActorContext();
+    const activeOwnerCount = await countActivePortalOwners(supabase);
+    assertPortalUserDeletion({
+      actorProfileId: actor.profileId,
+      target: existing,
+      activeOwnerCount,
+    });
+
+    await logPortalAudit({
+      action: PORTAL_AUDIT_ACTIONS.USER_DELETE,
+      actorProfileId: actor.profileId,
+      actorEmail: actor.email,
+      targetType: 'user',
+      targetId: existing.id,
+      targetLabel: existing.email,
+      metadata: {
+        fullName: existing.fullName,
+        role: existing.role,
+        status: existing.status,
+        profileId: existing.profileId,
+      },
+    });
+
+    const admin = createAdminClient();
+    await removePortalUserAccess(admin, existing);
+
+    revalidateUsersPath();
+    return {success: true, data: undefined};
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Erro ao excluir usuário.',
+    };
+  }
 }
 
 export async function fetchPortalUserById(id: string) {

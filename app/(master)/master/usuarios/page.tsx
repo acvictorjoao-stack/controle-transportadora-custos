@@ -3,6 +3,7 @@ import {Section} from '@/components/layout/section';
 import {PortalUsersList} from '@/features/master/users/components/portal-users-list';
 import {listPortalUsers} from '@/features/master/users/queries';
 import type {PortalUserRoleFilter, PortalUserStatusFilter} from '@/features/master/users/types';
+import {getAuthUser} from '@/lib/auth/guards';
 import {PORTAL_ROLES} from '@/lib/auth/permissions';
 import {createClient} from '@/supabase/server';
 
@@ -22,6 +23,7 @@ export default async function MasterUsuariosPage({
   searchParams,
 }: MasterUsuariosPageProps) {
   const params = await searchParams;
+  const actor = await getAuthUser();
   const search = params.q?.trim() ?? '';
   const page = Math.max(1, Number(params.page ?? '1') || 1);
   const role: PortalUserRoleFilter = VALID_ROLES.has(
@@ -59,6 +61,7 @@ export default async function MasterUsuariosPage({
           initialPage={page}
           initialRole={role}
           initialStatus={status}
+          currentProfileId={actor?.id ?? null}
           error={error}
         />
       </Section>

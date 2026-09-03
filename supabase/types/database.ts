@@ -6770,6 +6770,7 @@ export type Database = {
         | "user_role_change"
         | "user_activate"
         | "user_deactivate"
+        | "user_delete"
         | "plan_change"
         | "company_suspend"
         | "company_reactivate"
@@ -7205,6 +7206,7 @@ export const Constants = {
         "user_role_change",
         "user_activate",
         "user_deactivate",
+        "user_delete",
         "plan_change",
         "company_suspend",
         "company_reactivate",

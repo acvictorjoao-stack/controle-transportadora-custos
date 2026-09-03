@@ -1,4 +1,4 @@
-export {listPortalUsers, getPortalUserById} from './queries';
+export {countActivePortalOwners, listPortalUsers, getPortalUserById} from './queries';
 export type {ListPortalUsersOptions} from './queries';
 export * from './types';
 export * from './actions';

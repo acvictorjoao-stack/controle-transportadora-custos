@@ -1,5 +1,6 @@
 export {
   createPortalUserAction,
+  deletePortalUserAction,
   fetchPortalUserById,
   resendPortalUserInviteAction,
   resetPortalUserPasswordAction,

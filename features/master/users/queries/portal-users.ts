@@ -153,3 +153,19 @@ export async function getPortalUserById(
 
   return mapPortalUserRow(data as unknown as PortalUserRow);
 }
+
+export async function countActivePortalOwners(
+  supabase: SupabaseClient,
+): Promise<number> {
+  const {count, error} = await supabase
+    .from('portal_users')
+    .select('id', {count: 'exact', head: true})
+    .eq('role', 'OWNER')
+    .eq('active', true);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return count ?? 0;
+}

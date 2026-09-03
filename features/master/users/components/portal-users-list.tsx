@@ -9,6 +9,7 @@ import {
   Plus,
   Power,
   PowerOff,
+  Trash2,
 } from 'lucide-react';
 import {useRouter} from 'next/navigation';
 import * as React from 'react';
@@ -23,6 +24,7 @@ import {Badge} from '@/components/ui/badge';
 import {Button} from '@/components/ui/button';
 import {ROUTES} from '@/constants/routes/paths';
 import {
+  deletePortalUserAction,
   resetPortalUserPasswordAction,
   resendPortalUserInviteAction,
   togglePortalUserStatusAction,
@@ -30,6 +32,7 @@ import {
 } from '@/features/master/users/actions/portal-user-actions';
 import type {
   PaginatedPortalUsers,
+  PortalUserListItem,
   PortalUserRoleFilter,
   PortalUserStatusFilter,
 } from '@/features/master/users/types';
@@ -44,6 +47,7 @@ export interface PortalUsersListProps {
   initialPage: number;
   initialRole: PortalUserRoleFilter;
   initialStatus: PortalUserStatusFilter;
+  currentProfileId: string | null;
   error: string | null;
 }
 
@@ -73,6 +77,7 @@ function PortalUsersList({
   initialPage,
   initialRole,
   initialStatus,
+  currentProfileId,
   error,
 }: PortalUsersListProps) {
   const router = useRouter();
@@ -84,11 +89,15 @@ function PortalUsersList({
     email: string;
     role: PortalRole;
   } | null>(null);
+  const [userToDelete, setUserToDelete] = React.useState<PortalUserListItem | null>(
+    null,
+  );
   const [openMenuId, setOpenMenuId] = React.useState<string | null>(null);
   const [credentials, setCredentials] = React.useState<PortalUserCredentials | null>(null);
   const [credentialsTitle, setCredentialsTitle] = React.useState('');
   const [actionLoading, setActionLoading] = React.useState(false);
   const [actionError, setActionError] = React.useState<string | null>(null);
+  const [actionMessage, setActionMessage] = React.useState<string | null>(null);
 
   const items = initialData?.items ?? [];
   const total = initialData?.total ?? 0;
@@ -129,6 +138,7 @@ function PortalUsersList({
   async function handleToggleStatus(id: string, active: boolean) {
     setActionLoading(true);
     setActionError(null);
+    setActionMessage(null);
     setOpenMenuId(null);
     try {
       const result = await togglePortalUserStatusAction(id, active);
@@ -145,6 +155,7 @@ function PortalUsersList({
   async function handleResetPassword(id: string) {
     setActionLoading(true);
     setActionError(null);
+    setActionMessage(null);
     setOpenMenuId(null);
     try {
       const result = await resetPortalUserPasswordAction(id);
@@ -162,6 +173,7 @@ function PortalUsersList({
   async function handleResendInvite(id: string) {
     setActionLoading(true);
     setActionError(null);
+    setActionMessage(null);
     setOpenMenuId(null);
     try {
       const result = await resendPortalUserInviteAction(id);
@@ -171,6 +183,27 @@ function PortalUsersList({
       }
       setCredentialsTitle('Convite reenviado — novas credenciais');
       setCredentials(result.data);
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function handleConfirmDelete() {
+    if (!userToDelete) return;
+
+    setActionLoading(true);
+    setActionError(null);
+    setActionMessage(null);
+    setOpenMenuId(null);
+    try {
+      const result = await deletePortalUserAction(userToDelete.id);
+      if (!result.success) {
+        setActionError(result.error);
+        return;
+      }
+      setUserToDelete(null);
+      setActionMessage('Usuário excluído com sucesso.');
+      router.refresh();
     } finally {
       setActionLoading(false);
     }
@@ -264,6 +297,17 @@ function PortalUsersList({
                 </>
               )}
             </RowActionsMenuItem>
+            {row.profileId !== currentProfileId && (
+              <RowActionsMenuItem
+                destructive
+                onClick={() => {
+                  setUserToDelete(row);
+                  setOpenMenuId(null);
+                }}
+              >
+                <Trash2 className="size-4" /> Excluir
+              </RowActionsMenuItem>
+            )}
           </RowActionsMenu>
         </div>
       ),
@@ -317,6 +361,14 @@ function PortalUsersList({
           <div className="px-6 pt-4">
             <Alert variant="destructive">
               <AlertDescription>{error ?? actionError}</AlertDescription>
+            </Alert>
+          </div>
+        )}
+
+        {actionMessage && (
+          <div className="px-6 pt-4">
+            <Alert>
+              <AlertDescription>{actionMessage}</AlertDescription>
             </Alert>
           </div>
         )}
@@ -391,6 +443,55 @@ function PortalUsersList({
             title={credentialsTitle}
             onFinish={() => setCredentials(null)}
           />
+        )}
+      </Modal>
+
+      <Modal
+        open={Boolean(userToDelete)}
+        onClose={() => {
+          if (!actionLoading) setUserToDelete(null);
+        }}
+        title="Excluir usuário"
+        description="Confirme a exclusão permanente deste operador"
+        size="md"
+      >
+        {userToDelete && (
+          <div className="space-y-4">
+            <div className="space-y-1 text-sm">
+              <p>
+                <span className="text-muted-foreground">Nome: </span>
+                <span className="font-medium">{userToDelete.fullName}</span>
+              </p>
+              <p>
+                <span className="text-muted-foreground">E-mail: </span>
+                <span className="font-medium">{userToDelete.email}</span>
+              </p>
+            </div>
+            <Alert variant="destructive">
+              <AlertDescription>
+                Esta exclusão é permanente. O acesso ao Portal Master será
+                removido e a ação não poderá ser desfeita.
+              </AlertDescription>
+            </Alert>
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setUserToDelete(null)}
+                disabled={actionLoading}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => void handleConfirmDelete()}
+                disabled={actionLoading}
+              >
+                Excluir
+              </Button>
+            </div>
+          </div>
         )}
       </Modal>
     </>
