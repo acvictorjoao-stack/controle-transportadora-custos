@@ -13,13 +13,21 @@ import {createClient} from '@/supabase/server';
 
 import {readPlanSlugFromSettings} from '../utils/format';
 import {
+  getCompanyBranches,
   getCompanyDetailById,
+  getCompanyMembers,
   getCompanySettings,
   softDeleteCompany,
   updateCompany,
   updateCompanyStatus,
 } from '../queries';
-import type {Company, CompanyAdmin, CompanyDetail} from '../types';
+import type {
+  Company,
+  CompanyAdmin,
+  CompanyBranchSummary,
+  CompanyDetail,
+  CompanyMemberSummary,
+} from '../types';
 import {provisionCompanyAdministratorSchema, updateCompanySchema} from '../validation';
 
 export interface ActionError {
@@ -342,6 +350,40 @@ export async function fetchCompanyDetailById(
   try {
     const supabase = await createClient();
     return await getCompanyDetailById(supabase, id);
+  } catch {
+    return null;
+  }
+}
+
+export interface CompanyDetailPageData {
+  company: CompanyDetail;
+  branches: CompanyBranchSummary[];
+  members: CompanyMemberSummary[];
+}
+
+/**
+ * Detalhe Master com filiais e usuários ativos, em paralelo.
+ * Autorização: guardPortalOwner; companyId validado via getCompanyDetailById.
+ */
+export async function fetchCompanyDetailPageData(
+  id: string,
+): Promise<CompanyDetailPageData | null> {
+  const denied = await assertOwner();
+  if (denied) return null;
+
+  try {
+    const supabase = await createClient();
+    const company = await getCompanyDetailById(supabase, id);
+    if (!company) {
+      return null;
+    }
+
+    const [branches, members] = await Promise.all([
+      getCompanyBranches(supabase, company.id),
+      getCompanyMembers(supabase, company.id),
+    ]);
+
+    return {company, branches, members};
   } catch {
     return null;
   }

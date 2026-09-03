@@ -4,9 +4,13 @@ import {buildCompanyAccessUrl} from '@/features/master/provisioning/utils/access
 import type {
   AdminMemberRow,
   Company,
+  CompanyBranchRow,
+  CompanyBranchSummary,
   CompanyDetail,
   CompanyListItem,
   CompanyListRow,
+  CompanyMemberSummary,
+  CompanyMemberSummaryRow,
   CompanyRow,
   ProvisionHistoryEntry,
   ProvisionStatus,
@@ -101,6 +105,33 @@ export function mapCompanyDetail(
     vehicleCount: extras.vehicleCount,
     driverCount: extras.driverCount,
     customerCount: extras.customerCount,
+  };
+}
+
+export function mapCompanyBranchSummary(
+  row: CompanyBranchRow,
+): CompanyBranchSummary {
+  return {
+    id: row.id,
+    code: row.code,
+    name: row.name,
+    city: row.address_city,
+    state: row.address_state,
+    status: row.status,
+    isHeadquarters: row.is_headquarters,
+  };
+}
+
+export function mapCompanyMemberSummary(
+  row: CompanyMemberSummaryRow,
+): CompanyMemberSummary {
+  return {
+    id: row.id,
+    fullName: row.profiles?.full_name?.trim() || '—',
+    email: row.profiles?.email?.trim() || '—',
+    roleName: row.roles?.name?.trim() || '—',
+    status: row.status,
+    lastLoginAt: row.profiles?.last_login_at ?? null,
   };
 }
 

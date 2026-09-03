@@ -126,6 +126,48 @@ export interface CompanyIndicators {
   customerCount: number;
 }
 
+export interface CompanyBranchSummary {
+  id: string;
+  code: string;
+  name: string;
+  city: string | null;
+  state: string | null;
+  status: EntityStatus;
+  isHeadquarters: boolean;
+}
+
+export interface CompanyMemberSummary {
+  id: string;
+  fullName: string;
+  email: string;
+  roleName: string;
+  status: EntityStatus;
+  lastLoginAt: string | null;
+}
+
+export interface CompanyBranchRow {
+  id: string;
+  code: string;
+  name: string;
+  address_city: string | null;
+  address_state: string | null;
+  status: EntityStatus;
+  is_headquarters: boolean;
+}
+
+export interface CompanyMemberSummaryRow {
+  id: string;
+  status: EntityStatus;
+  profiles: {
+    full_name: string;
+    email: string;
+    last_login_at: string | null;
+  } | null;
+  roles: {
+    name: string;
+  } | null;
+}
+
 
 
 export interface PaginatedCompanies {

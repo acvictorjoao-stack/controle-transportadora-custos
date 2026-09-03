@@ -1,7 +1,7 @@
 import {notFound} from 'next/navigation';
 
 import {EmpresaDetail} from '@/components/master/empresas';
-import {fetchCompanyDetailById} from '@/features/master/companies/actions';
+import {fetchCompanyDetailPageData} from '@/features/master/companies/actions';
 import {getDisplayName} from '@/features/master/companies/utils/format';
 import {getPlanCatalog} from '@/features/master/plans';
 import {PageTemplate} from '@/components/layout/page-template';
@@ -17,14 +17,16 @@ export default async function MasterEmpresaDetailPage({
 }: MasterEmpresaDetailPageProps) {
   const {id} = await params;
   const supabase = await createClient();
-  const [company, plans] = await Promise.all([
-    fetchCompanyDetailById(id),
+  const [pageData, plans] = await Promise.all([
+    fetchCompanyDetailPageData(id),
     getPlanCatalog(supabase),
   ]);
 
-  if (!company) {
+  if (!pageData) {
     notFound();
   }
+
+  const {company, branches, members} = pageData;
 
   return (
     <PageTemplate
@@ -32,7 +34,13 @@ export default async function MasterEmpresaDetailPage({
       description={company.legalName}
     >
       <Section>
-        <EmpresaDetail key={company.updatedAt} company={company} plans={plans} />
+        <EmpresaDetail
+          key={company.updatedAt}
+          company={company}
+          plans={plans}
+          branches={branches}
+          members={members}
+        />
       </Section>
     </PageTemplate>
   );

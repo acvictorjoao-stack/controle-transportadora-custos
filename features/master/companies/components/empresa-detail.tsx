@@ -48,7 +48,7 @@ import {
 } from '../actions';
 import {ENTITY_STATUS_LABELS, PROVISION_STATUS_LABELS} from '../constants';
 import {formatCompanyTaxIdDisplay} from '../services';
-import type {CompanyDetail, CompanyAdmin, EntityStatus} from '../types';
+import type {CompanyDetail, CompanyAdmin, CompanyBranchSummary, CompanyMemberSummary, EntityStatus} from '../types';
 import type {UpdateCompanyInput} from '../validation';
 import {getDisplayName, slugify} from '../utils/format';
 import {ProvisionAdminModal} from './provision-admin-modal';
@@ -56,6 +56,8 @@ import {ProvisionAdminModal} from './provision-admin-modal';
 export interface EmpresaDetailProps {
   company: CompanyDetail;
   plans: PlanCatalogItem[];
+  branches: CompanyBranchSummary[];
+  members: CompanyMemberSummary[];
 }
 
 type FieldErrors = Partial<Record<keyof UpdateCompanyInput, string>>;
@@ -95,7 +97,12 @@ function IndicatorStat({label, value}: {label: string; value: number}) {
   );
 }
 
-function EmpresaDetail({company: initialCompany, plans}: EmpresaDetailProps) {
+function EmpresaDetail({
+  company: initialCompany,
+  plans,
+  branches,
+  members,
+}: EmpresaDetailProps) {
   const router = useRouter();
   const {user} = useAuth();
   const confirm = useConfirm();
@@ -473,6 +480,107 @@ function EmpresaDetail({company: initialCompany, plans}: EmpresaDetailProps) {
             <IndicatorStat label="Motoristas" value={company.driverCount} />
             <IndicatorStat label="Clientes" value={company.customerCount} />
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="py-4 shadow-none">
+        <CardHeader className="px-4 py-0">
+          <CardTitle className="text-base">Filiais</CardTitle>
+          <CardDescription>
+            Unidades operacionais desta empresa ({branches.length})
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="px-4 pt-4">
+          {branches.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Nenhuma filial cadastrada.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[32rem] text-left text-sm">
+                <thead>
+                  <tr className="border-b border-border text-muted-foreground">
+                    <th className="pb-2 pr-3 font-medium">Nome</th>
+                    <th className="pb-2 pr-3 font-medium">Código</th>
+                    <th className="pb-2 pr-3 font-medium">Cidade</th>
+                    <th className="pb-2 pr-3 font-medium">UF</th>
+                    <th className="pb-2 font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {branches.map((branch) => (
+                    <tr key={branch.id} className="border-b border-border/60 last:border-0">
+                      <td className="py-2.5 pr-3 font-medium">
+                        {branch.name}
+                        {branch.isHeadquarters ? (
+                          <span className="ml-2 text-xs font-normal text-muted-foreground">
+                            Matriz
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className="py-2.5 pr-3 font-mono text-xs">{branch.code}</td>
+                      <td className="py-2.5 pr-3">{branch.city ?? '—'}</td>
+                      <td className="py-2.5 pr-3">{branch.state ?? '—'}</td>
+                      <td className="py-2.5">
+                        <Badge variant={getStatusVariant(branch.status)}>
+                          {ENTITY_STATUS_LABELS[branch.status]}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="py-4 shadow-none">
+        <CardHeader className="px-4 py-0">
+          <CardTitle className="text-base">Usuários</CardTitle>
+          <CardDescription>
+            Membros ativos desta empresa ({members.length})
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="px-4 pt-4">
+          {members.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Nenhum usuário cadastrado.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[36rem] text-left text-sm">
+                <thead>
+                  <tr className="border-b border-border text-muted-foreground">
+                    <th className="pb-2 pr-3 font-medium">Nome</th>
+                    <th className="pb-2 pr-3 font-medium">E-mail</th>
+                    <th className="pb-2 pr-3 font-medium">Papel</th>
+                    <th className="pb-2 pr-3 font-medium">Status</th>
+                    <th className="pb-2 font-medium">Último acesso</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {members.map((member) => (
+                    <tr key={member.id} className="border-b border-border/60 last:border-0">
+                      <td className="py-2.5 pr-3 font-medium">{member.fullName}</td>
+                      <td className="py-2.5 pr-3">{member.email}</td>
+                      <td className="py-2.5 pr-3">{member.roleName}</td>
+                      <td className="py-2.5 pr-3">
+                        <Badge variant={getStatusVariant(member.status)}>
+                          {ENTITY_STATUS_LABELS[member.status]}
+                        </Badge>
+                      </td>
+                      <td className="py-2.5 text-muted-foreground">
+                        {member.lastLoginAt
+                          ? new Date(member.lastLoginAt).toLocaleString('pt-BR')
+                          : 'Nunca'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
 

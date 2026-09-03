@@ -10,16 +10,22 @@ import {
 } from '../constants';
 import {
   mapAdminMembersByCompany,
+  mapCompanyBranchSummary,
   mapCompanyDetail,
   mapCompanyListRow,
+  mapCompanyMemberSummary,
   mapCompanyRow,
   pickPrincipalAdminMember,
 } from '../services/mappers';
 import type {
   AdminMemberRow,
   Company,
+  CompanyBranchRow,
+  CompanyBranchSummary,
   CompanyDetail,
   CompanyIndicators,
+  CompanyMemberSummary,
+  CompanyMemberSummaryRow,
   CompanyRow,
   CompanySortField,
   CompanySortOrder,
@@ -315,6 +321,103 @@ export async function getCompanyDetailById(
   ]);
 
   return mapCompanyDetail(company, {admin, ...indicators});
+}
+
+function normalizeMemberSummaryRow(
+  row: Record<string, unknown>,
+): CompanyMemberSummaryRow {
+  const profilesRaw = row.profiles;
+  const rolesRaw = row.roles;
+  const profiles = Array.isArray(profilesRaw) ? profilesRaw[0] : profilesRaw;
+  const roles = Array.isArray(rolesRaw) ? rolesRaw[0] : rolesRaw;
+
+  return {
+    id: String(row.id),
+    status: row.status as EntityStatus,
+    profiles:
+      profiles && typeof profiles === 'object'
+        ? {
+            full_name: String(
+              (profiles as Record<string, unknown>).full_name ?? '',
+            ),
+            email: String((profiles as Record<string, unknown>).email ?? ''),
+            last_login_at:
+              typeof (profiles as Record<string, unknown>).last_login_at ===
+              'string'
+                ? ((profiles as Record<string, unknown>).last_login_at as string)
+                : null,
+          }
+        : null,
+    roles:
+      roles && typeof roles === 'object'
+        ? {name: String((roles as Record<string, unknown>).name ?? '')}
+        : null,
+  };
+}
+
+/**
+ * Filiais da empresa (somente leitura Master).
+ * Escopo obrigatório por company_id; exclui soft-deleted.
+ */
+export async function getCompanyBranches(
+  supabase: SupabaseClient,
+  companyId: string,
+): Promise<CompanyBranchSummary[]> {
+  const {data, error} = await supabase
+    .from('branches')
+    .select(
+      'id, code, name, address_city, address_state, status, is_headquarters',
+    )
+    .eq('company_id', companyId)
+    .is('deleted_at', null)
+    .order('is_headquarters', {ascending: false})
+    .order('name', {ascending: true});
+
+  if (error) {
+    throw new Error(mapDatabaseError(error));
+  }
+
+  return (data ?? []).map((row) =>
+    mapCompanyBranchSummary(row as CompanyBranchRow),
+  );
+}
+
+/**
+ * Membros ativos da empresa (somente leitura Master).
+ * Escopo obrigatório por company_id; status active e sem deleted_at.
+ */
+export async function getCompanyMembers(
+  supabase: SupabaseClient,
+  companyId: string,
+): Promise<CompanyMemberSummary[]> {
+  const {data, error} = await supabase
+    .from('company_members')
+    .select(
+      `
+      id,
+      status,
+      profiles!company_members_profile_id_fkey ( full_name, email, last_login_at ),
+      roles ( name )
+    `,
+    )
+    .eq('company_id', companyId)
+    .is('deleted_at', null)
+    .eq('status', 'active')
+    .order('created_at', {ascending: true});
+
+  if (error) {
+    throw new Error(mapDatabaseError(error));
+  }
+
+  const members = (data ?? []).map((row) =>
+    mapCompanyMemberSummary(
+      normalizeMemberSummaryRow(row as Record<string, unknown>),
+    ),
+  );
+
+  return members.sort((a, b) =>
+    a.fullName.localeCompare(b.fullName, 'pt-BR', {sensitivity: 'base'}),
+  );
 }
 
 export async function updateCompany(
