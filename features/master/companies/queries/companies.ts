@@ -19,6 +19,7 @@ import type {
   AdminMemberRow,
   Company,
   CompanyDetail,
+  CompanyIndicators,
   CompanyRow,
   CompanySortField,
   CompanySortOrder,
@@ -245,39 +246,58 @@ async function fetchCompanyAdmin(
   };
 }
 
-async function countCompanyBranches(
-  supabase: SupabaseClient,
+/**
+ * Contagens do detalhe Master. Usa service_role porque vehicles/drivers/customers
+ * não têm policy SELECT de portal OWNER fora do acting context.
+ * Sempre filtrado por company_id; não altera RLS.
+ */
+export async function countCompanyIndicators(
   companyId: string,
-): Promise<number> {
-  const {count, error} = await supabase
-    .from('branches')
-    .select('id', {count: 'exact', head: true})
-    .eq('company_id', companyId)
-    .is('deleted_at', null);
+): Promise<CompanyIndicators> {
+  const admin = createAdminClient();
 
-  if (error) {
-    throw new Error(mapDatabaseError(error));
+  async function countRows(
+    table:
+      | 'branches'
+      | 'company_members'
+      | 'vehicles'
+      | 'drivers'
+      | 'customers',
+    options?: {activeMembersOnly?: boolean},
+  ): Promise<number> {
+    let query = admin
+      .from(table)
+      .select('id', {count: 'exact', head: true})
+      .eq('company_id', companyId)
+      .is('deleted_at', null);
+
+    if (options?.activeMembersOnly) {
+      query = query.eq('status', 'active');
+    }
+
+    const {count, error} = await query;
+    if (error) {
+      throw new Error(mapDatabaseError(error));
+    }
+    return count ?? 0;
   }
 
-  return count ?? 0;
-}
+  const [branchCount, memberCount, vehicleCount, driverCount, customerCount] =
+    await Promise.all([
+      countRows('branches'),
+      countRows('company_members', {activeMembersOnly: true}),
+      countRows('vehicles'),
+      countRows('drivers'),
+      countRows('customers'),
+    ]);
 
-async function countCompanyMembers(
-  supabase: SupabaseClient,
-  companyId: string,
-): Promise<number> {
-  const {count, error} = await supabase
-    .from('company_members')
-    .select('id', {count: 'exact', head: true})
-    .eq('company_id', companyId)
-    .is('deleted_at', null)
-    .eq('status', 'active');
-
-  if (error) {
-    throw new Error(mapDatabaseError(error));
-  }
-
-  return count ?? 0;
+  return {
+    branchCount,
+    memberCount,
+    vehicleCount,
+    driverCount,
+    customerCount,
+  };
 }
 
 export async function getCompanyDetailById(
@@ -289,13 +309,12 @@ export async function getCompanyDetailById(
     return null;
   }
 
-  const [admin, branchCount, memberCount] = await Promise.all([
+  const [admin, indicators] = await Promise.all([
     fetchCompanyAdmin(supabase, id),
-    countCompanyBranches(supabase, id),
-    countCompanyMembers(supabase, id),
+    countCompanyIndicators(id),
   ]);
 
-  return mapCompanyDetail(company, {admin, branchCount, memberCount});
+  return mapCompanyDetail(company, {admin, ...indicators});
 }
 
 export async function updateCompany(

@@ -110,6 +110,20 @@ export interface CompanyDetail extends Company {
 
   memberCount: number;
 
+  vehicleCount: number;
+
+  driverCount: number;
+
+  customerCount: number;
+
+}
+
+export interface CompanyIndicators {
+  branchCount: number;
+  memberCount: number;
+  vehicleCount: number;
+  driverCount: number;
+  customerCount: number;
 }
 
 

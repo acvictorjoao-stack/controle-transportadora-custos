@@ -87,6 +87,9 @@ export function mapCompanyDetail(
     admin: CompanyDetail['admin'];
     branchCount: number;
     memberCount: number;
+    vehicleCount: number;
+    driverCount: number;
+    customerCount: number;
   },
 ): CompanyDetail {
   return {
@@ -95,6 +98,9 @@ export function mapCompanyDetail(
     admin: extras.admin,
     branchCount: extras.branchCount,
     memberCount: extras.memberCount,
+    vehicleCount: extras.vehicleCount,
+    driverCount: extras.driverCount,
+    customerCount: extras.customerCount,
   };
 }
 

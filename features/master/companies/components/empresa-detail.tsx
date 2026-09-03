@@ -2,8 +2,11 @@
 
 import {
   ArrowLeft,
+  Building2,
   Copy,
   KeyRound,
+  Loader2,
+  LogIn,
   Mail,
   PauseCircle,
   Pencil,
@@ -13,6 +16,7 @@ import {
 import Link from 'next/link';
 import {useRouter} from 'next/navigation';
 import * as React from 'react';
+import {useTransition} from 'react';
 
 import {FormField} from '@/components/master/shared/form-field';
 import {Alert, AlertDescription} from '@/components/ui/alert';
@@ -30,6 +34,7 @@ import {Textarea} from '@/components/ui/textarea';
 import {ROUTES} from '@/constants/routes/paths';
 import {useAuth} from '@/contexts/auth/use-auth';
 import {useConfirm} from '@/contexts/feedback/confirm-context';
+import {enterCompanyAsMasterAction} from '@/features/master/company-access';
 import {getPlanLabel, type PlanCatalogItem} from '@/features/master/plans';
 
 import {
@@ -39,6 +44,7 @@ import {
   resetAdminPasswordAction,
   suspendCompanyAction,
   updateCompanyAction,
+  type AdminCredentialsResult,
 } from '../actions';
 import {ENTITY_STATUS_LABELS, PROVISION_STATUS_LABELS} from '../constants';
 import {formatCompanyTaxIdDisplay} from '../services';
@@ -80,10 +86,20 @@ function getProvisionVariant(status: CompanyDetail['provisionStatus']) {
   }
 }
 
+function IndicatorStat({label, value}: {label: string; value: number}) {
+  return (
+    <div className="rounded-lg border border-border px-3 py-3">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>
+    </div>
+  );
+}
+
 function EmpresaDetail({company: initialCompany, plans}: EmpresaDetailProps) {
   const router = useRouter();
   const {user} = useAuth();
   const confirm = useConfirm();
+  const [enterPending, startEnterTransition] = useTransition();
   const [company, setCompany] = React.useState(initialCompany);
   const [editing, setEditing] = React.useState(false);
   const [formData, setFormData] = React.useState<UpdateCompanyInput>(() => ({
@@ -107,6 +123,8 @@ function EmpresaDetail({company: initialCompany, plans}: EmpresaDetailProps) {
   const [submitting, setSubmitting] = React.useState(false);
   const [actionLoading, setActionLoading] = React.useState<string | null>(null);
   const [provisionModalOpen, setProvisionModalOpen] = React.useState(false);
+
+  const canEnterCompany = company.status === 'active';
 
   function updateField<K extends keyof UpdateCompanyInput>(
     field: K,
@@ -252,6 +270,19 @@ function EmpresaDetail({company: initialCompany, plans}: EmpresaDetailProps) {
     setActionLoading(null);
   }
 
+  function handleEnterCompany() {
+    if (!canEnterCompany) return;
+
+    setFormError(null);
+    setActionMessage(null);
+    startEnterTransition(async () => {
+      const result = await enterCompanyAsMasterAction(company.id);
+      if (result && !result.success) {
+        setFormError(result.error);
+      }
+    });
+  }
+
   async function copyText(text: string) {
     try {
       await navigator.clipboard.writeText(text);
@@ -273,18 +304,27 @@ function EmpresaDetail({company: initialCompany, plans}: EmpresaDetailProps) {
     ].join('\n');
   }
 
-  function handleAdminProvisioned(admin: CompanyAdmin) {
+  function handleAdminProvisioned(
+    result: AdminCredentialsResult & {admin: CompanyAdmin},
+  ) {
     setCompany((prev) => ({
       ...prev,
-      admin,
+      admin: result.admin,
       memberCount: prev.memberCount + 1,
     }));
+    setCredentials({
+      adminEmail: result.adminEmail,
+      temporaryPassword: result.temporaryPassword,
+      accessUrl: result.accessUrl,
+    });
     setActionMessage('Administrador provisionado com sucesso.');
     router.refresh();
   }
 
   const selectClassName =
     'flex h-9 w-full rounded-lg border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30';
+
+  const busy = Boolean(actionLoading) || enterPending || submitting;
 
   return (
     <div className="space-y-6">
@@ -302,6 +342,23 @@ function EmpresaDetail({company: initialCompany, plans}: EmpresaDetailProps) {
           {PROVISION_STATUS_LABELS[company.provisionStatus]}
         </Badge>
         <div className="ml-auto flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            onClick={handleEnterCompany}
+            disabled={!canEnterCompany || busy}
+            title={
+              canEnterCompany
+                ? 'Abrir o dashboard da empresa no contexto Master'
+                : 'Disponível apenas para empresas ativas'
+            }
+          >
+            {enterPending ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <LogIn className="size-4" />
+            )}
+            Entrar na empresa
+          </Button>
           {!editing && (
             <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
               <Pencil className="size-4" />
@@ -313,7 +370,7 @@ function EmpresaDetail({company: initialCompany, plans}: EmpresaDetailProps) {
               variant="outline"
               size="sm"
               onClick={() => void handleSuspend()}
-              disabled={actionLoading === 'suspend'}
+              disabled={actionLoading === 'suspend' || enterPending}
             >
               <PauseCircle className="size-4" />
               Suspender
@@ -323,7 +380,7 @@ function EmpresaDetail({company: initialCompany, plans}: EmpresaDetailProps) {
               variant="outline"
               size="sm"
               onClick={() => void handleReactivate()}
-              disabled={actionLoading === 'reactivate'}
+              disabled={actionLoading === 'reactivate' || enterPending}
             >
               <PlayCircle className="size-4" />
               Reativar
@@ -335,7 +392,7 @@ function EmpresaDetail({company: initialCompany, plans}: EmpresaDetailProps) {
                 variant="outline"
                 size="sm"
                 onClick={() => void handleResetPassword()}
-                disabled={actionLoading === 'reset'}
+                disabled={actionLoading === 'reset' || enterPending}
               >
                 <KeyRound className="size-4" />
                 Resetar senha
@@ -344,7 +401,7 @@ function EmpresaDetail({company: initialCompany, plans}: EmpresaDetailProps) {
                 variant="outline"
                 size="sm"
                 onClick={() => void handleResendCredentials()}
-                disabled={actionLoading === 'resend'}
+                disabled={actionLoading === 'resend' || enterPending}
               >
                 <Mail className="size-4" />
                 Reenviar credenciais
@@ -372,7 +429,7 @@ function EmpresaDetail({company: initialCompany, plans}: EmpresaDetailProps) {
             variant="destructive"
             size="sm"
             onClick={() => void handleDelete()}
-            disabled={actionLoading === 'delete'}
+            disabled={actionLoading === 'delete' || enterPending}
           >
             <Trash2 className="size-4" />
             Excluir
@@ -380,33 +437,67 @@ function EmpresaDetail({company: initialCompany, plans}: EmpresaDetailProps) {
         </div>
       </div>
 
+      {!canEnterCompany && (
+        <Alert>
+          <AlertDescription>
+            Entrar na empresa está disponível apenas quando o status for Ativa.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {company.provisionError && (
         <Alert variant="destructive">
           <AlertDescription>{company.provisionError}</AlertDescription>
         </Alert>
       )}
 
-      {formError && (
-        <Alert variant="destructive">
-          <AlertDescription>{formError}</AlertDescription>
+      {(formError || actionMessage) && (
+        <Alert variant={formError ? 'destructive' : 'default'}>
+          <AlertDescription>{formError ?? actionMessage}</AlertDescription>
         </Alert>
       )}
 
-      {actionMessage && (
-        <Alert>
-          <AlertDescription>{actionMessage}</AlertDescription>
-        </Alert>
-      )}
+      <Card className="py-4 shadow-none">
+        <CardHeader className="px-4 py-0">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Building2 className="size-4 text-muted-foreground" />
+            Indicadores
+          </CardTitle>
+          <CardDescription>Resumo operacional desta empresa</CardDescription>
+        </CardHeader>
+        <CardContent className="px-4 pt-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <IndicatorStat label="Filiais" value={company.branchCount} />
+            <IndicatorStat label="Usuários ativos" value={company.memberCount} />
+            <IndicatorStat label="Veículos" value={company.vehicleCount} />
+            <IndicatorStat label="Motoristas" value={company.driverCount} />
+            <IndicatorStat label="Clientes" value={company.customerCount} />
+          </div>
+        </CardContent>
+      </Card>
 
       {credentials && (
-        <Alert>
-          <AlertDescription className="space-y-1">
-            <p>Novas credenciais geradas (exibidas uma única vez):</p>
-            <p className="font-mono text-xs">
-              E-mail: {credentials.adminEmail} · Senha: {credentials.temporaryPassword}
-            </p>
-          </AlertDescription>
-        </Alert>
+        <Card className="border-primary/30 py-4 shadow-none">
+          <CardHeader className="px-4 py-0">
+            <CardTitle className="text-base">Credenciais geradas</CardTitle>
+            <CardDescription>
+              Guarde a senha temporária. Ela não será exibida novamente.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2 px-4 text-sm">
+            <DetailRow label="E-mail" value={credentials.adminEmail} />
+            <DetailRow label="Senha" value={credentials.temporaryPassword} />
+            <DetailRow label="URL" value={credentials.accessUrl} />
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void copyText(buildCredentialsText())}
+            >
+              <Copy className="size-4" />
+              Copiar tudo
+            </Button>
+          </CardContent>
+        </Card>
       )}
 
       {editing ? (
@@ -418,65 +509,144 @@ function EmpresaDetail({company: initialCompany, plans}: EmpresaDetailProps) {
           <CardContent className="px-4">
             <form onSubmit={handleSave} className="space-y-4" noValidate>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <FormField label="Razão Social" htmlFor="legalName" required error={fieldErrors.legalName}>
-                  <Input id="legalName" value={formData.legalName} onChange={(e) => updateField('legalName', e.target.value)} error={Boolean(fieldErrors.legalName)} />
+                <FormField
+                  label="Razão Social"
+                  htmlFor="legalName"
+                  required
+                  error={fieldErrors.legalName}
+                >
+                  <Input
+                    id="legalName"
+                    value={formData.legalName}
+                    onChange={(e) => updateField('legalName', e.target.value)}
+                    error={Boolean(fieldErrors.legalName)}
+                  />
                 </FormField>
-                <FormField label="Nome Fantasia" htmlFor="tradeName" error={fieldErrors.tradeName}>
-                  <Input id="tradeName" value={formData.tradeName ?? ''} onChange={(e) => updateField('tradeName', e.target.value)} error={Boolean(fieldErrors.tradeName)} />
+                <FormField
+                  label="Nome Fantasia"
+                  htmlFor="tradeName"
+                  error={fieldErrors.tradeName}
+                >
+                  <Input
+                    id="tradeName"
+                    value={formData.tradeName ?? ''}
+                    onChange={(e) => updateField('tradeName', e.target.value)}
+                    error={Boolean(fieldErrors.tradeName)}
+                  />
                 </FormField>
                 <FormField label="Slug" htmlFor="slug" required error={fieldErrors.slug}>
-                  <Input id="slug" value={formData.slug} onChange={(e) => updateField('slug', slugify(e.target.value))} error={Boolean(fieldErrors.slug)} />
+                  <Input
+                    id="slug"
+                    value={formData.slug}
+                    onChange={(e) => updateField('slug', slugify(e.target.value))}
+                    error={Boolean(fieldErrors.slug)}
+                  />
                 </FormField>
                 <FormField label="Plano" htmlFor="planSlug" error={fieldErrors.planSlug}>
-                  <select id="planSlug" value={formData.planSlug ?? 'free'} onChange={(e) => updateField('planSlug', e.target.value)} className={selectClassName}>
+                  <select
+                    id="planSlug"
+                    value={formData.planSlug ?? 'free'}
+                    onChange={(e) => updateField('planSlug', e.target.value)}
+                    className={selectClassName}
+                  >
                     {plans.map((plan) => (
-                      <option key={plan.slug} value={plan.slug}>{plan.name}</option>
+                      <option key={plan.slug} value={plan.slug}>
+                        {plan.name}
+                      </option>
                     ))}
                   </select>
                 </FormField>
                 <FormField label="E-mail" htmlFor="email" required error={fieldErrors.email}>
-                  <Input id="email" type="email" value={formData.email} onChange={(e) => updateField('email', e.target.value)} error={Boolean(fieldErrors.email)} />
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => updateField('email', e.target.value)}
+                    error={Boolean(fieldErrors.email)}
+                  />
                 </FormField>
                 <FormField label="Telefone" htmlFor="phone" error={fieldErrors.phone}>
-                  <Input id="phone" value={formData.phone ?? ''} onChange={(e) => updateField('phone', e.target.value)} error={Boolean(fieldErrors.phone)} />
+                  <Input
+                    id="phone"
+                    value={formData.phone ?? ''}
+                    onChange={(e) => updateField('phone', e.target.value)}
+                    error={Boolean(fieldErrors.phone)}
+                  />
                 </FormField>
                 <FormField label="Status" htmlFor="status" required error={fieldErrors.status}>
-                  <select id="status" value={formData.status} onChange={(e) => updateField('status', e.target.value as EntityStatus)} className={selectClassName}>
-                    {(Object.keys(ENTITY_STATUS_LABELS) as EntityStatus[]).map((status) => (
-                      <option key={status} value={status}>{ENTITY_STATUS_LABELS[status]}</option>
-                    ))}
+                  <select
+                    id="status"
+                    value={formData.status}
+                    onChange={(e) =>
+                      updateField('status', e.target.value as EntityStatus)
+                    }
+                    className={selectClassName}
+                  >
+                    {(Object.keys(ENTITY_STATUS_LABELS) as EntityStatus[]).map(
+                      (status) => (
+                        <option key={status} value={status}>
+                          {ENTITY_STATUS_LABELS[status]}
+                        </option>
+                      ),
+                    )}
                   </select>
                 </FormField>
-                <FormField label="Observações" htmlFor="notes" error={fieldErrors.notes} className="md:col-span-2">
-                  <Textarea id="notes" value={formData.notes ?? ''} onChange={(e) => updateField('notes', e.target.value)} error={Boolean(fieldErrors.notes)} placeholder="Anotações internas sobre a empresa" />
+                <FormField
+                  label="Observações"
+                  htmlFor="notes"
+                  error={fieldErrors.notes}
+                  className="md:col-span-2"
+                >
+                  <Textarea
+                    id="notes"
+                    value={formData.notes ?? ''}
+                    onChange={(e) => updateField('notes', e.target.value)}
+                    error={Boolean(fieldErrors.notes)}
+                    placeholder="Anotações internas sobre a empresa"
+                  />
                 </FormField>
               </div>
               <div className="flex justify-end gap-2 border-t border-border pt-4">
-                <Button type="button" variant="outline" onClick={handleCancelEdit} disabled={submitting}>Cancelar</Button>
-                <Button type="submit" disabled={submitting}>{submitting ? 'Salvando...' : 'Salvar alterações'}</Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleCancelEdit}
+                  disabled={submitting}
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={submitting}>
+                  {submitting ? 'Salvando...' : 'Salvar alterações'}
+                </Button>
               </div>
             </form>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="grid gap-4 lg:grid-cols-2">
           <Card className="py-4 shadow-none">
             <CardHeader className="px-4 py-0">
               <CardTitle className="text-base">Empresa</CardTitle>
-              <CardDescription>Informações cadastrais</CardDescription>
+              <CardDescription>Dados cadastrais</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 px-4 text-sm">
-              <DetailRow label="Razão Social" value={company.legalName} />
-              <DetailRow label="Nome Fantasia" value={company.tradeName ?? '—'} />
+              <DetailRow label="Razão social" value={company.legalName} />
+              <DetailRow label="Nome fantasia" value={company.tradeName ?? '—'} />
               <DetailRow label="CNPJ" value={formatCompanyTaxIdDisplay(company.taxId)} />
-              <DetailRow label="Slug" value={company.slug} mono />
+              <DetailRow label="Slug" value={company.slug} />
               <DetailRow label="Status" value={ENTITY_STATUS_LABELS[company.status]} />
               <DetailRow label="Plano" value={getPlanLabel(plans, company.planSlug)} />
-              <DetailRow label="URL" value={company.accessUrl} mono />
+              <DetailRow label="URL de acesso" value={company.accessUrl} />
               <DetailRow label="E-mail" value={company.email} />
               {company.phone && <DetailRow label="Telefone" value={company.phone} />}
-              <DetailRow label="Cadastro" value={new Date(company.createdAt).toLocaleString('pt-BR')} />
-              <DetailRow label="Última atualização" value={new Date(company.updatedAt).toLocaleString('pt-BR')} />
+              <DetailRow
+                label="Criada em"
+                value={new Date(company.createdAt).toLocaleString('pt-BR')}
+              />
+              <DetailRow
+                label="Atualizada em"
+                value={new Date(company.updatedAt).toLocaleString('pt-BR')}
+              />
             </CardContent>
           </Card>
 
@@ -507,17 +677,6 @@ function EmpresaDetail({company: initialCompany, plans}: EmpresaDetailProps) {
                   </Button>
                 </div>
               )}
-            </CardContent>
-          </Card>
-
-          <Card className="py-4 shadow-none">
-            <CardHeader className="px-4 py-0">
-              <CardTitle className="text-base">Organização</CardTitle>
-              <CardDescription>Estrutura operacional</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3 px-4 text-sm">
-              <DetailRow label="Filiais" value={String(company.branchCount)} />
-              <DetailRow label="Usuários ativos" value={String(company.memberCount)} />
             </CardContent>
           </Card>
 
@@ -577,34 +736,17 @@ function EmpresaDetail({company: initialCompany, plans}: EmpresaDetailProps) {
         open={provisionModalOpen}
         companyId={company.id}
         onClose={() => setProvisionModalOpen(false)}
-        onProvisioned={(result) => {
-          handleAdminProvisioned(result.admin);
-          setCredentials({
-            adminEmail: result.adminEmail,
-            temporaryPassword: result.temporaryPassword,
-            accessUrl: result.accessUrl,
-          });
-        }}
+        onProvisioned={handleAdminProvisioned}
       />
     </div>
   );
 }
 
-function DetailRow({
-  label,
-  value,
-  mono,
-}: {
-  label: string;
-  value: string;
-  mono?: boolean;
-}) {
+function DetailRow({label, value}: {label: string; value: string}) {
   return (
-    <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between">
+    <div className="flex flex-col gap-0.5 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
       <span className="text-muted-foreground">{label}</span>
-      <span className={mono ? 'font-mono text-xs font-medium' : 'font-medium'}>
-        {value}
-      </span>
+      <span className="break-all font-medium sm:text-right">{value}</span>
     </div>
   );
 }

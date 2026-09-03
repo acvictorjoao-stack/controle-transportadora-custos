@@ -3,6 +3,7 @@ export type {
   Company,
   CompanyAdmin,
   CompanyDetail,
+  CompanyIndicators,
   CompanyListItem,
   CompanyListRow,
   CompanyRow,
