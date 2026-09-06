@@ -2,7 +2,9 @@ import {describe, expect, it} from 'vitest';
 
 import {
   buildOperationalDreUrl,
+  matchNamedPeriodPreset,
   parseOperationalDreFilters,
+  resolveNamedPeriodRange,
   resolvePeriodPreset,
 } from '../list-url';
 
@@ -74,5 +76,69 @@ describe('list-url shared analytics filters (RC 27.6.0)', () => {
     expect(url).toBe(
       '/dashboard/rentabilidade/clientes?cliente=XPTO&periodo=30d',
     );
+  });
+});
+
+describe('named analytics period presets', () => {
+  const now = new Date(2026, 8, 3, 12, 0, 0);
+
+  it('não substitui 30d por este-mes', () => {
+    const rolling = resolvePeriodPreset('30d', now);
+    const month = resolveNamedPeriodRange('este-mes', now);
+    expect(rolling?.dateFrom).not.toBe(month?.dateFrom);
+    expect(resolvePeriodPreset('mes', now)).toBeNull();
+  });
+
+  it('resolve calendário local para presets novos', () => {
+    expect(resolveNamedPeriodRange('hoje', now)).toEqual({
+      dateFrom: '2026-09-03',
+      dateTo: '2026-09-03',
+    });
+    expect(resolveNamedPeriodRange('ontem', now)).toEqual({
+      dateFrom: '2026-09-02',
+      dateTo: '2026-09-02',
+    });
+    expect(resolveNamedPeriodRange('esta-semana', now)).toEqual({
+      dateFrom: '2026-08-31',
+      dateTo: '2026-09-03',
+    });
+    expect(resolveNamedPeriodRange('este-mes', now)).toEqual({
+      dateFrom: '2026-09-01',
+      dateTo: '2026-09-30',
+    });
+    expect(resolveNamedPeriodRange('mes-anterior', now)).toEqual({
+      dateFrom: '2026-08-01',
+      dateTo: '2026-08-31',
+    });
+    expect(resolveNamedPeriodRange('este-ano', now)).toEqual({
+      dateFrom: '2026-01-01',
+      dateTo: '2026-09-03',
+    });
+    expect(resolveNamedPeriodRange('30d', now)).toEqual({
+      dateFrom: '2026-08-05',
+      dateTo: '2026-09-03',
+    });
+    expect(resolveNamedPeriodRange('90d', now)).toEqual({
+      dateFrom: '2026-06-06',
+      dateTo: '2026-09-03',
+    });
+  });
+
+  it('parseia periodo=hoje da URL', () => {
+    expect(parseOperationalDreFilters({periodo: 'hoje'})).toEqual(
+      resolveNamedPeriodRange('hoje'),
+    );
+  });
+
+  it('marca recorte customizado como personalizado', () => {
+    expect(
+      matchNamedPeriodPreset(
+        {dateFrom: '2026-01-10', dateTo: '2026-01-20'},
+        now,
+      ),
+    ).toBe('personalizado');
+    expect(
+      matchNamedPeriodPreset({dateFrom: '2026-09-01', dateTo: '2026-09-30'}, now),
+    ).toBe('este-mes');
   });
 });

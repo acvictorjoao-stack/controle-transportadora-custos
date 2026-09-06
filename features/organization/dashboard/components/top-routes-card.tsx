@@ -6,7 +6,8 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import {formatCurrencyBr, formatPercent} from '@/features/financial/utils/financial-format';
-import {ROUTES} from '@/constants/routes/paths';
+import {buildCrossNavHref} from '@/features/analytics-nav/utils/shared-filters';
+import type {SharedAnalyticsFilters} from '@/features/analytics-nav/types';
 import Link from 'next/link';
 
 import {formatMarginStatus} from '../utils/margin-status';
@@ -14,9 +15,10 @@ import type {TopRouteRankingItem} from '../utils/rankings';
 
 export interface TopRoutesCardProps {
   routes: TopRouteRankingItem[];
+  filters?: SharedAnalyticsFilters;
 }
 
-function TopRoutesCard({routes}: TopRoutesCardProps) {
+function TopRoutesCard({routes, filters = {}}: TopRoutesCardProps) {
   return (
     <Card className="h-full">
       <CardHeader>
@@ -39,7 +41,9 @@ function TopRoutesCard({routes}: TopRoutesCardProps) {
                   <p className="truncate text-sm font-medium">
                     <span className="mr-2 text-muted-foreground">{index + 1}.</span>
                     <Link
-                      href={ROUTES.dashboardRentabilidadeRotas}
+                      href={buildCrossNavHref('rentabilidade-rotas', filters, {
+                        routeId: route.id,
+                      })}
                       className="hover:underline"
                     >
                       {route.name}

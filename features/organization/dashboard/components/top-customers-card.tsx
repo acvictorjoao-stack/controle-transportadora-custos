@@ -6,16 +6,18 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import {formatCurrencyBr} from '@/features/financial/utils/financial-format';
-import {ROUTES} from '@/constants/routes/paths';
+import {buildCrossNavHref} from '@/features/analytics-nav/utils/shared-filters';
+import type {SharedAnalyticsFilters} from '@/features/analytics-nav/types';
 import Link from 'next/link';
 
 import type {TopCustomerRankingItem} from '../utils/rankings';
 
 export interface TopCustomersCardProps {
   customers: TopCustomerRankingItem[];
+  filters?: SharedAnalyticsFilters;
 }
 
-function TopCustomersCard({customers}: TopCustomersCardProps) {
+function TopCustomersCard({customers, filters = {}}: TopCustomersCardProps) {
   return (
     <Card className="h-full">
       <CardHeader>
@@ -38,7 +40,11 @@ function TopCustomersCard({customers}: TopCustomersCardProps) {
                   <p className="truncate text-sm font-medium">
                     <span className="mr-2 text-muted-foreground">{index + 1}.</span>
                     <Link
-                      href={ROUTES.dashboardRentabilidadeClientes}
+                      href={buildCrossNavHref(
+                        'rentabilidade-clientes',
+                        filters,
+                        {customerId: customer.id},
+                      )}
                       className="hover:underline"
                     >
                       {customer.name}

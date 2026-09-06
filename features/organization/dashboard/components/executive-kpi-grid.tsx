@@ -70,10 +70,12 @@ function ExecutiveKpiGrid({kpis, className}: ExecutiveKpiGridProps) {
         <StatCard
           title="Contas a Pagar"
           value={formatCurrencyBr(kpis.accountsPayable)}
+          subtitle="Saldo aberto"
         />
         <StatCard
           title="Contas a Receber"
           value={formatCurrencyBr(kpis.accountsReceivable)}
+          subtitle="Saldo aberto"
         />
       </div>
     </div>

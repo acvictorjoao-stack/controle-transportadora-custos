@@ -8,22 +8,31 @@ import {VEHICLE_NATIVE_SELECT_CLASS} from '@/features/vehicles/utils/form-styles
 import {scheduleQueryUrlSync} from '@/lib/navigation/sync-query-url';
 
 import type {OperationalDreFilterOptions, OperationalDreFilters} from '../types';
-import {buildOperationalDreUrl} from '../utils/list-url';
+import {
+  NAMED_ANALYTICS_PERIOD_PRESETS,
+  buildOperationalDreUrl,
+  matchNamedPeriodPreset,
+  resolveNamedPeriodRange,
+} from '../utils/list-url';
 
 export interface OperationalDreFiltersProps {
   options: OperationalDreFilterOptions;
   initialFilters: OperationalDreFilters;
   /** Base path for filter URL sync (default: DRE page). */
   basePath?: string;
+  /** Presets nomeados (Dashboard Executivo). DRE/Rentabilidade permanecem só com de/ate. */
+  showNamedPeriodPresets?: boolean;
 }
 
 function OperationalDreFiltersBar({
   options,
   initialFilters,
   basePath = ROUTES.dashboardDre,
+  showNamedPeriodPresets = false,
 }: OperationalDreFiltersProps) {
   const router = useRouter();
   const [filters, setFilters] = React.useState(initialFilters);
+  const namedPreset = matchNamedPeriodPreset(filters);
 
   React.useEffect(() => {
     return scheduleQueryUrlSync(router, () =>
@@ -33,6 +42,32 @@ function OperationalDreFiltersBar({
 
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {showNamedPeriodPresets ? (
+        <select
+          value={namedPreset}
+          onChange={(e) => {
+            const value = e.target.value;
+            if (value === 'personalizado') return;
+            const range = resolveNamedPeriodRange(value);
+            if (!range) return;
+            setFilters((prev) => ({
+              ...prev,
+              dateFrom: range.dateFrom,
+              dateTo: range.dateTo,
+            }));
+          }}
+          className={VEHICLE_NATIVE_SELECT_CLASS}
+          aria-label="Período"
+        >
+          {NAMED_ANALYTICS_PERIOD_PRESETS.map((preset) => (
+            <option key={preset.id} value={preset.id}>
+              {preset.label}
+            </option>
+          ))}
+          <option value="personalizado">Personalizado</option>
+        </select>
+      ) : null}
+
       <select
         value={filters.branchId ?? ''}
         onChange={(e) =>
