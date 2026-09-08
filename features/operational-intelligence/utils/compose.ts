@@ -122,6 +122,80 @@ function localDayKey(iso: string): string {
   return `${y}-${m}-${d}`;
 }
 
+export interface OperationalPeriodRange {
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+/** Interpreta YYYY-MM-DD como dia local (meia-noite). */
+function parseLocalDay(isoDate: string): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(isoDate.trim());
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+    return null;
+  }
+  return new Date(year, month - 1, day);
+}
+
+function toLocalDayKey(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function isIsoInLocalPeriod(
+  iso: string | null,
+  period?: OperationalPeriodRange,
+): boolean {
+  if (!iso) return false;
+  const key = localDayKey(iso);
+  if (period?.dateFrom && key < period.dateFrom.slice(0, 10)) return false;
+  if (period?.dateTo && key > period.dateTo.slice(0, 10)) return false;
+  return true;
+}
+
+/**
+ * Eixo diário dos gráficos.
+ * Sem período: últimos 7 dias (comportamento histórico).
+ * Com período: todos os dias entre dateFrom e dateTo (inclusive).
+ */
+export function buildChartDayKeys(
+  now: Date,
+  period?: OperationalPeriodRange,
+): string[] {
+  if (period?.dateFrom || period?.dateTo) {
+    const from =
+      parseLocalDay(period.dateFrom ?? period.dateTo!) ??
+      new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const to =
+      parseLocalDay(period.dateTo ?? period.dateFrom!) ??
+      new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const start = from.getTime() <= to.getTime() ? from : to;
+    const end = from.getTime() <= to.getTime() ? to : from;
+    const keys: string[] = [];
+    const cursor = new Date(start);
+    // Limite de segurança para intervalos extremos na URL.
+    for (let i = 0; i < 366; i += 1) {
+      keys.push(toLocalDayKey(cursor));
+      if (toLocalDayKey(cursor) === toLocalDayKey(end)) break;
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return keys;
+  }
+
+  const dayKeys: string[] = [];
+  for (let i = 6; i >= 0; i -= 1) {
+    const day = new Date(now);
+    day.setDate(now.getDate() - i);
+    dayKeys.push(toLocalDayKey(day));
+  }
+  return dayKeys;
+}
+
 function formatDayLabel(dayKey: string): string {
   const [y, m, d] = dayKey.split('-').map(Number);
   const date = new Date(y, m - 1, d);
@@ -222,17 +296,30 @@ export function buildOperationalKpis(
   trips: Trip[],
   occurrences: TripOccurrence[],
   now = new Date(),
+  options: {
+    hasExplicitPeriod?: boolean;
+    period?: OperationalPeriodRange;
+  } = {},
 ): OperationalKpis {
   const activeTripIds = new Set(
     trips.filter((trip) => isTripInProgress(trip)).map((trip) => trip.id),
   );
 
+  const tripsCompletedToday = options.hasExplicitPeriod
+    ? trips.filter((trip) => {
+        if (trip.tripStatus !== 'completed') return false;
+        if (!trip.completedAt) return true;
+        return isIsoInLocalPeriod(trip.completedAt, options.period);
+      }).length
+    : trips.filter(
+        (trip) =>
+          trip.tripStatus === 'completed' &&
+          isSameLocalDay(trip.completedAt, now),
+      ).length;
+
   return {
     tripsInProgress: trips.filter((trip) => isTripInProgress(trip)).length,
-    tripsCompletedToday: trips.filter(
-      (trip) =>
-        trip.tripStatus === 'completed' && isSameLocalDay(trip.completedAt, now),
-    ).length,
+    tripsCompletedToday,
     tripsDelayed: trips.filter((trip) => isTripDelayed(trip, now)).length,
     pendingDeliveries: trips.filter((trip) =>
       PENDING_DELIVERY_STATUSES.includes(trip.tripStatus),
@@ -500,6 +587,7 @@ export function buildOperationalCharts(
   trips: Trip[],
   occurrences: TripOccurrence[],
   now = new Date(),
+  period?: OperationalPeriodRange,
 ): OperationalChartsData {
   const tripsByHour = Array.from({length: 24}, (_, hour) => {
     const count = trips.filter((trip) => {
@@ -513,12 +601,7 @@ export function buildOperationalCharts(
     };
   }).filter((point) => point.value > 0);
 
-  const dayKeys: string[] = [];
-  for (let i = 6; i >= 0; i -= 1) {
-    const day = new Date(now);
-    day.setDate(now.getDate() - i);
-    dayKeys.push(localDayKey(day.toISOString()));
-  }
+  const dayKeys = buildChartDayKeys(now, period);
 
   const dailySla: ChartPoint[] = dayKeys
     .map((key) => {
@@ -650,17 +733,25 @@ export function composeOperationalIntelligence(input: {
   trips: Trip[];
   occurrences: TripOccurrence[];
   now?: Date;
+  hasExplicitPeriod?: boolean;
+  period?: OperationalPeriodRange;
 }): OperationalIntelligenceData {
   const now = input.now ?? new Date();
   const {trips, occurrences} = input;
+  const hasExplicitPeriod = Boolean(input.hasExplicitPeriod);
+  const period = hasExplicitPeriod ? input.period : undefined;
 
-  const kpis = buildOperationalKpis(trips, occurrences, now);
+  const kpis = buildOperationalKpis(trips, occurrences, now, {
+    hasExplicitPeriod,
+    period,
+  });
   const branchRows = buildBranchRows(trips, occurrences, now);
   const customerRows = buildCustomerRows(trips, occurrences, now);
   const routeRows = buildRouteRows(trips, now);
 
   return {
     generatedAt: now.toISOString(),
+    hasExplicitPeriod,
     kpis,
     branchHeatMap: branchRows,
     branchRanking: [...branchRows],
@@ -695,7 +786,7 @@ export function composeOperationalIntelligence(input: {
       now,
     }),
     timeline: buildFeaturedTimeline(trips, now),
-    charts: buildOperationalCharts(trips, occurrences, now),
+    charts: buildOperationalCharts(trips, occurrences, now, period),
     drillDown: buildDrillDown(trips, occurrences, now),
     tripsNeedingAttention: trips
       .filter((trip) => isTripDelayed(trip, now) || isNearSla(trip, now))

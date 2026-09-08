@@ -1,9 +1,11 @@
 import type {SupabaseClient} from '@supabase/supabase-js';
 
+import type {SharedAnalyticsFilters} from '@/features/analytics-nav';
 import {
   listCompanyTripOccurrences,
   listTrips,
 } from '@/features/trips/queries';
+import type {TripListFilters} from '@/features/trips/types';
 
 import type {OperationalIntelligenceData} from '../types';
 import {composeOperationalIntelligence} from '../utils/compose';
@@ -15,10 +17,46 @@ function daysAgoIso(days: number): string {
   return date.toISOString();
 }
 
-export interface OperationalIntelligenceLoaderOptions {
-  /** ISO date YYYY-MM-DD — filtra viagens por `departed_at`. */
-  dateFrom?: string;
-  dateTo?: string;
+/** Opções do loader — espelha filtros compartilhados (centro é ignorado). */
+export type OperationalIntelligenceLoaderOptions = SharedAnalyticsFilters;
+
+function hasExplicitPeriod(options: OperationalIntelligenceLoaderOptions): boolean {
+  return Boolean(options.dateFrom) || Boolean(options.dateTo);
+}
+
+/** Qualquer recorte (período ou dimensão) restringe ocorrências às trips elegíveis. */
+function needsOccurrenceTripScope(
+  options: OperationalIntelligenceLoaderOptions,
+): boolean {
+  return (
+    hasExplicitPeriod(options) ||
+    Boolean(
+      options.branchId ||
+        options.customerId ||
+        options.routeId ||
+        options.vehicleId ||
+        options.driverId,
+    )
+  );
+}
+
+function buildTripListFilters(
+  options: OperationalIntelligenceLoaderOptions,
+  explicitPeriod: boolean,
+): TripListFilters | undefined {
+  const filters: TripListFilters = {};
+
+  if (options.branchId) filters.branchId = options.branchId;
+  if (options.customerId) filters.customerId = options.customerId;
+  if (options.routeId) filters.routeId = options.routeId;
+  if (options.vehicleId) filters.vehicleId = options.vehicleId;
+  if (options.driverId) filters.driverId = options.driverId;
+  if (explicitPeriod) {
+    if (options.dateFrom) filters.dateFrom = options.dateFrom;
+    if (options.dateTo) filters.dateTo = options.dateTo;
+  }
+
+  return Object.keys(filters).length > 0 ? filters : undefined;
 }
 
 /**
@@ -26,41 +64,51 @@ export interface OperationalIntelligenceLoaderOptions {
  * Reutiliza `listTrips` + `listCompanyTripOccurrences` e compõe analytics
  * em memória (sem DRE/financeiro/rateio).
  *
- * Sem opções: janela padrão dos últimos 14 dias nas ocorrências
- * (comportamento histórico; viagens = últimas 500).
- * Com `dateFrom`/`dateTo`: aplica o intervalo também em `listTrips`.
+ * Sem período: últimas 500 viagens + ocorrências recentes (14 dias).
+ * Com período: `departed_at` / `occurred_at` no mesmo intervalo.
+ * Dimensões (filial, cliente, rota, veículo, motorista) são AND.
+ * `costCenterId` não se aplica e é ignorado.
  */
 export async function getOperationalIntelligenceData(
   supabase: SupabaseClient,
   companyId: string,
   options: OperationalIntelligenceLoaderOptions = {},
 ): Promise<OperationalIntelligenceData> {
-  const hasExplicitWindow =
-    Boolean(options.dateFrom) || Boolean(options.dateTo);
-  const occurrenceDateFrom =
-    options.dateFrom ?? daysAgoIso(14);
+  const explicitPeriod = hasExplicitPeriod(options);
+  const tripFilters = buildTripListFilters(options, explicitPeriod);
 
-  const [tripsPage, occurrences] = await Promise.all([
-    listTrips(supabase, {
-      companyId,
-      page: 1,
-      pageSize: 500,
-      sort: {sortBy: 'created_at', sortOrder: 'desc'},
-      filters: hasExplicitWindow
-        ? {
-            dateFrom: options.dateFrom,
-            dateTo: options.dateTo,
-          }
-        : undefined,
-    }),
-    listCompanyTripOccurrences(supabase, companyId, {
-      dateFrom: occurrenceDateFrom,
-      limit: 500,
-    }),
-  ]);
+  const tripsPage = await listTrips(supabase, {
+    companyId,
+    page: 1,
+    pageSize: 500,
+    sort: {
+      sortBy: explicitPeriod ? 'departed_at' : 'created_at',
+      sortOrder: 'desc',
+    },
+    filters: tripFilters,
+  });
+
+  const tripIds = tripsPage.items.map((trip) => trip.id);
+  const occurrenceDateFrom = explicitPeriod
+    ? options.dateFrom
+    : daysAgoIso(14);
+  const occurrenceDateTo = explicitPeriod ? options.dateTo : undefined;
+
+  const occurrences = await listCompanyTripOccurrences(supabase, companyId, {
+    dateFrom: occurrenceDateFrom,
+    dateTo: occurrenceDateTo,
+    branchId: options.branchId,
+    tripIds: needsOccurrenceTripScope(options) ? tripIds : undefined,
+    limit: 500,
+  });
 
   return composeOperationalIntelligence({
     trips: tripsPage.items,
     occurrences,
+    hasExplicitPeriod: explicitPeriod,
+    period:
+      explicitPeriod
+        ? {dateFrom: options.dateFrom, dateTo: options.dateTo}
+        : undefined,
   });
 }

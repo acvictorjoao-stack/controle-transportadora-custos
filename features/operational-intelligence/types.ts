@@ -116,6 +116,11 @@ export interface DrillDownTripNode {
 
 export interface OperationalIntelligenceData {
   generatedAt: string;
+  /**
+   * `false` = visão operacional ao vivo (sem de/ate/periodo).
+   * `true` = período explícito na URL (departed_at / occurred_at).
+   */
+  hasExplicitPeriod: boolean;
   kpis: OperationalKpis;
   branchHeatMap: BranchOperationalRow[];
   branchRanking: BranchOperationalRow[];

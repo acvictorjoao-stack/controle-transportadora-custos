@@ -12,6 +12,7 @@ import {ROUTES} from '@/constants/routes/paths';
 
 const EMPTY_DATA: OperationalIntelligenceData = {
   generatedAt: new Date(0).toISOString(),
+  hasExplicitPeriod: false,
   kpis: {
     tripsInProgress: 0,
     tripsCompletedToday: 0,
@@ -74,7 +75,7 @@ export default async function InteligenciaOperacionalPage({
   let error: string | null = null;
 
   try {
-    data = await getOperationalIntelligenceData(supabase, companyId);
+    data = await getOperationalIntelligenceData(supabase, companyId, filters);
   } catch (err) {
     error =
       err instanceof Error

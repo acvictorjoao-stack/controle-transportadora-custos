@@ -364,6 +364,7 @@ export interface TripListFilters {
   tripStatus?: TripStatus;
   driverId?: string;
   vehicleId?: string;
+  customerId?: string;
   clientName?: string;
   contractReference?: string;
   branchId?: string;

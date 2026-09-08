@@ -195,6 +195,9 @@ export async function listTrips(
   if (filters.routeId) {
     query = query.eq('route_id', filters.routeId);
   }
+  if (filters.customerId) {
+    query = query.eq('customer_id', filters.customerId);
+  }
   if (filters.origin) {
     query = query.eq('origin', filters.origin);
   }
@@ -1135,6 +1138,15 @@ export async function listTripOccurrences(
   );
 }
 
+export interface ListCompanyTripOccurrencesOptions {
+  dateFrom?: string;
+  dateTo?: string;
+  branchId?: string;
+  /** Quando informado, restringe a ocorrências dessas viagens (AND dimensional). */
+  tripIds?: string[];
+  limit?: number;
+}
+
 /**
  * Ocorrências da empresa no recorte (reutiliza `trip_occurrences`).
  * Usado pela Inteligência Operacional — sem tabelas novas.
@@ -1142,8 +1154,12 @@ export async function listTripOccurrences(
 export async function listCompanyTripOccurrences(
   supabase: SupabaseClient,
   companyId: string,
-  options: {dateFrom?: string; limit?: number} = {},
+  options: ListCompanyTripOccurrencesOptions = {},
 ): Promise<TripOccurrence[]> {
+  if (options.tripIds && options.tripIds.length === 0) {
+    return [];
+  }
+
   const limit = options.limit ?? 500;
   let query = supabase
     .from('trip_occurrences')
@@ -1155,6 +1171,15 @@ export async function listCompanyTripOccurrences(
 
   if (options.dateFrom) {
     query = query.gte('occurred_at', options.dateFrom);
+  }
+  if (options.dateTo) {
+    query = query.lte('occurred_at', `${options.dateTo}T23:59:59.999Z`);
+  }
+  if (options.branchId) {
+    query = query.eq('branch_id', options.branchId);
+  }
+  if (options.tripIds && options.tripIds.length > 0) {
+    query = query.in('trip_id', options.tripIds);
   }
 
   const {data, error} = await query;

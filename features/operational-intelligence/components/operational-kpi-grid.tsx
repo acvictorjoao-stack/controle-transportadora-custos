@@ -4,6 +4,8 @@ import type {OperationalKpis} from '../types';
 
 export interface OperationalKpiGridProps {
   kpis: OperationalKpis;
+  /** Quando true, o KPI de concluídas usa o rótulo "no período". */
+  hasExplicitPeriod?: boolean;
 }
 
 function formatLeadTimeDays(valueMinutes: number | null): string {
@@ -21,11 +23,18 @@ function formatPercent(value: number | null): string {
   return `${value.toLocaleString('pt-BR', {maximumFractionDigits: 1})}%`;
 }
 
-function OperationalKpiGrid({kpis}: OperationalKpiGridProps) {
+function OperationalKpiGrid({
+  kpis,
+  hasExplicitPeriod = false,
+}: OperationalKpiGridProps) {
+  const completedTitle = hasExplicitPeriod
+    ? 'Viagens concluídas no período'
+    : 'Viagens concluídas hoje';
+
   return (
     <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-4">
       <StatCard title="Viagens em andamento" value={kpis.tripsInProgress} />
-      <StatCard title="Viagens concluídas hoje" value={kpis.tripsCompletedToday} />
+      <StatCard title={completedTitle} value={kpis.tripsCompletedToday} />
       <StatCard
         title="Viagens atrasadas"
         value={

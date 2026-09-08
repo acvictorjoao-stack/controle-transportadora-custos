@@ -52,6 +52,12 @@ function OperationalIntelligenceDashboard({
           },
           {label: 'Atrasadas', value: String(data.kpis.tripsDelayed)},
           {
+            label: data.hasExplicitPeriod
+              ? 'Concluídas no período'
+              : 'Concluídas hoje',
+            value: String(data.kpis.tripsCompletedToday),
+          },
+          {
             label: 'SLA',
             value:
               data.kpis.slaPercent == null
@@ -159,11 +165,22 @@ function OperationalIntelligenceDashboard({
         </Alert>
       ) : null}
 
+      {filters.costCenterId ? (
+        <Alert>
+          <AlertDescription>
+            Centro de custo não se aplica à Inteligência Operacional.
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
       <Section
         title="Saúde operacional"
         description="O que está acontecendo agora — sem indicadores financeiros."
       >
-        <OperationalKpiGrid kpis={data.kpis} />
+        <OperationalKpiGrid
+          kpis={data.kpis}
+          hasExplicitPeriod={data.hasExplicitPeriod}
+        />
       </Section>
 
       <div className="grid gap-6 xl:grid-cols-3">
