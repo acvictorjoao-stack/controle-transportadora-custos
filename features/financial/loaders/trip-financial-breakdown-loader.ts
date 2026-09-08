@@ -3,6 +3,7 @@ import type {SupabaseClient} from '@supabase/supabase-js';
 import {mapDatabaseError} from '@/features/master/companies/utils/database-error';
 import {getTripById} from '@/features/trips/queries';
 import {getTripFreightValue} from '@/features/trips/utils/trip-lifecycle';
+import {fetchAllPagedRows} from '@/lib/supabase/fetch-all-pages';
 
 import {FINANCIAL_LIST_COLUMNS} from '../constants';
 import {listFinancialEntriesByRelation} from '../queries/financial-entries';
@@ -83,7 +84,7 @@ type VehicleTripRaw = {
 
 /**
  * Viagens concluídas do veículo no período — base de KM do rateio.
- * Uma query por carga (sem N+1).
+ * Uma query paginada completa (sem truncamento PostgREST).
  */
 async function fetchVehicleTripsForMileage(
   supabase: SupabaseClient,
@@ -91,25 +92,30 @@ async function fetchVehicleTripsForMileage(
   vehicleId: string,
   period: TripFinancialBreakdownPeriod,
 ): Promise<Array<{tripId: string; vehicleId: string | null; distanceKm: number}>> {
-  let query = supabase
-    .from('trips')
-    .select(
-      'id, vehicle_id, initial_odometer_km, final_odometer_km, planned_distance_km',
-    )
-    .eq('company_id', companyId)
-    .eq('vehicle_id', vehicleId)
-    .eq('trip_status', 'completed')
-    .is('deleted_at', null);
+  const rows = await fetchAllPagedRows<VehicleTripRaw>(
+    async (from, to) => {
+      let query = supabase
+        .from('trips')
+        .select(
+          'id, vehicle_id, initial_odometer_km, final_odometer_km, planned_distance_km',
+          {count: 'exact'},
+        )
+        .eq('company_id', companyId)
+        .eq('vehicle_id', vehicleId)
+        .eq('trip_status', 'completed')
+        .is('deleted_at', null);
 
-  if (period.dateFrom) query = query.gte('completed_at', period.dateFrom);
-  if (period.dateTo) {
-    query = query.lte('completed_at', `${period.dateTo}T23:59:59.999Z`);
-  }
+      if (period.dateFrom) query = query.gte('completed_at', period.dateFrom);
+      if (period.dateTo) {
+        query = query.lte('completed_at', `${period.dateTo}T23:59:59.999Z`);
+      }
 
-  const {data, error} = await query;
-  if (error) throw new Error(mapDatabaseError(error));
+      return query.order('id', {ascending: true}).range(from, to);
+    },
+    {mapError: (error) => new Error(mapDatabaseError(error))},
+  );
 
-  return ((data ?? []) as VehicleTripRaw[]).map((row) => {
+  return rows.map((row) => {
     const odometerKm = computeDistanceKm(
       row.initial_odometer_km !== null ? asNumber(row.initial_odometer_km) : null,
       row.final_odometer_km !== null ? asNumber(row.final_odometer_km) : null,
@@ -126,6 +132,7 @@ async function fetchVehicleTripsForMileage(
 
 /**
  * Despesas do veículo sem `trip_id` no período — candidatas ao rateio.
+ * Paginação completa (sem `.limit(500)` / max_rows).
  */
 async function fetchVehicleUnlinkedExpenses(
   supabase: SupabaseClient,
@@ -133,27 +140,33 @@ async function fetchVehicleUnlinkedExpenses(
   vehicleId: string,
   period: TripFinancialBreakdownPeriod,
 ): Promise<FinancialEntry[]> {
-  let query = supabase
-    .from('financial_entries')
-    .select(FINANCIAL_LIST_COLUMNS)
-    .eq('company_id', companyId)
-    .eq('vehicle_id', vehicleId)
-    .eq('entry_type', 'expense')
-    .is('trip_id', null)
-    .is('deleted_at', null)
-    .not('entry_status', 'in', '(cancelled,reversed)')
-    .order('entry_date', {ascending: false})
-    .limit(500);
+  const rows = await fetchAllPagedRows<FinancialEntryRow>(
+    async (from, to) => {
+      let query = supabase
+        .from('financial_entries')
+        .select(FINANCIAL_LIST_COLUMNS, {count: 'exact'})
+        .eq('company_id', companyId)
+        .eq('vehicle_id', vehicleId)
+        .eq('entry_type', 'expense')
+        .is('trip_id', null)
+        .is('deleted_at', null)
+        .not('entry_status', 'in', '(cancelled,reversed)')
+        .order('entry_date', {ascending: false});
 
-  if (period.dateFrom) query = query.gte('entry_date', period.dateFrom);
-  if (period.dateTo) query = query.lte('entry_date', period.dateTo);
+      if (period.dateFrom) query = query.gte('entry_date', period.dateFrom);
+      if (period.dateTo) query = query.lte('entry_date', period.dateTo);
 
-  const {data, error} = await query;
-  if (error) throw new Error(mapDatabaseError(error));
-
-  return (data ?? []).map((row) =>
-    mapFinancialEntryRow(row as unknown as FinancialEntryRow),
+      const result = await query.range(from, to);
+      return {
+        data: (result.data ?? null) as FinancialEntryRow[] | null,
+        error: result.error,
+        count: result.count,
+      };
+    },
+    {mapError: (error) => new Error(mapDatabaseError(error))},
   );
+
+  return rows.map((row) => mapFinancialEntryRow(row));
 }
 
 /**

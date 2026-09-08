@@ -3,6 +3,7 @@ import type {SupabaseClient} from '@supabase/supabase-js';
 import {mapDatabaseError} from '@/features/master/companies/utils/database-error';
 import {formatPlate} from '@/features/vehicles/utils/vehicle-format';
 import {resolveOperationalDreExpenseDimensionFilter} from '@/features/dre/services/operational-dre-expense-scope';
+import {fetchAllPagedRows} from '@/lib/supabase/fetch-all-pages';
 
 import type {
   OperationalDreExpenseRow,
@@ -272,10 +273,16 @@ function applyTripFilters<T extends {
   return next;
 }
 
+function postgrestError(error: {message: string; code?: string}): Error {
+  return new Error(mapDatabaseError(error));
+}
+
 /**
  * Viagens concluídas no escopo dos filtros — mesma fonte (`trips`) e a mesma
  * regra de frete (`getTripFreightValue` no calculator). Select enxuto para
  * agregação (padrão do dashboard operacional).
+ *
+ * Paginação completa: evita truncamento silencioso PostgREST (max_rows=1000).
  */
 export async function fetchOperationalDreTrips(
   supabase: SupabaseClient,
@@ -283,22 +290,22 @@ export async function fetchOperationalDreTrips(
   filters: OperationalDreFilters = {},
   options: FetchOperationalDreTripsOptions = {},
 ): Promise<OperationalDreTripRow[]> {
-  let query = supabase
-    .from('trips')
-    .select(DRE_TRIP_COLUMNS)
-    .eq('company_id', companyId)
-    .eq('trip_status', 'completed')
-    .is('deleted_at', null);
+  const rows = await fetchAllPagedRows<TripRawRow>(
+    async (from, to) => {
+      let query = supabase
+        .from('trips')
+        .select(DRE_TRIP_COLUMNS, {count: 'exact'})
+        .eq('company_id', companyId)
+        .eq('trip_status', 'completed')
+        .is('deleted_at', null);
 
-  query = applyTripFilters(query, filters, options);
+      query = applyTripFilters(query, filters, options);
+      return query.order('id', {ascending: true}).range(from, to);
+    },
+    {mapError: postgrestError},
+  );
 
-  const {data, error} = await query;
-
-  if (error) {
-    throw new Error(mapDatabaseError(error));
-  }
-
-  return ((data ?? []) as unknown as TripRawRow[]).map(mapTripRow);
+  return rows.map(mapTripRow);
 }
 
 /**
@@ -398,6 +405,8 @@ export async function fetchOperationalDreDriverLabels(
 /**
  * Detalhe de viagens para expansão lazy — reutiliza filtros/fonte da DRE com
  * joins de veículo, motorista, cliente e rota.
+ *
+ * Paginação completa: evita truncamento silencioso PostgREST (max_rows=1000).
  */
 export async function fetchOperationalDreTripDetails(
   supabase: SupabaseClient,
@@ -405,23 +414,24 @@ export async function fetchOperationalDreTripDetails(
   filters: OperationalDreFilters = {},
   options: FetchOperationalDreTripsOptions = {},
 ): Promise<OperationalDreTripDetailRow[]> {
-  let query = supabase
-    .from('trips')
-    .select(DRE_TRIP_DETAIL_COLUMNS)
-    .eq('company_id', companyId)
-    .eq('trip_status', 'completed')
-    .is('deleted_at', null)
-    .order('completed_at', {ascending: true});
+  const rows = await fetchAllPagedRows<TripDetailRawRow>(
+    async (from, to) => {
+      let query = supabase
+        .from('trips')
+        .select(DRE_TRIP_DETAIL_COLUMNS, {count: 'exact'})
+        .eq('company_id', companyId)
+        .eq('trip_status', 'completed')
+        .is('deleted_at', null)
+        .order('completed_at', {ascending: true})
+        .order('id', {ascending: true});
 
-  query = applyTripFilters(query, filters, options);
+      query = applyTripFilters(query, filters, options);
+      return query.range(from, to);
+    },
+    {mapError: postgrestError},
+  );
 
-  const {data, error} = await query;
-
-  if (error) {
-    throw new Error(mapDatabaseError(error));
-  }
-
-  return ((data ?? []) as unknown as TripDetailRawRow[]).map((row) => {
+  return rows.map((row) => {
     const vehicle = firstRelation(row.vehicles);
     const driver = firstRelation(row.drivers);
     const customer = firstRelation(row.customers);
@@ -463,6 +473,8 @@ export interface FetchOperationalDreExpensesOptions {
  *
  * Escopo dimensional: regra única `resolveOperationalDreExpenseDimensionFilter`
  * = (trip_id ∈ T) OR (trip_id IS NULL AND predicados diretos AND).
+ *
+ * Paginação completa: evita truncamento silencioso PostgREST (max_rows=1000).
  */
 export async function fetchOperationalDreExpenses(
   supabase: SupabaseClient,
@@ -480,39 +492,40 @@ export async function fetchOperationalDreExpenses(
     return [];
   }
 
-  let query = supabase
-    .from('financial_entries')
-    .select(DRE_EXPENSE_COLUMNS)
-    .eq('company_id', companyId)
-    .eq('entry_type', 'expense')
-    .is('deleted_at', null)
-    .not('entry_status', 'in', '(cancelled,reversed)');
+  const rows = await fetchAllPagedRows<ExpenseRawRow>(
+    async (from, to) => {
+      let query = supabase
+        .from('financial_entries')
+        .select(DRE_EXPENSE_COLUMNS, {count: 'exact'})
+        .eq('company_id', companyId)
+        .eq('entry_type', 'expense')
+        .is('deleted_at', null)
+        .not('entry_status', 'in', '(cancelled,reversed)');
 
-  if (filters.branchId) query = query.eq('branch_id', filters.branchId);
-  if (filters.costCenterId) query = query.eq('cost_center_id', filters.costCenterId);
-  if (filters.dateFrom) query = query.gte('entry_date', filters.dateFrom);
-  if (filters.dateTo) query = query.lte('entry_date', filters.dateTo);
+      if (filters.branchId) query = query.eq('branch_id', filters.branchId);
+      if (filters.costCenterId) {
+        query = query.eq('cost_center_id', filters.costCenterId);
+      }
+      if (filters.dateFrom) query = query.gte('entry_date', filters.dateFrom);
+      if (filters.dateTo) query = query.lte('entry_date', filters.dateTo);
 
-  if (dimensionScope.orFilter) {
-    query = query.or(dimensionScope.orFilter);
-  }
+      if (dimensionScope.orFilter) {
+        query = query.or(dimensionScope.orFilter);
+      }
 
-  const {data, error} = await query;
-
-  if (error) {
-    throw new Error(mapDatabaseError(error));
-  }
-
-  return mapExpenseRowsWithCostCenters(
-    supabase,
-    companyId,
-    (data ?? []) as unknown as ExpenseRawRow[],
+      return query.order('id', {ascending: true}).range(from, to);
+    },
+    {mapError: postgrestError},
   );
+
+  return mapExpenseRowsWithCostCenters(supabase, companyId, rows);
 }
 
 /**
  * Viagens concluídas dos veículos no período — base de KM para rateio.
  * Independente do filtro de rota/cliente (denominador do veículo).
+ *
+ * Paginação completa: evita truncamento silencioso PostgREST (max_rows=1000).
  */
 export async function fetchOperationalDreTripsForVehicles(
   supabase: SupabaseClient,
@@ -523,28 +536,34 @@ export async function fetchOperationalDreTripsForVehicles(
   const uniqueIds = Array.from(new Set(vehicleIds.filter(Boolean)));
   if (uniqueIds.length === 0) return [];
 
-  let query = supabase
-    .from('trips')
-    .select(DRE_TRIP_COLUMNS)
-    .eq('company_id', companyId)
-    .eq('trip_status', 'completed')
-    .is('deleted_at', null)
-    .in('vehicle_id', uniqueIds);
+  const rows = await fetchAllPagedRows<TripRawRow>(
+    async (from, to) => {
+      let query = supabase
+        .from('trips')
+        .select(DRE_TRIP_COLUMNS, {count: 'exact'})
+        .eq('company_id', companyId)
+        .eq('trip_status', 'completed')
+        .is('deleted_at', null)
+        .in('vehicle_id', uniqueIds);
 
-  if (filters.branchId) query = query.eq('branch_id', filters.branchId);
-  if (filters.dateFrom) query = query.gte('completed_at', filters.dateFrom);
-  if (filters.dateTo) {
-    query = query.lte('completed_at', `${filters.dateTo}T23:59:59.999Z`);
-  }
+      if (filters.branchId) query = query.eq('branch_id', filters.branchId);
+      if (filters.dateFrom) query = query.gte('completed_at', filters.dateFrom);
+      if (filters.dateTo) {
+        query = query.lte('completed_at', `${filters.dateTo}T23:59:59.999Z`);
+      }
 
-  const {data, error} = await query;
-  if (error) throw new Error(mapDatabaseError(error));
+      return query.order('id', {ascending: true}).range(from, to);
+    },
+    {mapError: postgrestError},
+  );
 
-  return ((data ?? []) as unknown as TripRawRow[]).map(mapTripRow);
+  return rows.map(mapTripRow);
 }
 
 /**
  * Despesas sem `trip_id` vinculadas aos veículos — candidatas ao rateio por KM.
+ *
+ * Paginação completa: evita truncamento silencioso PostgREST (max_rows=1000).
  */
 export async function fetchOperationalDreUnlinkedVehicleExpenses(
   supabase: SupabaseClient,
@@ -555,27 +574,29 @@ export async function fetchOperationalDreUnlinkedVehicleExpenses(
   const uniqueIds = Array.from(new Set(vehicleIds.filter(Boolean)));
   if (uniqueIds.length === 0) return [];
 
-  let query = supabase
-    .from('financial_entries')
-    .select(DRE_EXPENSE_COLUMNS)
-    .eq('company_id', companyId)
-    .eq('entry_type', 'expense')
-    .is('trip_id', null)
-    .is('deleted_at', null)
-    .not('entry_status', 'in', '(cancelled,reversed)')
-    .in('vehicle_id', uniqueIds);
+  const rows = await fetchAllPagedRows<ExpenseRawRow>(
+    async (from, to) => {
+      let query = supabase
+        .from('financial_entries')
+        .select(DRE_EXPENSE_COLUMNS, {count: 'exact'})
+        .eq('company_id', companyId)
+        .eq('entry_type', 'expense')
+        .is('trip_id', null)
+        .is('deleted_at', null)
+        .not('entry_status', 'in', '(cancelled,reversed)')
+        .in('vehicle_id', uniqueIds);
 
-  if (filters.branchId) query = query.eq('branch_id', filters.branchId);
-  if (filters.costCenterId) query = query.eq('cost_center_id', filters.costCenterId);
-  if (filters.dateFrom) query = query.gte('entry_date', filters.dateFrom);
-  if (filters.dateTo) query = query.lte('entry_date', filters.dateTo);
+      if (filters.branchId) query = query.eq('branch_id', filters.branchId);
+      if (filters.costCenterId) {
+        query = query.eq('cost_center_id', filters.costCenterId);
+      }
+      if (filters.dateFrom) query = query.gte('entry_date', filters.dateFrom);
+      if (filters.dateTo) query = query.lte('entry_date', filters.dateTo);
 
-  const {data, error} = await query;
-  if (error) throw new Error(mapDatabaseError(error));
-
-  return mapExpenseRowsWithCostCenters(
-    supabase,
-    companyId,
-    (data ?? []) as unknown as ExpenseRawRow[],
+      return query.order('id', {ascending: true}).range(from, to);
+    },
+    {mapError: postgrestError},
   );
+
+  return mapExpenseRowsWithCostCenters(supabase, companyId, rows);
 }

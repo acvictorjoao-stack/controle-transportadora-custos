@@ -12,6 +12,7 @@ import {
 import {listFinancialEntries} from '@/features/financial/queries';
 import type {FinancialEntryStatus} from '@/features/financial/types';
 import {mapDatabaseError} from '@/features/master/companies/utils/database-error';
+import {fetchAllPagedRows} from '@/lib/supabase/fetch-all-pages';
 
 import {FINANCIAL_DASHBOARD_UPCOMING_LIMIT} from '../constants';
 import type {FinancialDashboardData} from '../types';
@@ -27,12 +28,17 @@ type MetricRow = {
   paid_at: string | null;
 };
 
+const METRIC_COLUMNS =
+  'entry_type, entry_status, amount, paid_amount, source_module, due_date, paid_at';
+
 function isOpenStatus(status: FinancialEntryStatus): boolean {
   return status === 'pending' || status === 'overdue';
 }
 
 function isReceivable(row: Pick<MetricRow, 'source_module' | 'entry_type'>): boolean {
-  return row.source_module === ACCOUNTS_RECEIVABLE_SOURCE_MODULE || row.entry_type === 'revenue';
+  return (
+    row.source_module === ACCOUNTS_RECEIVABLE_SOURCE_MODULE || row.entry_type === 'revenue'
+  );
 }
 
 function isPayable(row: Pick<MetricRow, 'source_module' | 'entry_type'>): boolean {
@@ -59,15 +65,23 @@ export async function getFinancialDashboardData(
   const today = localDateIso();
   const monthStart = startOfMonthIso();
 
-  const [summary, metricsResult, upcoming] = await Promise.all([
+  const [summary, rows, upcoming] = await Promise.all([
     getCashFlowSummary(supabase, companyId),
-    supabase
-      .from('financial_entries')
-      .select('entry_type, entry_status, amount, paid_amount, source_module, due_date, paid_at')
-      .eq('company_id', companyId)
-      .is('deleted_at', null)
-      .in('source_module', [...CASH_FLOW_SOURCE_MODULES])
-      .in('entry_status', ['pending', 'overdue', 'paid']),
+    fetchAllPagedRows<MetricRow>(
+      async (from, to) =>
+        supabase
+          .from('financial_entries')
+          .select(METRIC_COLUMNS, {count: 'exact'})
+          .eq('company_id', companyId)
+          .is('deleted_at', null)
+          .in('source_module', [...CASH_FLOW_SOURCE_MODULES])
+          .in('entry_status', ['pending', 'overdue', 'paid'])
+          .order('id', {ascending: true})
+          .range(from, to),
+      {
+        mapError: (error) => new Error(mapDatabaseError(error)),
+      },
+    ),
     listFinancialEntries(supabase, {
       companyId,
       page: 1,
@@ -80,12 +94,6 @@ export async function getFinancialDashboardData(
       sort: {sortBy: 'due_date', sortOrder: 'asc'},
     }),
   ]);
-
-  if (metricsResult.error) {
-    throw new Error(mapDatabaseError(metricsResult.error));
-  }
-
-  const rows = (metricsResult.data ?? []) as MetricRow[];
 
   let receberQtd = 0;
   let pagarQtd = 0;

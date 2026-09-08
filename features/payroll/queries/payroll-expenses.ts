@@ -3,6 +3,7 @@ import type {SupabaseClient} from '@supabase/supabase-js';
 import {PAYROLL_SOURCE_MODULE} from '@/features/financial/constants/operation-financial';
 import type {FinancialEntryStatus} from '@/features/financial/types';
 import {mapDatabaseError} from '@/features/master/companies/utils/database-error';
+import {fetchAllPagedRows} from '@/lib/supabase/fetch-all-pages';
 
 import {PAYROLL_EXPENSE_LIST_COLUMNS, PAYROLL_EXPENSES_PAGE_SIZE} from '../constants';
 import {mapPayrollExpenseRow} from '../services/mappers';
@@ -35,8 +36,6 @@ const SORT_COLUMNS: Record<NonNullable<PayrollSortOptions['sortBy']>, string> = 
   due_date: 'due_date',
   created_at: 'created_at',
 };
-
-const SUMMARY_ROW_LIMIT = 5000;
 
 function sanitizeSearchTerm(value: string): string {
   return value.replace(/[%(),]/g, '').trim();
@@ -223,33 +222,40 @@ export async function getPayrollSummary(
   companyId: string,
   filters: PayrollListFilters = {},
 ): Promise<PayrollSummary> {
-  let query = supabase
-    .from('payroll_expenses')
-    .select('amount, expense_status, employee_id, driver_id')
-    .eq('company_id', companyId)
-    .is('deleted_at', null)
-    .limit(SUMMARY_ROW_LIMIT);
+  type SummaryRow = {
+    amount: number | null;
+    expense_status: string;
+    employee_id: string | null;
+    driver_id: string | null;
+  };
 
-  const clauses = buildPayrollFilterClauses(filters);
-  for (const [column, value] of clauses.equals) {
-    query = query.eq(column, value);
-  }
-  if (clauses.or) {
-    query = query.or(clauses.or);
-  }
+  const rows = await fetchAllPagedRows<SummaryRow>(
+    async (from, to) => {
+      let query = supabase
+        .from('payroll_expenses')
+        .select('amount, expense_status, employee_id, driver_id', {count: 'exact'})
+        .eq('company_id', companyId)
+        .is('deleted_at', null);
 
-  const {data, error} = await query;
+      const clauses = buildPayrollFilterClauses(filters);
+      for (const [column, value] of clauses.equals) {
+        query = query.eq(column, value);
+      }
+      if (clauses.or) {
+        query = query.or(clauses.or);
+      }
 
-  if (error) {
-    throw new Error(mapDatabaseError(error));
-  }
+      return query.order('id', {ascending: true}).range(from, to);
+    },
+    {mapError: (error) => new Error(mapDatabaseError(error))},
+  );
 
   const people = new Set<string>();
   let totalCompetence = 0;
   let totalPaid = 0;
   let totalPending = 0;
 
-  for (const row of data ?? []) {
+  for (const row of rows) {
     const amount = Number(row.amount ?? 0);
     const status = row.expense_status as string;
 

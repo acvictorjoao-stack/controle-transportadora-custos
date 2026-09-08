@@ -10,6 +10,10 @@ import type {
   FinancialListFilters,
 } from '@/features/financial/types';
 import {mapDatabaseError} from '@/features/master/companies/utils/database-error';
+import {
+  fetchAllPagedRows,
+  fetchPagedRangeRows,
+} from '@/lib/supabase/fetch-all-pages';
 
 import {CASH_FLOW_PAGE_SIZE, CASH_FLOW_SOURCE_MODULES} from '../constants';
 import type {
@@ -33,8 +37,19 @@ type AggregateRow = {
   paid_at: string | null;
 };
 
+type SummaryRow = {
+  entry_type: FinancialEntryType;
+  entry_status: FinancialEntryStatus;
+  amount: number;
+  paid_amount: number | null;
+  source_module: string | null;
+};
+
 const AGGREGATE_COLUMNS =
   'entry_type, entry_status, amount, paid_amount, source_module, entry_date, due_date, paid_at';
+
+const SUMMARY_COLUMNS =
+  'entry_type, entry_status, amount, paid_amount, source_module';
 
 function sanitizeSearchTerm(value: string): string {
   return value.replace(/[%(),]/g, '').trim();
@@ -42,6 +57,10 @@ function sanitizeSearchTerm(value: string): string {
 
 function isOpenStatus(status: FinancialEntryStatus): boolean {
   return status === 'pending' || status === 'overdue';
+}
+
+function postgrestError(error: {message: string; code?: string}): Error {
+  return new Error(mapDatabaseError(error));
 }
 
 function resolveListFilters(filters: CashFlowListFilters = {}): FinancialListFilters {
@@ -128,6 +147,51 @@ function sumSigned(rows: AggregateRow[]): number {
   return rows.reduce((sum, row) => sum + getCashFlowSignedAmount(toAggregateEntry(row)), 0);
 }
 
+function applyAggregateFilters<
+  T extends {
+    in: (column: string, values: string[]) => T;
+    eq: (column: string, value: string) => T;
+    gte: (column: string, value: string) => T;
+    lte: (column: string, value: string) => T;
+    or: (filters: string) => T;
+    order: (
+      column: string,
+      options?: {ascending?: boolean; nullsFirst?: boolean},
+    ) => T;
+  },
+>(query: T, resolved: FinancialListFilters, term: string): T {
+  let next = query;
+
+  if (resolved.sourceModules?.length) {
+    next = next.in('source_module', resolved.sourceModules);
+  } else if (resolved.sourceModule) {
+    next = next.eq('source_module', resolved.sourceModule);
+  }
+
+  if (resolved.entryType) {
+    next = next.eq('entry_type', resolved.entryType);
+  }
+
+  if (resolved.entryStatuses?.length) {
+    next = next.in('entry_status', resolved.entryStatuses);
+  } else if (resolved.entryStatus) {
+    next = next.eq('entry_status', resolved.entryStatus);
+  }
+
+  if (resolved.dateFrom) next = next.gte('entry_date', resolved.dateFrom);
+  if (resolved.dateTo) next = next.lte('entry_date', resolved.dateTo);
+
+  if (term) {
+    next = next.or(
+      `description.ilike.%${term}%,supplier.ilike.%${term}%,client.ilike.%${term}%`,
+    );
+  }
+
+  return next
+    .order('entry_date', {ascending: false, nullsFirst: false})
+    .order('id', {ascending: false});
+}
+
 async function fetchAggregateRows(
   supabase: SupabaseClient,
   companyId: string,
@@ -138,50 +202,24 @@ async function fetchAggregateRows(
   const resolved = resolveListFilters(filters);
   const term = sanitizeSearchTerm(search ?? '');
 
-  let query = supabase
-    .from('financial_entries')
-    .select(AGGREGATE_COLUMNS)
-    .eq('company_id', companyId)
-    .is('deleted_at', null);
+  const fetchPage = async (from: number, to: number) => {
+    let query = supabase
+      .from('financial_entries')
+      .select(AGGREGATE_COLUMNS, {count: 'exact'})
+      .eq('company_id', companyId)
+      .is('deleted_at', null);
 
-  if (resolved.sourceModules?.length) {
-    query = query.in('source_module', resolved.sourceModules);
-  } else if (resolved.sourceModule) {
-    query = query.eq('source_module', resolved.sourceModule);
-  }
-
-  if (resolved.entryType) {
-    query = query.eq('entry_type', resolved.entryType);
-  }
-
-  if (resolved.entryStatuses?.length) {
-    query = query.in('entry_status', resolved.entryStatuses);
-  } else if (resolved.entryStatus) {
-    query = query.eq('entry_status', resolved.entryStatus);
-  }
-
-  if (resolved.dateFrom) query = query.gte('entry_date', resolved.dateFrom);
-  if (resolved.dateTo) query = query.lte('entry_date', resolved.dateTo);
-
-  if (term) {
-    query = query.or(
-      `description.ilike.%${term}%,supplier.ilike.%${term}%,client.ilike.%${term}%`,
-    );
-  }
-
-  query = query.order('entry_date', {ascending: false, nullsFirst: false});
+    query = applyAggregateFilters(query, resolved, term);
+    return query.range(from, to);
+  };
 
   if (range) {
-    query = query.range(range.from, range.to);
+    return fetchPagedRangeRows<AggregateRow>(fetchPage, range, {
+      mapError: postgrestError,
+    });
   }
 
-  const {data, error} = await query;
-
-  if (error) {
-    throw new Error(mapDatabaseError(error));
-  }
-
-  return (data ?? []) as AggregateRow[];
+  return fetchAllPagedRows<AggregateRow>(fetchPage, {mapError: postgrestError});
 }
 
 export async function getCashFlowSummary(
@@ -189,37 +227,40 @@ export async function getCashFlowSummary(
   companyId: string,
   options?: {dateFrom?: string; dateTo?: string},
 ): Promise<CashFlowSummary> {
-  let query = supabase
-    .from('financial_entries')
-    .select('entry_type, entry_status, amount, paid_amount, source_module')
-    .eq('company_id', companyId)
-    .is('deleted_at', null)
-    .in('source_module', [...CASH_FLOW_SOURCE_MODULES])
-    .in('entry_status', ['pending', 'overdue', 'paid']);
+  const rows = await fetchAllPagedRows<SummaryRow>(
+    async (from, to) => {
+      let query = supabase
+        .from('financial_entries')
+        .select(SUMMARY_COLUMNS, {count: 'exact'})
+        .eq('company_id', companyId)
+        .is('deleted_at', null)
+        .in('source_module', [...CASH_FLOW_SOURCE_MODULES])
+        .in('entry_status', ['pending', 'overdue', 'paid']);
 
-  if (options?.dateFrom) query = query.gte('entry_date', options.dateFrom);
-  if (options?.dateTo) query = query.lte('entry_date', options.dateTo);
+      if (options?.dateFrom) query = query.gte('entry_date', options.dateFrom);
+      if (options?.dateTo) query = query.lte('entry_date', options.dateTo);
 
-  const {data, error} = await query;
-
-  if (error) {
-    throw new Error(mapDatabaseError(error));
-  }
+      return query.order('id', {ascending: true}).range(from, to);
+    },
+    {mapError: postgrestError},
+  );
 
   let entradasRecebidas = 0;
   let saidasPagas = 0;
   let aReceber = 0;
   let aPagar = 0;
 
-  for (const row of data ?? []) {
+  for (const row of rows) {
     const amount =
       row.entry_status === 'paid' && row.paid_amount != null
         ? Number(row.paid_amount)
         : Number(row.amount);
     const isReceivable =
-      row.source_module === ACCOUNTS_RECEIVABLE_SOURCE_MODULE || row.entry_type === 'revenue';
+      row.source_module === ACCOUNTS_RECEIVABLE_SOURCE_MODULE ||
+      row.entry_type === 'revenue';
     const isPayable =
-      row.source_module === ACCOUNTS_PAYABLE_SOURCE_MODULE || row.entry_type === 'expense';
+      row.source_module === ACCOUNTS_PAYABLE_SOURCE_MODULE ||
+      row.entry_type === 'expense';
 
     if (row.entry_status === 'paid') {
       if (isReceivable) entradasRecebidas += amount;
