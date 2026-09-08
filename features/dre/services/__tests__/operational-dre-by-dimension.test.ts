@@ -57,6 +57,7 @@ function makeExpense(
     customerId: null,
     tripId: 'trip-1',
     vehicleId: null,
+    driverId: null,
     sourceModule: 'manual',
     categorySlug: 'combustivel',
     fuelRecordId: null,

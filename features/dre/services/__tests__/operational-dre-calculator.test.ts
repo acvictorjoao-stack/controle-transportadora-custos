@@ -39,6 +39,7 @@ function makeExpense(
     customerId: null,
     tripId: 'trip-1',
     vehicleId: null,
+    driverId: null,
     sourceModule: 'manual',
     categorySlug: null,
     fuelRecordId: null,
@@ -256,6 +257,168 @@ describe('calculateOperationalDre', () => {
     );
 
     expect(dre.costs.other).toBe(30);
+  });
+
+  it('scopes costs by driverId via trip or direct driver link without attributing payroll', () => {
+    const trips = [
+      makeTrip({id: 't-driver', driverId: 'driver-1', actualFreightValue: 1000}),
+    ];
+    const expenses = [
+      makeExpense({
+        id: 'e-trip',
+        amount: 200,
+        tripId: 't-driver',
+        categorySlug: 'combustivel',
+      }),
+      makeExpense({
+        id: 'e-other-trip',
+        amount: 900,
+        tripId: 't-other',
+        categorySlug: 'combustivel',
+      }),
+      makeExpense({
+        id: 'e-driver-direct',
+        amount: 50,
+        tripId: null,
+        driverId: 'driver-1',
+        categorySlug: 'combustivel',
+        sourceModule: 'fuel',
+      }),
+      makeExpense({
+        id: 'e-payroll',
+        amount: 40200,
+        tripId: null,
+        driverId: null,
+        vehicleId: null,
+        sourceModule: 'payroll',
+        categorySlug: 'outros',
+      }),
+    ];
+
+    const scoped = filterExpensesForScope(expenses, {driverId: 'driver-1'}, trips);
+    expect(scoped.map((row) => row.id).sort()).toEqual([
+      'e-driver-direct',
+      'e-trip',
+    ]);
+
+    const dre = calculateOperationalDre(trips, expenses, {driverId: 'driver-1'});
+    expect(dre.revenues.totalRevenue).toBe(1000);
+    expect(dre.costs.fuel).toBe(250);
+    expect(dre.costs.other).toBe(0);
+    expect(dre.costs.totalOperatingCosts).toBe(250);
+  });
+
+  it('requires AND of direct attributes when driver and vehicle filters combine', () => {
+    const trips = [
+      makeTrip({
+        id: 't-av',
+        driverId: 'driver-1',
+        vehicleId: 'vehicle-1',
+        actualFreightValue: 800,
+      }),
+    ];
+    const expenses = [
+      makeExpense({
+        id: 'on-trip',
+        amount: 100,
+        tripId: 't-av',
+        categorySlug: 'combustivel',
+      }),
+      makeExpense({
+        id: 'driver-only',
+        amount: 40,
+        tripId: null,
+        driverId: 'driver-1',
+        categorySlug: 'combustivel',
+      }),
+      makeExpense({
+        id: 'vehicle-only',
+        amount: 60,
+        tripId: null,
+        vehicleId: 'vehicle-1',
+        categorySlug: 'manutencao',
+      }),
+      makeExpense({
+        id: 'both-direct',
+        amount: 25,
+        tripId: null,
+        driverId: 'driver-1',
+        vehicleId: 'vehicle-1',
+        categorySlug: 'combustivel',
+        sourceModule: 'fuel',
+      }),
+      makeExpense({
+        id: 'payroll',
+        amount: 1000,
+        tripId: null,
+        sourceModule: 'payroll',
+      }),
+    ];
+
+    const scoped = filterExpensesForScope(
+      expenses,
+      {driverId: 'driver-1', vehicleId: 'vehicle-1'},
+      trips,
+    );
+    expect(scoped.map((row) => row.id).sort()).toEqual(['both-direct', 'on-trip']);
+
+    const dre = calculateOperationalDre(trips, expenses, {
+      driverId: 'driver-1',
+      vehicleId: 'vehicle-1',
+    });
+    expect(dre.costs.fuel).toBe(125);
+    expect(dre.costs.maintenance).toBe(0);
+    expect(dre.costs.totalOperatingCosts).toBe(125);
+  });
+
+  it('with route filter, direct-only expenses stay out even if other dims match', () => {
+    const trips = [
+      makeTrip({id: 't1', driverId: 'driver-1', routeId: 'route-1'}),
+    ];
+    expect(
+      expenseMatchesScope(
+        makeExpense({
+          tripId: null,
+          driverId: 'driver-1',
+          vehicleId: 'vehicle-1',
+          customerId: 'customer-1',
+        }),
+        {driverId: 'driver-1', routeId: 'route-1'},
+        new Set(['t1']),
+      ),
+    ).toBe(false);
+    expect(
+      expenseMatchesScope(
+        makeExpense({tripId: 't1', driverId: 'other'}),
+        {driverId: 'driver-1', routeId: 'route-1'},
+        new Set(['t1']),
+      ),
+    ).toBe(true);
+  });
+
+  it('returns empty costs for driver without trips and without direct driver link', () => {
+    const dre = calculateOperationalDre(
+      [],
+      [
+        makeExpense({
+          id: 'e-other',
+          amount: 500,
+          tripId: 't-other',
+          categorySlug: 'combustivel',
+        }),
+        makeExpense({
+          id: 'e-payroll',
+          amount: 40200,
+          tripId: null,
+          driverId: null,
+          sourceModule: 'payroll',
+        }),
+      ],
+      {driverId: 'driver-empty'},
+    );
+
+    expect(dre.revenues.totalRevenue).toBe(0);
+    expect(dre.costs.totalOperatingCosts).toBe(0);
   });
 });
 

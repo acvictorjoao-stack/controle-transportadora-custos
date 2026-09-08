@@ -2,6 +2,7 @@ import type {SupabaseClient} from '@supabase/supabase-js';
 
 import {mapDatabaseError} from '@/features/master/companies/utils/database-error';
 import {formatPlate} from '@/features/vehicles/utils/vehicle-format';
+import {resolveOperationalDreExpenseDimensionFilter} from '@/features/dre/services/operational-dre-expense-scope';
 
 import type {
   OperationalDreExpenseRow,
@@ -35,7 +36,7 @@ const DRE_TRIP_DETAIL_COLUMNS = `
  * via query user-scoped que respeita RLS (`financeiro:read`).
  */
 const DRE_EXPENSE_COLUMNS = `
-  id, amount, branch_id, customer_id, trip_id, vehicle_id, source_module,
+  id, amount, branch_id, customer_id, trip_id, vehicle_id, driver_id, source_module,
   fuel_record_id, maintenance_record_id, tire_id, cost_center_id,
   financial_categories:category_id (slug)
 `;
@@ -94,6 +95,7 @@ type ExpenseRawRow = {
   customer_id: string | null;
   trip_id: string | null;
   vehicle_id: string | null;
+  driver_id: string | null;
   source_module: string | null;
   fuel_record_id: string | null;
   maintenance_record_id: string | null;
@@ -133,6 +135,7 @@ function mapExpenseRow(
     customerId: row.customer_id,
     tripId: row.trip_id,
     vehicleId: row.vehicle_id,
+    driverId: row.driver_id,
     sourceModule: row.source_module,
     categorySlug: mapCategorySlug(row.financial_categories),
     fuelRecordId: row.fuel_record_id,
@@ -450,13 +453,16 @@ export async function fetchOperationalDreTripDetails(
 
 export interface FetchOperationalDreExpensesOptions {
   filters?: OperationalDreFilters;
-  /** Viagens já filtradas — usadas para escopo por cliente/rota. */
+  /** Viagens já filtradas (T) — AND dimensional + período. */
   tripIds?: string[];
 }
 
 /**
  * Despesas operacionais em `financial_entries` — mesma fonte de
  * combustível/manutenção/pneus (`get_financial_stats`) e contas a pagar.
+ *
+ * Escopo dimensional: regra única `resolveOperationalDreExpenseDimensionFilter`
+ * = (trip_id ∈ T) OR (trip_id IS NULL AND predicados diretos AND).
  */
 export async function fetchOperationalDreExpenses(
   supabase: SupabaseClient,
@@ -465,18 +471,12 @@ export async function fetchOperationalDreExpenses(
 ): Promise<OperationalDreExpenseRow[]> {
   const filters = options.filters ?? {};
   const tripIds = options.tripIds ?? [];
-  const hasDimensionFilter = Boolean(
-    filters.customerId || filters.routeId || filters.vehicleId,
+  const dimensionScope = resolveOperationalDreExpenseDimensionFilter(
+    filters,
+    tripIds,
   );
 
-  // Com dimensão e nenhuma viagem no recorte, só segue se houver vínculo direto
-  // (cliente ou veículo) para despesas sem trip_id.
-  if (
-    hasDimensionFilter &&
-    tripIds.length === 0 &&
-    !filters.customerId &&
-    !filters.vehicleId
-  ) {
+  if (dimensionScope.shouldReturnEmpty) {
     return [];
   }
 
@@ -493,19 +493,8 @@ export async function fetchOperationalDreExpenses(
   if (filters.dateFrom) query = query.gte('entry_date', filters.dateFrom);
   if (filters.dateTo) query = query.lte('entry_date', filters.dateTo);
 
-  if (hasDimensionFilter) {
-    const orParts: string[] = [];
-    if (tripIds.length > 0) {
-      orParts.push(`trip_id.in.(${tripIds.join(',')})`);
-    }
-    if (filters.customerId) {
-      orParts.push(`customer_id.eq.${filters.customerId}`);
-    }
-    if (filters.vehicleId) {
-      orParts.push(`vehicle_id.eq.${filters.vehicleId}`);
-    }
-    if (orParts.length === 0) return [];
-    query = query.or(orParts.join(','));
+  if (dimensionScope.orFilter) {
+    query = query.or(dimensionScope.orFilter);
   }
 
   const {data, error} = await query;

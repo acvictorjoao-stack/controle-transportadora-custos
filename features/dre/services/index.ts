@@ -11,6 +11,11 @@ export {
   summarizeTripDimensions,
 } from './operational-dre-calculator';
 export {
+  expenseMatchesDimensionalScope,
+  hasOperationalDreDimensionalFilters,
+  resolveOperationalDreExpenseDimensionFilter,
+} from './operational-dre-expense-scope';
+export {
   buildTripMetrics,
   calculateOperationalDreByCustomer,
   calculateOperationalDreByDriver,

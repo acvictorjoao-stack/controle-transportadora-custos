@@ -19,6 +19,7 @@ import type {
   OperationalDreIndicators,
   OperationalDreTripRow,
 } from '../types';
+import {expenseMatchesDimensionalScope} from './operational-dre-expense-scope';
 
 function asFinite(value: number): number {
   return Number.isFinite(value) ? value : 0;
@@ -193,34 +194,17 @@ export function summarizeTripDimensions(trips: OperationalDreTripRow[]): {
 
 /**
  * Determina se uma despesa entra no escopo dos filtros da DRE,
- * dado o conjunto de viagens já filtradas.
+ * dado o conjunto de viagens já filtradas (T).
  *
- * - Sem cliente/rota: despesas do período/empresa (já filtradas na query).
- * - Com cliente/rota: só despesas ligadas às viagens do recorte, ou com
- *   `customerId` igual ao filtro (quando aplicável).
+ * Delega à regra única em `operational-dre-expense-scope`
+ * (mesma semântica da query PostgREST).
  */
 export function expenseMatchesScope(
   expense: OperationalDreExpenseRow,
   filters: OperationalDreFilters,
   tripIds: Set<string>,
 ): boolean {
-  const hasCustomerFilter = Boolean(filters.customerId);
-  const hasRouteFilter = Boolean(filters.routeId);
-
-  if (!hasCustomerFilter && !hasRouteFilter) {
-    return true;
-  }
-
-  if (expense.tripId && tripIds.has(expense.tripId)) {
-    return true;
-  }
-
-  // Despesa sem viagem não é atribuível a rota.
-  if (hasRouteFilter) {
-    return false;
-  }
-
-  return hasCustomerFilter && expense.customerId === filters.customerId;
+  return expenseMatchesDimensionalScope(expense, filters, tripIds);
 }
 
 export function filterExpensesForScope(

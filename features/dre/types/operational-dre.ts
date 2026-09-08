@@ -4,7 +4,7 @@ export interface OperationalDreFilters {
   customerId?: string;
   routeId?: string;
   vehicleId?: string;
-  /** Preservado na URL compartilhada (`motorista`); usado na navegação cruzada. */
+  /** Motorista — query `motorista`; restringe viagens e despesas do escopo. */
   driverId?: string;
   costCenterId?: string;
   dateFrom?: string;
@@ -104,6 +104,8 @@ export interface OperationalDreExpenseRow {
   customerId: string | null;
   tripId: string | null;
   vehicleId: string | null;
+  /** Vínculo direto no ledger (ex.: combustível); folha permanece null. */
+  driverId: string | null;
   sourceModule: string | null;
   categorySlug: string | null;
   fuelRecordId: string | null;
