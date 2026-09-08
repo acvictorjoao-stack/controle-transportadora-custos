@@ -11,8 +11,17 @@ export const DEMO_SETTINGS_FLAG = 'is_demo_company';
 /** Quantidades alvo da massa de demonstração. */
 export const DEMO_COUNTS = {
   branches: 3,
-  vehicles: 10,
-  drivers: 8,
+  /**
+   * Frota ampliada para caber 30 planned + 30 in_progress sem violar a
+   * unicidade futura de recurso busy (1 busy ativo por veículo/motorista).
+   */
+  vehicles: 60,
+  drivers: 60,
+  /**
+   * Subconjunto da frota usado por combustível/manutenção/pneus para manter
+   * densidade temporal 20/20/60 (a frota cheia existe para unicidade busy).
+   */
+  operationalFleetSize: 10,
   employees: 7,
   customers: 20,
   routes: 18,
@@ -22,6 +31,16 @@ export const DEMO_COUNTS = {
   tires: 12,
   payrollMonths: 6,
 } as const;
+
+/** Status que ocupam recurso (alinhado à regra futura do achado #4). */
+export const DEMO_TRIP_BUSY_STATUSES = [
+  'planned',
+  'scheduled',
+  'loading',
+  'in_progress',
+  'delivering',
+  'waiting',
+] as const;
 
 /** Centros de custo extras além do seed padrão do banco. */
 export const DEMO_EXTRA_COST_CENTERS = [

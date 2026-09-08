@@ -1,4 +1,9 @@
-import {DEMO_COUNTS, DEMO_CUSTOM_POSITIONS, DEMO_EXTRA_COST_CENTERS} from './constants';
+import {
+  DEMO_COUNTS,
+  DEMO_CUSTOM_POSITIONS,
+  DEMO_EXTRA_COST_CENTERS,
+  DEMO_TRIP_BUSY_STATUSES,
+} from './constants';
 import {demoExternalId, demoUuid} from './ids';
 
 export interface DemoBranchDef {
@@ -91,29 +96,85 @@ export const DEMO_BRANCHES: DemoBranchDef[] = [
   },
 ];
 
-export const DEMO_VEHICLES: DemoVehicleDef[] = [
-  {key: 'v01', plate: 'DEM0A01', vehicleType: 'Caminhão', brand: 'VOLVO', model: 'FH 540', branchKey: 'matriz', fuelType: 'diesel', initialOdometerKm: 98500},
-  {key: 'v02', plate: 'DEM0A02', vehicleType: 'Caminhão', brand: 'SCANIA', model: 'R450', branchKey: 'matriz', fuelType: 'diesel', initialOdometerKm: 112300},
-  {key: 'v03', plate: 'DEM0A03', vehicleType: 'Truck', brand: 'MERCEDES', model: 'ACTROS', branchKey: 'imperatriz', fuelType: 'diesel', initialOdometerKm: 87400},
-  {key: 'v04', plate: 'DEM0A04', vehicleType: 'Truck', brand: 'VOLVO', model: 'VM 330', branchKey: 'imperatriz', fuelType: 'diesel', initialOdometerKm: 76500},
-  {key: 'v05', plate: 'DEM0A05', vehicleType: 'Toco', brand: 'MERCEDES', model: 'ATEGO', branchKey: 'teresina', fuelType: 'diesel', initialOdometerKm: 65400},
-  {key: 'v06', plate: 'DEM0A06', vehicleType: 'Toco', brand: 'VOLKSWAGEN', model: 'DELIVERY', branchKey: 'teresina', fuelType: 'diesel', initialOdometerKm: 54200},
-  {key: 'v07', plate: 'DEM0A07', vehicleType: 'Van', brand: 'FIAT', model: 'DUCATO', branchKey: 'matriz', fuelType: 'diesel', initialOdometerKm: 43800},
-  {key: 'v08', plate: 'DEM0A08', vehicleType: 'Van', brand: 'RENAULT', model: 'MASTER', branchKey: 'imperatriz', fuelType: 'diesel', initialOdometerKm: 39200},
-  {key: 'v09', plate: 'DEM0A09', vehicleType: 'Caminhão', brand: 'IVECO', model: 'STRALIS', branchKey: 'matriz', fuelType: 'diesel', initialOdometerKm: 120800},
-  {key: 'v10', plate: 'DEM0A10', vehicleType: 'Truck', brand: 'DAF', model: 'XF', branchKey: 'teresina', fuelType: 'diesel', initialOdometerKm: 90300},
-];
+const DEMO_VEHICLE_BRANCHES = ['matriz', 'imperatriz', 'teresina'] as const;
+const DEMO_VEHICLE_TYPES = [
+  {vehicleType: 'Caminhão', brand: 'VOLVO', model: 'FH 540'},
+  {vehicleType: 'Caminhão', brand: 'SCANIA', model: 'R450'},
+  {vehicleType: 'Truck', brand: 'MERCEDES', model: 'ACTROS'},
+  {vehicleType: 'Truck', brand: 'VOLVO', model: 'VM 330'},
+  {vehicleType: 'Toco', brand: 'MERCEDES', model: 'ATEGO'},
+  {vehicleType: 'Toco', brand: 'VOLKSWAGEN', model: 'DELIVERY'},
+  {vehicleType: 'Van', brand: 'FIAT', model: 'DUCATO'},
+  {vehicleType: 'Van', brand: 'RENAULT', model: 'MASTER'},
+  {vehicleType: 'Caminhão', brand: 'IVECO', model: 'STRALIS'},
+  {vehicleType: 'Truck', brand: 'DAF', model: 'XF'},
+] as const;
 
-export const DEMO_DRIVERS: DemoDriverDef[] = [
-  {key: 'd01', name: 'JOÃO SILVA', cpf: '90000000001', cnhNumber: 'DEM00000001', branchKey: 'matriz'},
-  {key: 'd02', name: 'CARLOS SOUZA', cpf: '90000000002', cnhNumber: 'DEM00000002', branchKey: 'matriz'},
-  {key: 'd03', name: 'MARCOS OLIVEIRA', cpf: '90000000003', cnhNumber: 'DEM00000003', branchKey: 'imperatriz'},
-  {key: 'd04', name: 'PEDRO SANTOS', cpf: '90000000004', cnhNumber: 'DEM00000004', branchKey: 'imperatriz'},
-  {key: 'd05', name: 'RAFAEL ALMEIDA', cpf: '90000000005', cnhNumber: 'DEM00000005', branchKey: 'teresina'},
-  {key: 'd06', name: 'LUCAS FERREIRA', cpf: '90000000006', cnhNumber: 'DEM00000006', branchKey: 'teresina'},
-  {key: 'd07', name: 'BRUNO COSTA', cpf: '90000000007', cnhNumber: 'DEM00000007', branchKey: 'matriz'},
-  {key: 'd08', name: 'FELIPE ROCHA', cpf: '90000000008', cnhNumber: 'DEM00000008', branchKey: 'imperatriz'},
-];
+const DEMO_DRIVER_FIRST_NAMES = [
+  'JOÃO',
+  'CARLOS',
+  'MARCOS',
+  'PEDRO',
+  'RAFAEL',
+  'LUCAS',
+  'BRUNO',
+  'FELIPE',
+  'ANDRÉ',
+  'DIEGO',
+] as const;
+const DEMO_DRIVER_LAST_NAMES = [
+  'SILVA',
+  'SOUZA',
+  'OLIVEIRA',
+  'SANTOS',
+  'ALMEIDA',
+  'FERREIRA',
+  'COSTA',
+  'ROCHA',
+  'LIMA',
+  'NUNES',
+] as const;
+
+/** Frota base + expansão determinística até DEMO_COUNTS.vehicles. */
+export const DEMO_VEHICLES: DemoVehicleDef[] = Array.from(
+  {length: DEMO_COUNTS.vehicles},
+  (_, index) => {
+    const n = index + 1;
+    const type = DEMO_VEHICLE_TYPES[index % DEMO_VEHICLE_TYPES.length];
+    return {
+      key: `v${String(n).padStart(2, '0')}`,
+      plate: `DEM${String(n).padStart(4, '0')}`,
+      vehicleType: type.vehicleType,
+      brand: type.brand,
+      model: type.model,
+      branchKey: DEMO_VEHICLE_BRANCHES[index % DEMO_VEHICLE_BRANCHES.length],
+      fuelType: 'diesel' as const,
+      initialOdometerKm: 35000 + index * 1370,
+    };
+  },
+);
+
+/** Motoristas base + expansão determinística até DEMO_COUNTS.drivers. */
+export const DEMO_DRIVERS: DemoDriverDef[] = Array.from(
+  {length: DEMO_COUNTS.drivers},
+  (_, index) => {
+    const n = index + 1;
+    const first = DEMO_DRIVER_FIRST_NAMES[index % DEMO_DRIVER_FIRST_NAMES.length];
+    const last = DEMO_DRIVER_LAST_NAMES[Math.floor(index / DEMO_DRIVER_FIRST_NAMES.length) % DEMO_DRIVER_LAST_NAMES.length];
+    return {
+      key: `d${String(n).padStart(2, '0')}`,
+      name: `${first} ${last} ${String(n).padStart(2, '0')}`,
+      cpf: `90${String(n).padStart(9, '0')}`,
+      cnhNumber: `DEM${String(n).padStart(8, '0')}`,
+      branchKey: DEMO_VEHICLE_BRANCHES[index % DEMO_VEHICLE_BRANCHES.length],
+    };
+  },
+);
+
+/** Frota usada em custos operacionais densos (fuel/maintenance/tires). */
+export function getDemoOperationalFleet(): DemoVehicleDef[] {
+  return DEMO_VEHICLES.slice(0, DEMO_COUNTS.operationalFleetSize);
+}
 
 export const DEMO_EMPLOYEES: DemoEmployeeDef[] = [
   {key: 'e01', name: 'ANA COSTA', positionCode: 'SUPERVISOR_OPERACOES', costCenterCode: 'OPERACIONAL', branchKey: 'matriz'},
@@ -220,21 +281,58 @@ export function demoTripDaysAgo(
   return demoBucketedDaysAgo(index, count, now);
 }
 
+/**
+ * Distribuição de viagens DEMO compatível com unicidade de recurso busy.
+ *
+ * Proporção alvo (count=150): 60% completed, 20% in_progress, 20% planned.
+ * Trips busy (in_progress + planned) recebem slots exclusivos de veículo e
+ * motorista (índices 0..N-1), sem reutilizar o mesmo recurso em outra busy.
+ * Trips completed podem reutilizar a frota livremente (round-robin).
+ */
 export function buildDemoTripDefinitions(
   count = DEMO_COUNTS.trips,
   now: Date = new Date(),
 ) {
-  const statuses = ['completed', 'completed', 'completed', 'in_progress', 'planned'] as const;
+  const completedCount = Math.round(count * 0.6);
+  const remaining = count - completedCount;
+  const inProgressCount = Math.floor(remaining / 2);
+  const plannedCount = remaining - inProgressCount;
+  const busyCount = inProgressCount + plannedCount;
+  const busyCapacity = Math.min(DEMO_VEHICLES.length, DEMO_DRIVERS.length);
+
+  if (busyCount > busyCapacity) {
+    throw new Error(
+      `Seed DEMO: ${busyCount} trips busy excedem a capacidade da frota (${busyCapacity}).`,
+    );
+  }
+
   const trips = [];
 
   for (let index = 1; index <= count; index += 1) {
     const route = DEMO_ROUTES[(index - 1) % DEMO_ROUTES.length];
-    const vehicle = DEMO_VEHICLES[(index - 1) % DEMO_VEHICLES.length];
-    const driver = DEMO_DRIVERS[(index - 1) % DEMO_DRIVERS.length];
     const customer = DEMO_CUSTOMERS[(index - 1) % DEMO_CUSTOMERS.length];
-    const status = statuses[index % statuses.length];
     const daysAgo = demoTripDaysAgo(index, count, now);
-    const freight = 2500 + (route.distanceKm * 3.2) + (index % 7) * 150;
+    const freight = 2500 + route.distanceKm * 3.2 + (index % 7) * 150;
+
+    let status: 'completed' | 'in_progress' | 'planned';
+    let vehicle: DemoVehicleDef;
+    let driver: DemoDriverDef;
+
+    if (index <= completedCount) {
+      status = 'completed';
+      vehicle = DEMO_VEHICLES[(index - 1) % DEMO_VEHICLES.length];
+      driver = DEMO_DRIVERS[(index - 1) % DEMO_DRIVERS.length];
+    } else if (index <= completedCount + inProgressCount) {
+      status = 'in_progress';
+      const slot = index - completedCount - 1;
+      vehicle = DEMO_VEHICLES[slot];
+      driver = DEMO_DRIVERS[slot];
+    } else {
+      status = 'planned';
+      const slot = inProgressCount + (index - completedCount - inProgressCount - 1);
+      vehicle = DEMO_VEHICLES[slot];
+      driver = DEMO_DRIVERS[slot];
+    }
 
     trips.push({
       key: `t${String(index).padStart(3, '0')}`,
@@ -250,6 +348,42 @@ export function buildDemoTripDefinitions(
   }
 
   return trips;
+}
+
+/** Invariantes de unicidade busy usados por testes do seed. */
+export function assertDemoTripBusyUniqueness(
+  trips: ReturnType<typeof buildDemoTripDefinitions> = buildDemoTripDefinitions(),
+): void {
+  const busy = new Set<string>(DEMO_TRIP_BUSY_STATUSES);
+  const vehicles = new Map<string, string[]>();
+  const drivers = new Map<string, string[]>();
+
+  for (const trip of trips) {
+    if (!busy.has(trip.status)) continue;
+
+    const vehicleTrips = vehicles.get(trip.vehicleKey) ?? [];
+    vehicleTrips.push(trip.key);
+    vehicles.set(trip.vehicleKey, vehicleTrips);
+
+    const driverTrips = drivers.get(trip.driverKey) ?? [];
+    driverTrips.push(trip.key);
+    drivers.set(trip.driverKey, driverTrips);
+  }
+
+  for (const [vehicleKey, keys] of vehicles) {
+    if (keys.length > 1) {
+      throw new Error(
+        `Veículo busy duplicado ${vehicleKey}: ${keys.join(', ')}`,
+      );
+    }
+  }
+  for (const [driverKey, keys] of drivers) {
+    if (keys.length > 1) {
+      throw new Error(
+        `Motorista busy duplicado ${driverKey}: ${keys.join(', ')}`,
+      );
+    }
+  }
 }
 
 export function buildDemoFuelDefinitions(
@@ -268,14 +402,15 @@ export function buildDemoFuelDefinitions(
     paymentType: 'credit' | 'cash';
   }> = [];
   const postoSuppliers = DEMO_SUPPLIERS.filter((supplier) => supplier.categories.includes('posto'));
-  const vehicleCount = DEMO_VEHICLES.length;
+  const fleet = getDemoOperationalFleet();
+  const vehicleCount = fleet.length;
   const basePerVehicle = Math.floor(count / vehicleCount);
   const remainder = count % vehicleCount;
 
   let fuelIndex = 0;
 
   for (let vehicleIndex = 0; vehicleIndex < vehicleCount; vehicleIndex += 1) {
-    const vehicle = DEMO_VEHICLES[vehicleIndex];
+    const vehicle = fleet[vehicleIndex];
     const vehicleRecordCount = basePerVehicle + (vehicleIndex < remainder ? 1 : 0);
 
     for (let seq = 0; seq < vehicleRecordCount; seq += 1) {
@@ -310,7 +445,7 @@ export function buildDemoFuelDefinitions(
     byVehicle.set(draft.vehicleKey, list);
   }
 
-  for (const vehicle of DEMO_VEHICLES) {
+  for (const vehicle of fleet) {
     const vehicleDrafts = byVehicle.get(vehicle.key) ?? [];
     const chronological = [...vehicleDrafts].sort((a, b) => b.daysAgo - a.daysAgo);
     chronological.forEach((draft, seq) => {
@@ -334,7 +469,8 @@ export function buildDemoMaintenanceDefinitions(
   );
 
   const drafts = Array.from({length: count}, (_, index) => {
-    const vehicle = DEMO_VEHICLES[index % DEMO_VEHICLES.length];
+    const fleet = getDemoOperationalFleet();
+    const vehicle = fleet[index % fleet.length];
     const supplier = workshopSuppliers[index % workshopSuppliers.length];
     const amount = 850 + (index % 9) * 420;
 
@@ -357,7 +493,7 @@ export function buildDemoMaintenanceDefinitions(
   }
 
   const records: Array<(typeof drafts)[number] & {daysAgo: number}> = [];
-  for (const vehicle of DEMO_VEHICLES) {
+  for (const vehicle of getDemoOperationalFleet()) {
     const vehicleDrafts = byVehicle.get(vehicle.key) ?? [];
     vehicleDrafts.forEach((draft, seq) => {
       records.push({
@@ -407,9 +543,10 @@ export function buildDemoTireDefinitions(
     supplier.categories.includes('pneus'),
   );
 
+  const fleet = getDemoOperationalFleet();
   const drafts = Array.from({length: count}, (_, index) => ({
     key: `tire-${String(index + 1).padStart(2, '0')}`,
-    vehicleKey: DEMO_VEHICLES[index % DEMO_VEHICLES.length].key,
+    vehicleKey: fleet[index % fleet.length].key,
     supplierKey: tireSupplier?.key ?? 's06',
     brand: 'MICHELIN',
     model: 'X MULTI',
@@ -424,7 +561,7 @@ export function buildDemoTireDefinitions(
   }
 
   const records: Array<(typeof drafts)[number] & {daysAgo: number}> = [];
-  for (const vehicle of DEMO_VEHICLES) {
+  for (const vehicle of fleet) {
     const vehicleDrafts = byVehicle.get(vehicle.key) ?? [];
     vehicleDrafts.forEach((draft, seq) => {
       records.push({

@@ -1,5 +1,11 @@
 import {DEMO_CUSTOM_POSITIONS} from './constants';
-import {DEMO_DRIVERS, DEMO_EMPLOYEES, DEMO_SUPPLIERS, buildDemoFuelDefinitions} from './catalog';
+import {
+  DEMO_DRIVERS,
+  DEMO_EMPLOYEES,
+  DEMO_SUPPLIERS,
+  assertDemoTripBusyUniqueness,
+  buildDemoFuelDefinitions,
+} from './catalog';
 
 export function assertDemoCatalogInvariants(): void {
   const driverNames = new Set(DEMO_DRIVERS.map((driver) => driver.name));
@@ -49,6 +55,8 @@ export function assertDemoCatalogInvariants(): void {
       }
     }
   }
+
+  assertDemoTripBusyUniqueness();
 }
 
 export function isDemoCompanyRecord(record: {

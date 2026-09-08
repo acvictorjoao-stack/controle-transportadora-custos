@@ -4,6 +4,8 @@ import {
   DEMO_DRIVERS,
   DEMO_EMPLOYEES,
   DEMO_SUPPLIERS,
+  DEMO_VEHICLES,
+  assertDemoTripBusyUniqueness,
   buildDemoFuelDefinitions,
   buildDemoMaintenanceDefinitions,
   buildDemoPayrollDefinitions,
@@ -13,7 +15,12 @@ import {
   demoTripDaysAgo,
   getDemoCatalogMetadata,
 } from '../catalog';
-import {DEMO_COMPANY_SLUG, DEMO_COUNTS, DEMO_INTEGRATION_SOURCE} from '../constants';
+import {
+  DEMO_COMPANY_SLUG,
+  DEMO_COUNTS,
+  DEMO_INTEGRATION_SOURCE,
+  DEMO_TRIP_BUSY_STATUSES,
+} from '../constants';
 import {demoExternalId, demoUuid} from '../ids';
 import {assertDemoCatalogInvariants, isDemoCompanyRecord} from '../validators';
 
@@ -94,6 +101,20 @@ describe('demo seed catalog', () => {
     expect(older.length).toBeGreaterThan(0);
     expect(Math.min(...trips.map((trip) => trip.daysAgo))).toBeGreaterThanOrEqual(1);
     expect(Math.max(...trips.map((trip) => trip.daysAgo))).toBeLessThanOrEqual(180);
+  });
+
+  it('garante zero duplicidade busy por veículo e motorista', () => {
+    const trips = buildDemoTripDefinitions();
+    expect(() => assertDemoTripBusyUniqueness(trips)).not.toThrow();
+
+    const busy = new Set<string>(DEMO_TRIP_BUSY_STATUSES);
+    const vehicleBusy = trips.filter((trip) => busy.has(trip.status)).map((trip) => trip.vehicleKey);
+    const driverBusy = trips.filter((trip) => busy.has(trip.status)).map((trip) => trip.driverKey);
+
+    expect(new Set(vehicleBusy).size).toBe(vehicleBusy.length);
+    expect(new Set(driverBusy).size).toBe(driverBusy.length);
+    expect(vehicleBusy).toHaveLength(60);
+    expect(driverBusy).toHaveLength(60);
   });
 
   it('garante completed_at coerente com departed_at no contrato temporal do seed', () => {
@@ -202,8 +223,10 @@ describe('demo company guards', () => {
 
   it('expõe metadados esperados da massa', () => {
     const metadata = getDemoCatalogMetadata();
-    expect(metadata.vehicles).toBe(10);
-    expect(metadata.drivers).toBe(8);
+    expect(metadata.vehicles).toBe(DEMO_VEHICLES.length);
+    expect(metadata.drivers).toBe(DEMO_DRIVERS.length);
+    expect(metadata.vehicles).toBe(60);
+    expect(metadata.drivers).toBe(60);
     expect(metadata.employees).toBe(7);
     expect(metadata.customers).toBe(20);
     expect(metadata.routes).toBe(18);
