@@ -181,20 +181,21 @@ export const DEMO_ROUTES: DemoRouteDef[] = [
 ];
 
 /**
- * Distribuição temporal das viagens DEMO (index 1-based).
+ * Distribuição temporal DEMO (index 1-based) — viagens e custos operacionais.
  * - ~20% no mês corrente (daysAgo 1..dia-do-mês UTC);
  * - ~20% no restante dos últimos 30 dias;
  * - ~60% históricas (31–180 dias).
  * Garante amostra útil no Dashboard do mês atual sem concentrar tudo nele.
  */
-export function demoTripDaysAgo(
+export function demoBucketedDaysAgo(
   index: number,
-  count = DEMO_COUNTS.trips,
+  count: number,
   now: Date = new Date(),
 ): number {
+  const safeCount = Math.max(count, 1);
   const dayOfMonth = Math.max(now.getUTCDate(), 1);
-  const currentMonthBucket = Math.ceil(count * 0.2);
-  const recentBucket = Math.ceil(count * 0.2);
+  const currentMonthBucket = Math.ceil(safeCount * 0.2);
+  const recentBucket = Math.ceil(safeCount * 0.2);
 
   if (index <= currentMonthBucket) {
     return ((index - 1) % dayOfMonth) + 1;
@@ -208,6 +209,15 @@ export function demoTripDaysAgo(
 
   const olderIndex = index - currentMonthBucket - recentBucket;
   return 31 + ((olderIndex - 1) % 150);
+}
+
+/** Alias estável para viagens — mesma regra 20/20/60. */
+export function demoTripDaysAgo(
+  index: number,
+  count = DEMO_COUNTS.trips,
+  now: Date = new Date(),
+): number {
+  return demoBucketedDaysAgo(index, count, now);
 }
 
 export function buildDemoTripDefinitions(
@@ -242,8 +252,21 @@ export function buildDemoTripDefinitions(
   return trips;
 }
 
-export function buildDemoFuelDefinitions(count = DEMO_COUNTS.fuelRecords) {
-  const records = [];
+export function buildDemoFuelDefinitions(
+  count = DEMO_COUNTS.fuelRecords,
+  now: Date = new Date(),
+) {
+  const drafts: Array<{
+    key: string;
+    vehicleKey: string;
+    driverKey: string;
+    supplierKey: string;
+    daysAgo: number;
+    liters: number;
+    pricePerLiter: number;
+    totalAmount: number;
+    paymentType: 'credit' | 'cash';
+  }> = [];
   const postoSuppliers = DEMO_SUPPLIERS.filter((supplier) => supplier.categories.includes('posto'));
   const vehicleCount = DEMO_VEHICLES.length;
   const basePerVehicle = Math.floor(count / vehicleCount);
@@ -254,24 +277,22 @@ export function buildDemoFuelDefinitions(count = DEMO_COUNTS.fuelRecords) {
   for (let vehicleIndex = 0; vehicleIndex < vehicleCount; vehicleIndex += 1) {
     const vehicle = DEMO_VEHICLES[vehicleIndex];
     const vehicleRecordCount = basePerVehicle + (vehicleIndex < remainder ? 1 : 0);
-    const dayStep = vehicleRecordCount > 1 ? Math.floor(120 / (vehicleRecordCount - 1)) : 0;
 
     for (let seq = 0; seq < vehicleRecordCount; seq += 1) {
       fuelIndex += 1;
       const driver = DEMO_DRIVERS[(fuelIndex - 1) % DEMO_DRIVERS.length];
       const supplier = postoSuppliers[(fuelIndex - 1) % postoSuppliers.length];
-      const daysAgo = 140 - seq * dayStep;
-      const odometerKm = vehicle.initialOdometerKm + seq * 450 + (seq % 5) * 80;
+      // 20/20/60 por veículo → vários veículos com custo no mês corrente.
+      const daysAgo = demoBucketedDaysAgo(seq + 1, vehicleRecordCount, now);
       const liters = 120 + (fuelIndex % 6) * 15;
       const pricePerLiter = 5.89 + (fuelIndex % 4) * 0.07;
 
-      records.push({
+      drafts.push({
         key: `f${String(fuelIndex).padStart(3, '0')}`,
         vehicleKey: vehicle.key,
         driverKey: driver.key,
         supplierKey: supplier.key,
         daysAgo,
-        odometerKm,
         liters,
         pricePerLiter: Number(pricePerLiter.toFixed(2)),
         totalAmount: Number((liters * pricePerLiter).toFixed(2)),
@@ -280,14 +301,39 @@ export function buildDemoFuelDefinitions(count = DEMO_COUNTS.fuelRecords) {
     }
   }
 
-  return records;
+  // Odômetro crescente na ordem cronológica (fueled_at ASC = daysAgo DESC).
+  const records: Array<(typeof drafts)[number] & {odometerKm: number}> = [];
+  const byVehicle = new Map<string, typeof drafts>();
+  for (const draft of drafts) {
+    const list = byVehicle.get(draft.vehicleKey) ?? [];
+    list.push(draft);
+    byVehicle.set(draft.vehicleKey, list);
+  }
+
+  for (const vehicle of DEMO_VEHICLES) {
+    const vehicleDrafts = byVehicle.get(vehicle.key) ?? [];
+    const chronological = [...vehicleDrafts].sort((a, b) => b.daysAgo - a.daysAgo);
+    chronological.forEach((draft, seq) => {
+      records.push({
+        ...draft,
+        odometerKm: vehicle.initialOdometerKm + seq * 450 + (seq % 5) * 80,
+      });
+    });
+  }
+
+  return records.sort((a, b) => a.key.localeCompare(b.key));
 }
 
-export function buildDemoMaintenanceDefinitions(count = DEMO_COUNTS.maintenanceRecords) {
+export function buildDemoMaintenanceDefinitions(
+  count = DEMO_COUNTS.maintenanceRecords,
+  now: Date = new Date(),
+) {
   const types = ['preventive', 'corrective', 'emergency'] as const;
-  const workshopSuppliers = DEMO_SUPPLIERS.filter((supplier) => supplier.categories.includes('oficina'));
+  const workshopSuppliers = DEMO_SUPPLIERS.filter((supplier) =>
+    supplier.categories.includes('oficina'),
+  );
 
-  return Array.from({length: count}, (_, index) => {
+  const drafts = Array.from({length: count}, (_, index) => {
     const vehicle = DEMO_VEHICLES[index % DEMO_VEHICLES.length];
     const supplier = workshopSuppliers[index % workshopSuppliers.length];
     const amount = 850 + (index % 9) * 420;
@@ -297,12 +343,31 @@ export function buildDemoMaintenanceDefinitions(count = DEMO_COUNTS.maintenanceR
       vehicleKey: vehicle.key,
       supplierKey: supplier.key,
       maintenanceType: types[index % types.length],
-      daysAgo: (index % 120) + 5,
       amount,
-      paymentType: index % 4 === 0 ? 'credit' : 'cash',
-      maintenanceStatus: index % 5 === 0 ? 'open' : 'completed',
+      paymentType: (index % 4 === 0 ? 'credit' : 'cash') as 'credit' | 'cash',
+      maintenanceStatus: (index % 5 === 0 ? 'open' : 'completed') as 'open' | 'completed',
     };
   });
+
+  const byVehicle = new Map<string, typeof drafts>();
+  for (const draft of drafts) {
+    const list = byVehicle.get(draft.vehicleKey) ?? [];
+    list.push(draft);
+    byVehicle.set(draft.vehicleKey, list);
+  }
+
+  const records: Array<(typeof drafts)[number] & {daysAgo: number}> = [];
+  for (const vehicle of DEMO_VEHICLES) {
+    const vehicleDrafts = byVehicle.get(vehicle.key) ?? [];
+    vehicleDrafts.forEach((draft, seq) => {
+      records.push({
+        ...draft,
+        daysAgo: demoBucketedDaysAgo(seq + 1, vehicleDrafts.length, now),
+      });
+    });
+  }
+
+  return records.sort((a, b) => a.key.localeCompare(b.key));
 }
 
 export function buildDemoPayrollDefinitions(months = DEMO_COUNTS.payrollMonths) {
@@ -334,18 +399,42 @@ export function buildDemoPayrollDefinitions(months = DEMO_COUNTS.payrollMonths) 
   return payroll;
 }
 
-export function buildDemoTireDefinitions(count = DEMO_COUNTS.tires) {
-  const tireSupplier = DEMO_SUPPLIERS.find((supplier) => supplier.categories.includes('pneus'));
+export function buildDemoTireDefinitions(
+  count = DEMO_COUNTS.tires,
+  now: Date = new Date(),
+) {
+  const tireSupplier = DEMO_SUPPLIERS.find((supplier) =>
+    supplier.categories.includes('pneus'),
+  );
 
-  return Array.from({length: count}, (_, index) => ({
+  const drafts = Array.from({length: count}, (_, index) => ({
     key: `tire-${String(index + 1).padStart(2, '0')}`,
     vehicleKey: DEMO_VEHICLES[index % DEMO_VEHICLES.length].key,
     supplierKey: tireSupplier?.key ?? 's06',
     brand: 'MICHELIN',
     model: 'X MULTI',
     purchaseValue: 2800 + (index % 4) * 250,
-    daysAgo: (index % 90) + 10,
   }));
+
+  const byVehicle = new Map<string, typeof drafts>();
+  for (const draft of drafts) {
+    const list = byVehicle.get(draft.vehicleKey) ?? [];
+    list.push(draft);
+    byVehicle.set(draft.vehicleKey, list);
+  }
+
+  const records: Array<(typeof drafts)[number] & {daysAgo: number}> = [];
+  for (const vehicle of DEMO_VEHICLES) {
+    const vehicleDrafts = byVehicle.get(vehicle.key) ?? [];
+    vehicleDrafts.forEach((draft, seq) => {
+      records.push({
+        ...draft,
+        daysAgo: demoBucketedDaysAgo(seq + 1, vehicleDrafts.length, now),
+      });
+    });
+  }
+
+  return records.sort((a, b) => a.key.localeCompare(b.key));
 }
 
 export function getDemoCatalogMetadata() {

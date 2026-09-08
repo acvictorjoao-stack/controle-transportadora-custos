@@ -560,7 +560,12 @@ async function seedMaintenanceRecords(
     if (!vehicleId || !supplierId || !supplier) continue;
 
     const openedAt = isoDaysAgo(record.daysAgo);
-    const completedAt = record.maintenanceStatus === 'completed' ? isoDaysAgo(record.daysAgo - 2) : null;
+    // completed_at nunca no futuro: com daysAgo pequeno (mês corrente),
+    // daysAgo-2 ficaria negativo e deslocaria o lançamento financeiro.
+    const completedAt =
+      record.maintenanceStatus === 'completed'
+        ? isoDaysAgo(Math.max(record.daysAgo - 2, 0))
+        : null;
 
     const id = await upsertDemoRecord(supabase, 'maintenance_records', companyId, 'maintenance', record.key, {
       branch_id: maps.branches.get(branchKey) ?? null,

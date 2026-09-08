@@ -5,14 +5,21 @@ import {
   DEMO_EMPLOYEES,
   DEMO_SUPPLIERS,
   buildDemoFuelDefinitions,
+  buildDemoMaintenanceDefinitions,
   buildDemoPayrollDefinitions,
+  buildDemoTireDefinitions,
   buildDemoTripDefinitions,
+  demoBucketedDaysAgo,
   demoTripDaysAgo,
   getDemoCatalogMetadata,
 } from '../catalog';
 import {DEMO_COMPANY_SLUG, DEMO_COUNTS, DEMO_INTEGRATION_SOURCE} from '../constants';
 import {demoExternalId, demoUuid} from '../ids';
 import {assertDemoCatalogInvariants, isDemoCompanyRecord} from '../validators';
+
+function currentMonthDayCap(now: Date): number {
+  return Math.max(now.getUTCDate(), 1);
+}
 
 describe('demo seed catalog', () => {
   it('mantém invariantes do catálogo', () => {
@@ -105,6 +112,60 @@ describe('demo seed catalog', () => {
     expect(
       demoTripDaysAgo(Math.ceil(DEMO_COUNTS.trips * 0.4) + 1, DEMO_COUNTS.trips, now),
     ).toBeGreaterThan(30);
+  });
+
+  it('distribui fuel/maintenance/tires no mês corrente com vehicleKey', () => {
+    const now = new Date(Date.UTC(2026, 8, 6));
+    const dayCap = currentMonthDayCap(now);
+
+    const fuel = buildDemoFuelDefinitions(DEMO_COUNTS.fuelRecords, now);
+    const maintenance = buildDemoMaintenanceDefinitions(
+      DEMO_COUNTS.maintenanceRecords,
+      now,
+    );
+    const tires = buildDemoTireDefinitions(DEMO_COUNTS.tires, now);
+
+    const fuelCurrent = fuel.filter((row) => row.daysAgo <= dayCap);
+    const maintenanceCurrent = maintenance.filter((row) => row.daysAgo <= dayCap);
+    const tiresCurrent = tires.filter((row) => row.daysAgo <= dayCap);
+
+    expect(fuel).toHaveLength(DEMO_COUNTS.fuelRecords);
+    expect(maintenance).toHaveLength(DEMO_COUNTS.maintenanceRecords);
+    expect(tires).toHaveLength(DEMO_COUNTS.tires);
+
+    expect(fuelCurrent.length).toBeGreaterThanOrEqual(
+      Math.floor(DEMO_COUNTS.fuelRecords * 0.2),
+    );
+    expect(maintenanceCurrent.length).toBeGreaterThanOrEqual(
+      Math.floor(DEMO_COUNTS.maintenanceRecords * 0.2),
+    );
+    expect(tiresCurrent.length).toBeGreaterThanOrEqual(
+      Math.floor(DEMO_COUNTS.tires * 0.2),
+    );
+
+    expect(fuel.every((row) => Boolean(row.vehicleKey) && row.totalAmount > 0)).toBe(
+      true,
+    );
+    expect(
+      maintenance.every((row) => Boolean(row.vehicleKey) && row.amount > 0),
+    ).toBe(true);
+    expect(
+      tires.every((row) => Boolean(row.vehicleKey) && row.purchaseValue > 0),
+    ).toBe(true);
+
+    const fuelVehiclesCurrent = new Set(fuelCurrent.map((row) => row.vehicleKey));
+    expect(fuelVehiclesCurrent.size).toBeGreaterThanOrEqual(8);
+
+    const olderFuel = fuel.filter((row) => row.daysAgo > 30);
+    expect(olderFuel.length).toBeGreaterThan(0);
+    expect(Math.max(...fuel.map((row) => row.daysAgo))).toBeLessThanOrEqual(180);
+  });
+
+  it('reutiliza a mesma regra 20/20/60 em demoBucketedDaysAgo', () => {
+    const now = new Date(Date.UTC(2026, 8, 6));
+    expect(demoBucketedDaysAgo(1, 10, now)).toBe(demoTripDaysAgo(1, 10, now));
+    expect(demoBucketedDaysAgo(2, 10, now)).toBeLessThanOrEqual(6);
+    expect(demoBucketedDaysAgo(9, 10, now)).toBeGreaterThan(30);
   });
 });
 
