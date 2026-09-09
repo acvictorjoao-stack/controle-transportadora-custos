@@ -25,6 +25,19 @@ import {
   type TopRouteRankingItem,
 } from '../utils/rankings';
 
+/**
+ * Escopo semântico dos cards AP/AR no Dashboard Executivo.
+ * Valores vêm do cash-flow company-wide (estoque em aberto), sem filtros
+ * operacionais e sem folha — distinto do P&L/DRE do período.
+ */
+export const EXECUTIVE_OPEN_BALANCE_META = {
+  scope: 'company',
+  period: 'open_balance',
+  includesPayroll: false,
+} as const;
+
+export type ExecutiveOpenBalanceMeta = typeof EXECUTIVE_OPEN_BALANCE_META;
+
 export interface ExecutiveDashboardKpis {
   totalRevenue: number;
   totalCosts: number;
@@ -34,6 +47,8 @@ export interface ExecutiveDashboardKpis {
   completedTrips: number;
   accountsPayable: number;
   accountsReceivable: number;
+  /** Metadados dos saldos AP/AR (não afetam os valores numéricos). */
+  openBalances: ExecutiveOpenBalanceMeta;
 }
 
 export interface ExecutiveDashboardCoreData {
@@ -56,7 +71,8 @@ export interface ExecutiveDashboardData
   extends ExecutiveDashboardCoreData,
     ExecutiveDashboardSecondaryData {}
 
-function buildKpis(
+/** Monta KPIs executivos: DRE filtrada + AP/AR company-wide (estoque aberto). */
+export function buildExecutiveDashboardKpis(
   dre: OperationalDreData,
   financial: FinancialDashboardData,
 ): ExecutiveDashboardKpis {
@@ -69,11 +85,12 @@ function buildKpis(
     completedTrips: dre.indicators.tripCount,
     accountsPayable: financial.contasAPagar.total,
     accountsReceivable: financial.contasAReceber.total,
+    openBalances: EXECUTIVE_OPEN_BALANCE_META,
   };
 }
 
 /**
- * Caminho crítico: período atual + financeiro + manutenção (KPIs e rankings).
+ * Caminho crítico: DRE do período/filtros + financeiro company-wide + manutenção.
  */
 export async function getExecutiveDashboardCore(
   supabase: SupabaseClient,
@@ -94,7 +111,7 @@ export async function getExecutiveDashboardCore(
 
   return {
     period,
-    kpis: buildKpis(bundle.dre, financial),
+    kpis: buildExecutiveDashboardKpis(bundle.dre, financial),
     topRoutes: buildTopRoutes(bundle.byRoute.groups),
     topCustomers: buildTopCustomers(bundle.byCustomer),
     dre: bundle.dre,

@@ -9,6 +9,18 @@ export interface ExecutiveKpiGridProps {
   className?: string;
 }
 
+/** Rótulos estáveis dos cards de posição financeira (AP/AR). */
+export const EXECUTIVE_OPEN_BALANCE_LABELS = {
+  sectionTitle: 'Posição financeira da empresa',
+  sectionHint:
+    'Saldo em aberto • empresa inteira • independente dos filtros',
+  accountsPayableTitle: 'Saldo em aberto — Contas a Pagar',
+  accountsReceivableTitle: 'Saldo em aberto — Contas a Receber',
+  accountsPayableSubtitle: 'Empresa inteira • sem folha',
+  accountsReceivableSubtitle: 'Empresa inteira • independente dos filtros',
+  costsSubtitle: 'Inclui folha no escopo da DRE',
+} as const;
+
 function formatKm(value: number): string {
   return `${value.toLocaleString('pt-BR', {maximumFractionDigits: 1})} km`;
 }
@@ -22,12 +34,13 @@ function ExecutiveKpiGrid({kpis, className}: ExecutiveKpiGridProps) {
       : undefined;
 
   return (
-    <div className={cn('flex flex-col gap-3', className)}>
+    <div className={cn('flex flex-col gap-5', className)}>
       {!hasOperationalData && (
         <p className="text-sm text-muted-foreground">
           Sem dados para o período selecionado.
         </p>
       )}
+
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-4">
         <StatCard
           title="Receita Total"
@@ -36,6 +49,11 @@ function ExecutiveKpiGrid({kpis, className}: ExecutiveKpiGridProps) {
         <StatCard
           title="Custos Totais"
           value={hasOperationalData ? formatCurrencyBr(kpis.totalCosts) : '—'}
+          subtitle={
+            hasOperationalData
+              ? EXECUTIVE_OPEN_BALANCE_LABELS.costsSubtitle
+              : undefined
+          }
         />
         <StatCard
           title="Lucro Operacional"
@@ -67,16 +85,29 @@ function ExecutiveKpiGrid({kpis, className}: ExecutiveKpiGridProps) {
               : '—'
           }
         />
-        <StatCard
-          title="Contas a Pagar"
-          value={formatCurrencyBr(kpis.accountsPayable)}
-          subtitle="Saldo aberto"
-        />
-        <StatCard
-          title="Contas a Receber"
-          value={formatCurrencyBr(kpis.accountsReceivable)}
-          subtitle="Saldo aberto"
-        />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-0.5">
+          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            {EXECUTIVE_OPEN_BALANCE_LABELS.sectionTitle}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {EXECUTIVE_OPEN_BALANCE_LABELS.sectionHint}
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-4">
+          <StatCard
+            title={EXECUTIVE_OPEN_BALANCE_LABELS.accountsPayableTitle}
+            value={formatCurrencyBr(kpis.accountsPayable)}
+            subtitle={EXECUTIVE_OPEN_BALANCE_LABELS.accountsPayableSubtitle}
+          />
+          <StatCard
+            title={EXECUTIVE_OPEN_BALANCE_LABELS.accountsReceivableTitle}
+            value={formatCurrencyBr(kpis.accountsReceivable)}
+            subtitle={EXECUTIVE_OPEN_BALANCE_LABELS.accountsReceivableSubtitle}
+          />
+        </div>
       </div>
     </div>
   );
