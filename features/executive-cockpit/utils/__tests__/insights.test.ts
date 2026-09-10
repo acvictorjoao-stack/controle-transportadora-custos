@@ -37,6 +37,7 @@ function emptyDre(overrides: Partial<OperationalDreData> = {}): OperationalDreDa
     },
     analyticalTable: [],
     costCenterBreakdown: {byCode: {}, ranking: [], total: 0},
+    costsOnlyMode: false,
     filters: {},
     ...overrides,
   };

@@ -37,11 +37,19 @@ function makeDre(overrides: {
   costs: number;
   trips: number;
   km: number;
+  costsOnlyMode?: boolean;
 }): OperationalDreData {
-  const operatingProfit = overrides.revenue - overrides.costs;
+  const costsOnlyMode = overrides.costsOnlyMode ?? false;
+  const operatingProfit = costsOnlyMode
+    ? null
+    : overrides.revenue - overrides.costs;
   return {
-    filters: {},
-    revenues: {totalRevenue: overrides.revenue},
+    filters: costsOnlyMode ? {costCenterId: 'cc-1'} : {},
+    costsOnlyMode,
+    revenues: {
+      freightRevenue: costsOnlyMode ? 0 : overrides.revenue,
+      totalRevenue: costsOnlyMode ? 0 : overrides.revenue,
+    },
     costs: {
       fuel: 0,
       maintenance: 0,
@@ -54,11 +62,16 @@ function makeDre(overrides: {
     result: {
       operatingProfit,
       operatingMarginPercent:
-        overrides.revenue > 0 ? (operatingProfit / overrides.revenue) * 100 : null,
+        costsOnlyMode || overrides.revenue <= 0 || operatingProfit == null
+          ? null
+          : (operatingProfit / overrides.revenue) * 100,
     },
     indicators: {
       totalKm: overrides.km,
       tripCount: overrides.trips,
+      customersServed: 0,
+      routesUsed: 0,
+      vehiclesUsed: 0,
       revenuePerKm: null,
       costPerKm: null,
       profitPerKm: null,
@@ -66,9 +79,9 @@ function makeDre(overrides: {
       costPerTrip: null,
       profitPerTrip: null,
     },
-    analytical: [],
-    byCostCenter: {rows: [], unallocatedTotal: 0},
-  } as OperationalDreData;
+    analyticalTable: [],
+    costCenterBreakdown: {byCode: {}, ranking: [], total: 0},
+  };
 }
 
 function makeFinancial(ap: number, ar: number): FinancialDashboardData {
@@ -109,6 +122,29 @@ describe('buildExecutiveDashboardKpis', () => {
     expect(kpis.openBalances.scope).toBe('company');
     expect(kpis.openBalances.period).toBe('open_balance');
     expect(kpis.openBalances.includesPayroll).toBe(false);
+    expect(kpis.costsOnlyMode).toBe(false);
+  });
+
+  it('Audit #6: costs-only mode nulls P&L KPIs and keeps AP/AR untouched', () => {
+    const kpis = buildExecutiveDashboardKpis(
+      makeDre({
+        revenue: 1000,
+        costs: 400,
+        trips: 2,
+        km: 50,
+        costsOnlyMode: true,
+      }),
+      makeFinancial(777, 888),
+    );
+
+    expect(kpis.costsOnlyMode).toBe(true);
+    expect(kpis.totalRevenue).toBe(0);
+    expect(kpis.totalCosts).toBe(400);
+    expect(kpis.operatingProfit).toBeNull();
+    expect(kpis.operatingMarginPercent).toBeNull();
+    expect(kpis.accountsPayable).toBe(777);
+    expect(kpis.accountsReceivable).toBe(888);
+    expect(kpis.openBalances).toEqual(EXECUTIVE_OPEN_BALANCE_META);
   });
 
   it('mantém AP/AR estáveis quando a DRE muda (filtros/período)', () => {

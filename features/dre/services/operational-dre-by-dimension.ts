@@ -16,6 +16,7 @@ import type {
 } from '../types';
 import {formatOperationalDreRouteLabel} from '../utils/route-label';
 import {filterExpensesForScope} from './operational-dre-calculator';
+import {isOperationalDreCostsOnlyMode} from './operational-dre-costs-only';
 
 export {formatOperationalDreRouteLabel};
 
@@ -124,14 +125,17 @@ export function buildTripMetrics(
   trip: OperationalDreTripRow | OperationalDreTripDetailRow,
   expenses: OperationalDreExpenseRow[],
   costOverride?: number,
+  costsOnlyMode = false,
 ): OperationalDreTripMetrics {
-  const revenue = getTripFreightValue({
-    contractedFreightValue: trip.contractedFreightValue,
-    actualFreightValue: trip.actualFreightValue,
-  });
+  const revenue = costsOnlyMode
+    ? 0
+    : getTripFreightValue({
+        contractedFreightValue: trip.contractedFreightValue,
+        actualFreightValue: trip.actualFreightValue,
+      });
   const cost =
     costOverride !== undefined ? asFinite(costOverride) : sumTripCosts(trip.id, expenses);
-  const profit = revenue - cost;
+  const profit = costsOnlyMode ? null : revenue - cost;
   const detail = trip as OperationalDreTripDetailRow;
 
   return {
@@ -145,7 +149,8 @@ export function buildTripMetrics(
     revenue,
     cost,
     profit,
-    marginPercent: marginPercent(profit, revenue),
+    marginPercent:
+      costsOnlyMode || profit == null ? null : marginPercent(profit, revenue),
   };
 }
 
@@ -189,6 +194,7 @@ export function groupOperationalDreByDimension(
     allocationBaseTrips,
     unlinkedVehicleExpenses = [],
   } = options;
+  const costsOnlyMode = isOperationalDreCostsOnlyMode(filters);
   const scopedExpenses = filterExpensesForScope(expenses, filters, trips);
   const expenseById = new Map<string, OperationalDreExpenseRow>();
   for (const expense of [...scopedExpenses, ...unlinkedVehicleExpenses]) {
@@ -218,6 +224,7 @@ export function groupOperationalDreByDimension(
       trip,
       allocationExpenses,
       costByTripId.get(trip.id) ?? 0,
+      costsOnlyMode,
     );
     const existing = groups.get(dimensionKey);
 
@@ -248,7 +255,9 @@ export function groupOperationalDreByDimension(
 
   const result: OperationalDreDimensionGroup[] = Array.from(groups.values()).map(
     (group) => {
-      const totalProfit = group.totalRevenue - group.totalCost;
+      const totalProfit = costsOnlyMode
+        ? null
+        : group.totalRevenue - group.totalCost;
       return {
         dimensionKey: group.dimensionKey,
         dimensionType: dimension,
@@ -257,10 +266,17 @@ export function groupOperationalDreByDimension(
         totalRevenue: group.totalRevenue,
         totalCost: group.totalCost,
         totalProfit,
-        marginPercent: marginPercent(totalProfit, group.totalRevenue),
+        marginPercent:
+          costsOnlyMode || totalProfit == null
+            ? null
+            : marginPercent(totalProfit, group.totalRevenue),
         totalKm: group.totalKm,
-        costPerKm: guardedRatio(group.totalCost, group.totalKm),
-        revenuePerKm: guardedRatio(group.totalRevenue, group.totalKm),
+        costPerKm: costsOnlyMode
+          ? null
+          : guardedRatio(group.totalCost, group.totalKm),
+        revenuePerKm: costsOnlyMode
+          ? null
+          : guardedRatio(group.totalRevenue, group.totalKm),
         trips: includeTrips
           ? group.trips.sort((a, b) => {
               const aDate = a.date ?? '';

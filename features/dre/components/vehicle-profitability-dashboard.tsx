@@ -33,6 +33,7 @@ import type {
   OperationalDreVehicleGroup,
 } from '../types';
 import type {PeriodDelta} from '../utils/period-comparison';
+import {OperationalDreCostsOnlyBanner} from './operational-dre-costs-only-banner';
 import {OperationalDreFiltersBar} from './operational-dre-filters';
 import {OperationalDreVehicleCosts} from './operational-dre-vehicle-costs';
 import type {PeriodChartPoint} from './revenue-cost-profit-chart';
@@ -53,7 +54,8 @@ const RevenueCostProfitChart = dynamic(
 export interface VehicleBarChartPoint {
   key: string;
   label: string;
-  value: number;
+  /** Null no modo só custos (Audit #6) quando o eixo é lucro. */
+  value: number | null;
 }
 
 export interface VehicleProfitabilityDashboardProps {
@@ -143,8 +145,19 @@ function VehicleProfitabilityDashboard({
     [initialFilters, onBreadcrumbTrailChange],
   );
 
+  const hideProfitability =
+    dre.costsOnlyMode || dre.result.operatingProfit == null;
   const profitClass =
-    dre.result.operatingProfit < 0 ? 'text-destructive' : undefined;
+    dre.result.operatingProfit != null && dre.result.operatingProfit < 0
+      ? 'text-destructive'
+      : undefined;
+  const revenueDisplay = hideProfitability
+    ? '—'
+    : formatCurrencyBr(dre.revenues.totalRevenue);
+  const profitDisplay =
+    dre.costsOnlyMode || dre.result.operatingProfit == null
+      ? '—'
+      : formatCurrencyBr(dre.result.operatingProfit);
 
   const branchLabel =
     filterOptions.branches.find((b) => b.id === initialFilters.branchId)
@@ -173,10 +186,10 @@ function VehicleProfitabilityDashboard({
       buildRankingExportPayload({
         title: 'Rentabilidade por Veículo',
         kpis: [
-          {label: 'Receita', value: formatCurrencyBr(dre.revenues.totalRevenue)},
+          {label: 'Receita', value: revenueDisplay},
           {
             label: 'Lucro',
-            value: formatCurrencyBr(dre.result.operatingProfit),
+            value: profitDisplay,
           },
           {label: 'KM Rodados', value: formatKm(dre.indicators.totalKm)},
         ],
@@ -191,15 +204,16 @@ function VehicleProfitabilityDashboard({
         ],
         rows: rankingRows.map((row) => ({
           name: row.name,
-          revenue: row.revenue,
+          revenue: dre.costsOnlyMode ? '—' : row.revenue,
           costs: row.costs,
-          profit: row.profit,
+          profit:
+            dre.costsOnlyMode || row.profit == null ? '—' : row.profit,
           km: row.totalKm,
           revenuePerKm: row.revenuePerKm,
           profitPerKm: row.profitPerKm,
         })),
       }),
-    [dre, rankingRows],
+    [dre, profitDisplay, rankingRows, revenueDisplay],
   );
 
   const crossLinks = React.useMemo(
@@ -246,26 +260,21 @@ function VehicleProfitabilityDashboard({
         basePath={ROUTES.dashboardRentabilidadeVeiculos}
       />
 
+      <OperationalDreCostsOnlyBanner active={dre.costsOnlyMode} />
+
       <Section
         title="Indicadores"
         description="Qual veículo gera mais dinheiro no período."
       >
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-4">
-          <StatCard
-            title="Receita"
-            value={formatCurrencyBr(dre.revenues.totalRevenue)}
-          />
+          <StatCard title="Receita" value={revenueDisplay} />
           <StatCard
             title="Custos"
             value={formatCurrencyBr(dre.costs.totalOperatingCosts)}
           />
           <StatCard
             title="Lucro"
-            value={
-              <span className={profitClass}>
-                {formatCurrencyBr(dre.result.operatingProfit)}
-              </span>
-            }
+            value={<span className={profitClass}>{profitDisplay}</span>}
           />
           <StatCard title="KM Rodados" value={formatKm(dre.indicators.totalKm)} />
           <StatCard
@@ -369,8 +378,14 @@ function VehicleProfitabilityDashboard({
                 id: 'profit',
                 header: 'Lucro',
                 cell: (row: VehicleRankingRow) => (
-                  <span className={row.profit < 0 ? 'text-destructive' : undefined}>
-                    {formatCurrencyBr(row.profit)}
+                  <span
+                    className={
+                      row.profit != null && row.profit < 0
+                        ? 'text-destructive'
+                        : undefined
+                    }
+                  >
+                    {row.profit == null ? '—' : formatCurrencyBr(row.profit)}
                   </span>
                 ),
               },

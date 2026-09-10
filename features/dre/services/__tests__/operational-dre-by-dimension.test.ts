@@ -104,6 +104,19 @@ describe('sumTripCosts / buildTripMetrics', () => {
     expect(metrics.profit).toBe(-50);
     expect(metrics.marginPercent).toBeNull();
   });
+
+  it('Audit #6: costs-only mode zeros revenue and nulls profit/margin', () => {
+    const metrics = buildTripMetrics(
+      makeTripDetail({actualFreightValue: 4500}),
+      [makeExpense({amount: 800})],
+      undefined,
+      true,
+    );
+    expect(metrics.revenue).toBe(0);
+    expect(metrics.cost).toBe(800);
+    expect(metrics.profit).toBeNull();
+    expect(metrics.marginPercent).toBeNull();
+  });
 });
 
 describe('calculateOperationalDreByRoute — grouping', () => {
@@ -166,6 +179,36 @@ describe('calculateOperationalDreByRoute — grouping', () => {
     expect(groups[2]?.dimensionKey).toBe(OPERATIONAL_DRE_UNASSIGNED_DIMENSION_KEY);
     expect(groups[2]?.route.id).toBeNull();
     expect(groups[2]?.totalCost).toBe(200);
+  });
+
+  it('Audit #6: cost center filter zeros group revenue and nulls margin', () => {
+    const trips = [
+      makeTrip({
+        id: 't1',
+        routeId: 'route-a',
+        actualFreightValue: 5000,
+        distanceKm: 100,
+      }),
+    ];
+    const expenses = [
+      makeExpense({
+        id: 'e1',
+        tripId: 't1',
+        amount: 1200,
+        costCenterId: 'cc-op',
+      }),
+    ];
+    const groups = groupOperationalDreByDimension(trips, expenses, {
+      costCenterId: 'cc-op',
+    }, {dimension: 'route', labels: new Map([['route-a', 'Rota A']])});
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0]?.totalRevenue).toBe(0);
+    expect(groups[0]?.totalCost).toBe(1200);
+    expect(groups[0]?.totalProfit).toBeNull();
+    expect(groups[0]?.marginPercent).toBeNull();
+    expect(groups[0]?.costPerKm).toBeNull();
+    expect(groups[0]?.revenuePerKm).toBeNull();
   });
 
   it('applies customer/route filters to expense scope', () => {

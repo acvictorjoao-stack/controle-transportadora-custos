@@ -55,12 +55,15 @@ function TopCustomersCard({customers, filters = {}}: TopCustomersCardProps) {
                   <p className="font-financial">{formatCurrencyBr(customer.revenue)}</p>
                   <p
                     className={`font-financial text-xs ${
-                      customer.profit < 0
+                      customer.profit != null && customer.profit < 0
                         ? 'text-destructive'
                         : 'text-muted-foreground'
                     }`}
                   >
-                    Lucro {formatCurrencyBr(customer.profit)}
+                    Lucro{' '}
+                    {customer.profit == null
+                      ? '—'
+                      : formatCurrencyBr(customer.profit)}
                   </p>
                 </div>
               </li>

@@ -20,6 +20,7 @@ import type {
   OperationalDreTripRow,
 } from '../types';
 import {expenseMatchesDimensionalScope} from './operational-dre-expense-scope';
+import {isOperationalDreCostsOnlyMode} from './operational-dre-costs-only';
 
 function asFinite(value: number): number {
   return Number.isFinite(value) ? value : 0;
@@ -104,12 +105,14 @@ export function aggregateCosts(expenses: OperationalDreExpenseRow[]): Operationa
 export function buildIndicators(input: {
   totalRevenue: number;
   totalOperatingCosts: number;
-  operatingProfit: number;
+  operatingProfit: number | null;
   tripCount: number;
   totalKm: number;
   customersServed: number;
   routesUsed: number;
   vehiclesUsed: number;
+  /** Audit #6 — anula ratios assimétricos (custo/receita vs volume operacional). */
+  costsOnlyMode?: boolean;
 }): OperationalDreIndicators {
   const {
     totalRevenue,
@@ -120,15 +123,34 @@ export function buildIndicators(input: {
     customersServed,
     routesUsed,
     vehiclesUsed,
+    costsOnlyMode = false,
   } = input;
+
+  if (costsOnlyMode) {
+    return {
+      revenuePerKm: null,
+      costPerKm: null,
+      profitPerKm: null,
+      revenuePerTrip: null,
+      costPerTrip: null,
+      profitPerTrip: null,
+      tripCount,
+      totalKm,
+      customersServed,
+      routesUsed,
+      vehiclesUsed,
+    };
+  }
 
   return {
     revenuePerKm: guardedRatio(totalRevenue, totalKm),
     costPerKm: guardedRatio(totalOperatingCosts, totalKm),
-    profitPerKm: guardedRatio(operatingProfit, totalKm),
+    profitPerKm:
+      operatingProfit == null ? null : guardedRatio(operatingProfit, totalKm),
     revenuePerTrip: guardedRatio(totalRevenue, tripCount),
     costPerTrip: guardedRatio(totalOperatingCosts, tripCount),
-    profitPerTrip: guardedRatio(operatingProfit, tripCount),
+    profitPerTrip:
+      operatingProfit == null ? null : guardedRatio(operatingProfit, tripCount),
     tripCount,
     totalKm,
     customersServed,
@@ -140,10 +162,13 @@ export function buildIndicators(input: {
 export function buildAnalyticalTable(
   totalRevenue: number,
   costs: OperationalDreCosts,
-  operatingProfit: number,
+  operatingProfit: number | null,
+  costsOnlyMode = false,
 ): OperationalDreAnalyticalRow[] {
-  const rows: Array<{category: OperationalDreAnalyticalRow['category']; value: number}> = [
-    {category: 'receita', value: totalRevenue},
+  const costRows: Array<{
+    category: OperationalDreAnalyticalRow['category'];
+    value: number;
+  }> = [
     {category: DRE_COST_BUCKET_TO_ANALYTICAL.fuel, value: costs.fuel},
     {category: DRE_COST_BUCKET_TO_ANALYTICAL.maintenance, value: costs.maintenance},
     {category: DRE_COST_BUCKET_TO_ANALYTICAL.tires, value: costs.tires},
@@ -153,14 +178,26 @@ export function buildAnalyticalTable(
       value: costs.accountsPayable,
     },
     {category: DRE_COST_BUCKET_TO_ANALYTICAL.other, value: costs.other},
-    {category: 'lucro', value: operatingProfit},
   ];
+
+  const rows: Array<{
+    category: OperationalDreAnalyticalRow['category'];
+    value: number;
+  }> = costsOnlyMode
+    ? costRows
+    : [
+        {category: 'receita', value: totalRevenue},
+        ...costRows,
+        {category: 'lucro', value: operatingProfit ?? 0},
+      ];
 
   return rows.map((row) => ({
     category: row.category,
     label: DRE_ANALYTICAL_LABELS[row.category],
     value: row.value,
-    percentOfRevenue: percentOfRevenue(row.value, totalRevenue),
+    percentOfRevenue: costsOnlyMode
+      ? null
+      : percentOfRevenue(row.value, totalRevenue),
   }));
 }
 
@@ -288,20 +325,28 @@ export function aggregateCostsByCostCenter(
 /**
  * Consolida a DRE Operacional a partir de linhas já filtradas.
  * Toda regra financeira da DRE vive aqui — componentes só renderizam.
+ *
+ * Audit #6: com `costCenterId`, modo só custos — frete não é atribuído;
+ * lucro/margem ficam null (sem P&L comparável).
  */
 export function calculateOperationalDre(
   trips: OperationalDreTripRow[],
   expenses: OperationalDreExpenseRow[],
   filters: OperationalDreFilters = {},
 ): OperationalDreData {
+  const costsOnlyMode = isOperationalDreCostsOnlyMode(filters);
   const scopedExpenses = filterExpensesForScope(expenses, filters, trips);
-  const freightRevenue = sumFreightRevenue(trips);
+  const freightRevenue = costsOnlyMode ? 0 : sumFreightRevenue(trips);
   const totalRevenue = freightRevenue;
   const costs = aggregateCosts(scopedExpenses);
   const costCenterBreakdown = aggregateCostsByCostCenter(scopedExpenses);
-  const operatingProfit = totalRevenue - costs.totalOperatingCosts;
+  const operatingProfit = costsOnlyMode
+    ? null
+    : totalRevenue - costs.totalOperatingCosts;
   const operatingMarginPercent =
-    totalRevenue > 0 ? (operatingProfit / totalRevenue) * 100 : null;
+    costsOnlyMode || totalRevenue <= 0 || operatingProfit == null
+      ? null
+      : (operatingProfit / totalRevenue) * 100;
   const dimensions = summarizeTripDimensions(trips);
 
   return {
@@ -318,10 +363,17 @@ export function calculateOperationalDre(
       totalRevenue,
       totalOperatingCosts: costs.totalOperatingCosts,
       operatingProfit,
+      costsOnlyMode,
       ...dimensions,
     }),
-    analyticalTable: buildAnalyticalTable(totalRevenue, costs, operatingProfit),
+    analyticalTable: buildAnalyticalTable(
+      totalRevenue,
+      costs,
+      operatingProfit,
+      costsOnlyMode,
+    ),
     costCenterBreakdown,
+    costsOnlyMode,
     filters,
   };
 }

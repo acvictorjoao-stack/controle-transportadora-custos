@@ -33,7 +33,8 @@ import {
 export interface VehicleBarChartPoint {
   key: string;
   label: string;
-  value: number;
+  /** Null no modo só custos (Audit #6) quando o eixo é lucro. */
+  value: number | null;
 }
 
 export interface VehicleProfitabilityDashboardData {

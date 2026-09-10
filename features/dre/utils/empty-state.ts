@@ -34,6 +34,7 @@ export const EMPTY_OPERATIONAL_DRE: OperationalDreData = {
   },
   analyticalTable: [],
   costCenterBreakdown: {byCode: {}, ranking: [], total: 0},
+  costsOnlyMode: false,
   filters: {},
 };
 

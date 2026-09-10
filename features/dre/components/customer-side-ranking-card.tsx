@@ -50,10 +50,14 @@ function CustomerSideRankingCard({
                 <div className="shrink-0 text-right text-sm">
                   <p
                     className={`font-financial ${
-                      customer.profit < 0 ? 'text-destructive' : ''
+                      customer.profit != null && customer.profit < 0
+                        ? 'text-destructive'
+                        : ''
                     }`}
                   >
-                    {formatCurrencyBr(customer.profit)}
+                    {customer.profit == null
+                      ? '—'
+                      : formatCurrencyBr(customer.profit)}
                   </p>
                   {showMargin ? (
                     <p className="font-financial text-xs text-muted-foreground">

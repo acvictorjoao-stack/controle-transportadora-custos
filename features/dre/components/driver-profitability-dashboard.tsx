@@ -37,6 +37,7 @@ import type {
   OperationalDreVehicleGroup,
 } from '../types';
 import type {PeriodDelta} from '../utils/period-comparison';
+import {OperationalDreCostsOnlyBanner} from './operational-dre-costs-only-banner';
 import {OperationalDreDriverCosts} from './operational-dre-driver-costs';
 import {OperationalDreFiltersBar} from './operational-dre-filters';
 import type {PeriodChartPoint} from './revenue-cost-profit-chart';
@@ -54,7 +55,8 @@ const RevenueCostProfitChart = dynamic(
 export interface DriverBarChartPoint {
   key: string;
   label: string;
-  value: number;
+  /** Null no modo só custos (Audit #6). */
+  value: number | null;
 }
 
 export interface DriverProfitabilityDashboardProps {
@@ -126,7 +128,7 @@ function sortDriverRows(
           return row.costPerTrip ?? Number.NEGATIVE_INFINITY;
         case 'profit':
         default:
-          return row.profit;
+          return row.profit ?? Number.NEGATIVE_INFINITY;
       }
     };
     return pick(b) - pick(a);
@@ -189,9 +191,21 @@ function DriverProfitabilityDashboard({
     [initialFilters, onBreadcrumbTrailChange],
   );
 
+  const hideProfitability =
+    dre.costsOnlyMode || dre.result.operatingProfit == null;
   const profitClass =
-    dre.result.operatingProfit < 0 ? 'text-destructive' : undefined;
+    dre.result.operatingProfit != null && dre.result.operatingProfit < 0
+      ? 'text-destructive'
+      : undefined;
   const avgMargin = averageMargin(byDriver.groups);
+  const revenueDisplay = hideProfitability
+    ? '—'
+    : formatCurrencyBr(dre.revenues.totalRevenue);
+  const profitDisplay =
+    dre.costsOnlyMode || dre.result.operatingProfit == null
+      ? '—'
+      : formatCurrencyBr(dre.result.operatingProfit);
+  const marginDisplay = hideProfitability ? '—' : formatPercent(avgMargin);
 
   const branchLabel =
     filterOptions.branches.find((b) => b.id === initialFilters.branchId)
@@ -227,13 +241,13 @@ function DriverProfitabilityDashboard({
         kpis: [
           {
             label: 'Receita Total',
-            value: formatCurrencyBr(dre.revenues.totalRevenue),
+            value: revenueDisplay,
           },
           {
             label: 'Lucro',
-            value: formatCurrencyBr(dre.result.operatingProfit),
+            value: profitDisplay,
           },
-          {label: 'Margem Média', value: formatPercent(avgMargin)},
+          {label: 'Margem Média', value: marginDisplay},
           {
             label: 'Viagens',
             value: dre.indicators.tripCount.toLocaleString('pt-BR'),
@@ -253,16 +267,17 @@ function DriverProfitabilityDashboard({
         rows: sortedRankingRows.map((row) => ({
           name: row.name,
           trips: row.tripCount,
-          revenue: row.revenue,
+          revenue: dre.costsOnlyMode ? '—' : row.revenue,
           costs: row.costs,
-          profit: row.profit,
+          profit:
+            dre.costsOnlyMode || row.profit == null ? '—' : row.profit,
           margin: row.marginPercent,
           km: row.totalKm,
           revenuePerTrip: row.revenuePerTrip,
           costPerTrip: row.costPerTrip,
         })),
       }),
-    [avgMargin, dre, sortedRankingRows],
+    [dre, marginDisplay, profitDisplay, revenueDisplay, sortedRankingRows],
   );
 
   const crossLinks = React.useMemo(
@@ -309,28 +324,23 @@ function DriverProfitabilityDashboard({
         basePath={ROUTES.dashboardRentabilidadeMotoristas}
       />
 
+      <OperationalDreCostsOnlyBanner active={dre.costsOnlyMode} />
+
       <Section
         title="Indicadores"
         description="Rentabilidade consolidada dos motoristas no período."
       >
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-          <StatCard
-            title="Receita Total"
-            value={formatCurrencyBr(dre.revenues.totalRevenue)}
-          />
+          <StatCard title="Receita Total" value={revenueDisplay} />
           <StatCard
             title="Custo Total"
             value={formatCurrencyBr(dre.costs.totalOperatingCosts)}
           />
           <StatCard
             title="Lucro"
-            value={
-              <span className={profitClass}>
-                {formatCurrencyBr(dre.result.operatingProfit)}
-              </span>
-            }
+            value={<span className={profitClass}>{profitDisplay}</span>}
           />
-          <StatCard title="Margem %" value={formatPercent(avgMargin)} />
+          <StatCard title="Margem %" value={marginDisplay} />
           <StatCard
             title="Quantidade de Viagens"
             value={dre.indicators.tripCount.toLocaleString('pt-BR')}
@@ -416,8 +426,14 @@ function DriverProfitabilityDashboard({
                 id: 'profit',
                 header: 'Lucro',
                 cell: (row: DriverRankingRow) => (
-                  <span className={row.profit < 0 ? 'text-destructive' : undefined}>
-                    {formatCurrencyBr(row.profit)}
+                  <span
+                    className={
+                      row.profit != null && row.profit < 0
+                        ? 'text-destructive'
+                        : undefined
+                    }
+                  >
+                    {row.profit == null ? '—' : formatCurrencyBr(row.profit)}
                   </span>
                 ),
               },

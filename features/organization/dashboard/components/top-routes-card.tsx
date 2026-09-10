@@ -60,10 +60,13 @@ function TopRoutesCard({routes, filters = {}}: TopRoutesCardProps) {
                   <p className="font-financial">{formatCurrencyBr(route.revenue)}</p>
                   <p
                     className={`font-financial text-xs ${
-                      route.profit < 0 ? 'text-destructive' : 'text-muted-foreground'
+                      route.profit != null && route.profit < 0
+                        ? 'text-destructive'
+                        : 'text-muted-foreground'
                     }`}
                   >
-                    Lucro {formatCurrencyBr(route.profit)}
+                    Lucro{' '}
+                    {route.profit == null ? '—' : formatCurrencyBr(route.profit)}
                   </p>
                 </div>
               </li>

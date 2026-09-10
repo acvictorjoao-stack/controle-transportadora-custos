@@ -36,7 +36,11 @@ export interface OperationalDreCosts {
 }
 
 export interface OperationalDreResult {
-  operatingProfit: number;
+  /**
+   * Null quando não há P&L comparável (sem receita ou modo só custos /
+   * filtro de centro de custo — Audit #6).
+   */
+  operatingProfit: number | null;
   /** Null quando não há receita no período (sem base para margem). */
   operatingMarginPercent: number | null;
 }
@@ -80,6 +84,11 @@ export interface OperationalDreData {
   analyticalTable: OperationalDreAnalyticalRow[];
   /** Custos agregados por centro organizacional (OPERACIONAL, RH, …). */
   costCenterBreakdown: OperationalDreCostCenterBreakdown;
+  /**
+   * True quando `costCenterId` está ativo: receita/frete e lucro/margem
+   * não são atribuíveis (Audit #6 — modo só custos).
+   */
+  costsOnlyMode: boolean;
   filters: OperationalDreFilters;
 }
 
@@ -160,7 +169,8 @@ export interface OperationalDreTripMetrics {
   distanceKm: number;
   revenue: number;
   cost: number;
-  profit: number;
+  /** Null no modo só custos (centro de custo — Audit #6). */
+  profit: number | null;
   marginPercent: number | null;
 }
 
@@ -175,7 +185,8 @@ export interface OperationalDreDimensionGroup {
   tripCount: number;
   totalRevenue: number;
   totalCost: number;
-  totalProfit: number;
+  /** Null no modo só custos (centro de custo — Audit #6). */
+  totalProfit: number | null;
   marginPercent: number | null;
   totalKm: number;
   costPerKm: number | null;

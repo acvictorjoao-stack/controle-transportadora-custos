@@ -12,7 +12,8 @@ export type TrendDirection = 'up' | 'down' | 'stable';
 
 export interface CockpitMetricSnapshot {
   receita: number;
-  lucro: number;
+  /** Null no modo só custos (Audit #6) ou sem P&L comparável. */
+  lucro: number | null;
   margem: number | null;
   custos: number;
   sla: number | null;

@@ -41,7 +41,7 @@ export type ExecutiveOpenBalanceMeta = typeof EXECUTIVE_OPEN_BALANCE_META;
 export interface ExecutiveDashboardKpis {
   totalRevenue: number;
   totalCosts: number;
-  operatingProfit: number;
+  operatingProfit: number | null;
   operatingMarginPercent: number | null;
   totalKm: number;
   completedTrips: number;
@@ -49,6 +49,8 @@ export interface ExecutiveDashboardKpis {
   accountsReceivable: number;
   /** Metadados dos saldos AP/AR (não afetam os valores numéricos). */
   openBalances: ExecutiveOpenBalanceMeta;
+  /** Audit #6 — P&L de frete não atribuível com filtro de centro. */
+  costsOnlyMode: boolean;
 }
 
 export interface ExecutiveDashboardCoreData {
@@ -86,6 +88,7 @@ export function buildExecutiveDashboardKpis(
     accountsPayable: financial.contasAPagar.total,
     accountsReceivable: financial.contasAReceber.total,
     openBalances: EXECUTIVE_OPEN_BALANCE_META,
+    costsOnlyMode: dre.costsOnlyMode,
   };
 }
 

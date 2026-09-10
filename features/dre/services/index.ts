@@ -11,6 +11,10 @@ export {
   summarizeTripDimensions,
 } from './operational-dre-calculator';
 export {
+  isOperationalDreCostsOnlyMode,
+  OPERATIONAL_DRE_COSTS_ONLY_BANNER,
+} from './operational-dre-costs-only';
+export {
   expenseMatchesDimensionalScope,
   hasOperationalDreDimensionalFilters,
   resolveOperationalDreExpenseDimensionFilter,
