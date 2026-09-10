@@ -7,6 +7,7 @@ import {Skeleton} from '@/components/ui/skeleton';
 import {ROUTES} from '@/constants/routes/paths';
 import {RoutesWithoutLeadTimeAlert} from '@/features/cadastro-quality/components';
 import {OperationalDreFiltersBar} from '@/features/dre/components';
+import {OperationalDreCostsOnlyBanner} from '@/features/dre/components/operational-dre-costs-only-banner';
 import {
   getOperationalDreFilterOptions,
 } from '@/features/dre/loaders';
@@ -131,6 +132,7 @@ export default async function DashboardPage({searchParams}: DashboardPageProps) 
             {entitySummary ? (
               <p className="text-xs text-muted-foreground">{entitySummary}</p>
             ) : null}
+            <OperationalDreCostsOnlyBanner active={core.kpis.costsOnlyMode} />
           </div>
 
           <Section

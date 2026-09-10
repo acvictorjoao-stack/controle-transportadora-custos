@@ -44,6 +44,7 @@ import {
 } from '../utils/period-comparison';
 import {CustomerSideRankingCard} from './customer-side-ranking-card';
 import type {PeriodChartPoint} from './revenue-cost-profit-chart';
+import {OperationalDreCostsOnlyBanner} from './operational-dre-costs-only-banner';
 import {OperationalDreCustomerCosts} from './operational-dre-customer-costs';
 import {OperationalDreFiltersBar} from './operational-dre-filters';
 import dynamic from 'next/dynamic';
@@ -62,7 +63,8 @@ const RevenueCostProfitChart = dynamic(
 export interface CustomerBarChartPoint {
   key: string;
   label: string;
-  value: number;
+  /** Null no modo só custos (Audit #6). */
+  value: number | null;
 }
 
 export interface CustomerProfitabilityDashboardProps {
@@ -183,8 +185,20 @@ function CustomerProfitabilityDashboard({
   const customerCount = byCustomer.groups.length;
   const ticketMedio =
     customerCount > 0 ? dre.revenues.totalRevenue / customerCount : null;
+  const hideProfitability =
+    dre.costsOnlyMode || dre.result.operatingProfit == null;
   const profitClass =
-    dre.result.operatingProfit < 0 ? 'text-destructive' : undefined;
+    dre.result.operatingProfit != null && dre.result.operatingProfit < 0
+      ? 'text-destructive'
+      : undefined;
+  const revenueDisplay = hideProfitability
+    ? '—'
+    : formatCurrencyBr(dre.revenues.totalRevenue);
+  const profitDisplay =
+    dre.costsOnlyMode || dre.result.operatingProfit == null
+      ? '—'
+      : formatCurrencyBr(dre.result.operatingProfit);
+  const marginDisplay = hideProfitability ? '—' : formatPercent(avgMargin);
 
   const branchLabel =
     filterOptions.branches.find((b) => b.id === initialFilters.branchId)
@@ -215,13 +229,13 @@ function CustomerProfitabilityDashboard({
         kpis: [
           {
             label: 'Receita Total',
-            value: formatCurrencyBr(dre.revenues.totalRevenue),
+            value: revenueDisplay,
           },
           {
             label: 'Lucro Operacional',
-            value: formatCurrencyBr(dre.result.operatingProfit),
+            value: profitDisplay,
           },
-          {label: 'Margem Média', value: formatPercent(avgMargin)},
+          {label: 'Margem Média', value: marginDisplay},
           {
             label: 'Clientes',
             value: customerCount.toLocaleString('pt-BR'),
@@ -238,15 +252,23 @@ function CustomerProfitabilityDashboard({
         ],
         rows: rankingRows.map((row) => ({
           name: row.name,
-          revenue: row.revenue,
+          revenue: dre.costsOnlyMode ? '—' : row.revenue,
           costs: row.costs,
-          profit: row.profit,
+          profit:
+            dre.costsOnlyMode || row.profit == null ? '—' : row.profit,
           margin: row.marginPercent,
           trips: row.tripCount,
           status: formatMarginStatus(row.status as MarginStatus),
         })),
       }),
-    [avgMargin, customerCount, dre, rankingRows],
+    [
+      customerCount,
+      dre.costsOnlyMode,
+      marginDisplay,
+      profitDisplay,
+      rankingRows,
+      revenueDisplay,
+    ],
   );
 
   const crossLinks = React.useMemo(
@@ -289,6 +311,8 @@ function CustomerProfitabilityDashboard({
         basePath={ROUTES.dashboardRentabilidadeClientes}
       />
 
+      <OperationalDreCostsOnlyBanner active={dre.costsOnlyMode} />
+
       <Section
         title="Indicadores"
         description="Quanto cada cliente realmente deixa de lucro no período."
@@ -296,7 +320,7 @@ function CustomerProfitabilityDashboard({
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-4">
           <StatCard
             title="Receita Total"
-            value={formatCurrencyBr(dre.revenues.totalRevenue)}
+            value={revenueDisplay}
             subtitle={
               <DeltaSubtitle value={periodComparison.revenuePercent} />
             }
@@ -313,16 +337,12 @@ function CustomerProfitabilityDashboard({
           />
           <StatCard
             title="Lucro Operacional"
-            value={
-              <span className={profitClass}>
-                {formatCurrencyBr(dre.result.operatingProfit)}
-              </span>
-            }
+            value={<span className={profitClass}>{profitDisplay}</span>}
             subtitle={
               <DeltaSubtitle value={periodComparison.profitPercent} />
             }
           />
-          <StatCard title="Margem Média" value={formatPercent(avgMargin)} />
+          <StatCard title="Margem Média" value={marginDisplay} />
           <StatCard
             title="Número de Clientes"
             value={customerCount.toLocaleString('pt-BR')}
@@ -387,10 +407,14 @@ function CustomerProfitabilityDashboard({
                     cell: (row: CustomerRankingRow) => (
                       <span
                         className={
-                          row.profit < 0 ? 'text-destructive' : undefined
+                          row.profit != null && row.profit < 0
+                            ? 'text-destructive'
+                            : undefined
                         }
                       >
-                        {formatCurrencyBr(row.profit)}
+                        {row.profit == null
+                          ? '—'
+                          : formatCurrencyBr(row.profit)}
                       </span>
                     ),
                   },

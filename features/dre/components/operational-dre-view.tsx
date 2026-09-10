@@ -18,6 +18,7 @@ import type {
   OperationalDreFilterOptions,
   OperationalDreFilters,
 } from '../types';
+import {OperationalDreCostsOnlyBanner} from './operational-dre-costs-only-banner';
 import {OperationalDreFiltersBar} from './operational-dre-filters';
 import {OperationalDreRouteCosts} from './operational-dre-route-costs';
 
@@ -48,7 +49,8 @@ function formatKm(value: number): string {
   })} km`;
 }
 
-function resultClass(value: number): string | undefined {
+function resultClass(value: number | null | undefined): string | undefined {
+  if (value == null) return undefined;
   return value < 0 ? 'text-destructive' : undefined;
 }
 
@@ -65,6 +67,15 @@ function OperationalDreView({
 }: OperationalDreViewProps) {
   const {revenues, costs, result, indicators, analyticalTable, costCenterBreakdown} =
     data;
+  const costsOnlyMode = data.costsOnlyMode;
+  const revenueDisplay = costsOnlyMode ? '—' : formatMoney(revenues.freightRevenue);
+  const totalRevenueDisplay = costsOnlyMode
+    ? '—'
+    : formatMoney(revenues.totalRevenue);
+  const profitDisplay =
+    costsOnlyMode || result.operatingProfit == null
+      ? '—'
+      : formatMoney(result.operatingProfit);
 
   const displayCenters = costCenterBreakdown.ranking.length
     ? costCenterBreakdown.ranking.map((row) => ({
@@ -114,6 +125,8 @@ function OperationalDreView({
           basePath={ROUTES.dashboardDre}
         />
 
+        <OperationalDreCostsOnlyBanner active={costsOnlyMode} />
+
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
           <Card>
             <CardHeader className="pb-2">
@@ -123,13 +136,13 @@ function OperationalDreView({
               <div>
                 <p className="text-xs text-muted-foreground">Receita de Fretes</p>
                 <p className="font-financial text-lg font-semibold">
-                  {formatMoney(revenues.freightRevenue)}
+                  {revenueDisplay}
                 </p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Receita Total</p>
                 <p className="font-financial text-xl font-semibold">
-                  {formatMoney(revenues.totalRevenue)}
+                  {totalRevenueDisplay}
                 </p>
               </div>
             </CardContent>
@@ -168,7 +181,7 @@ function OperationalDreView({
                     resultClass(result.operatingProfit) ?? ''
                   }`}
                 >
-                  {formatMoney(result.operatingProfit)}
+                  {profitDisplay}
                 </p>
               </div>
               <div>
@@ -180,7 +193,7 @@ function OperationalDreView({
                       : (resultClass(result.operatingMarginPercent) ?? '')
                   }`}
                 >
-                  {result.operatingMarginPercent == null
+                  {costsOnlyMode || result.operatingMarginPercent == null
                     ? '—'
                     : formatPercent(result.operatingMarginPercent)}
                 </p>

@@ -130,10 +130,114 @@ describe('analytics-nav related insights', () => {
 
     expect(insights.some((i) => i.id === 'top-customer')).toBe(true);
     expect(insights.find((i) => i.id === 'top-customer')?.label).toBe('Mateus');
+    expect(insights.find((i) => i.id === 'top-customer')?.subtitle).toContain(
+      'Lucro',
+    );
     expect(insights.find((i) => i.id === 'top-vehicle')?.label).toBe('ABC-1234');
     expect(insights.find((i) => i.id === 'branch')?.label).toBe('São Luís');
     expect(
       insights.find((i) => i.id === 'top-customer')?.href,
     ).toContain('cliente=c1');
+  });
+
+  it('Audit #6: totalProfit null não vira ranking nem subtítulo monetário', () => {
+    const insights = buildRelatedInsights({
+      filters: {costCenterId: 'cc-1'},
+      customers: [
+        customer({
+          dimensionKey: 'c1',
+          label: 'Cliente CC',
+          totalProfit: null,
+          totalRevenue: 0,
+          marginPercent: null,
+        }),
+        customer({
+          dimensionKey: 'c2',
+          label: 'Outro CC',
+          totalProfit: null,
+          totalRevenue: 0,
+          marginPercent: null,
+        }),
+      ],
+      vehicles: [
+        vehicle({
+          dimensionKey: 'v1',
+          label: 'ABC-1234',
+          tripCount: 5,
+          totalProfit: null,
+          totalRevenue: 0,
+          marginPercent: null,
+        }),
+        vehicle({
+          dimensionKey: 'v2',
+          label: 'XYZ-0001',
+          tripCount: 2,
+          totalProfit: null,
+          totalRevenue: 0,
+          marginPercent: null,
+        }),
+      ],
+      routes: [
+        route({
+          dimensionKey: 'r1',
+          label: 'SLZ → Imp',
+          totalProfit: null,
+          totalRevenue: 0,
+          marginPercent: null,
+        }),
+      ],
+      branchLabel: 'São Luís',
+    });
+
+    expect(insights.some((i) => i.id === 'top-customer')).toBe(false);
+    expect(insights.some((i) => i.id === 'top-profit-vehicle')).toBe(false);
+    expect(insights.some((i) => i.id === 'top-route')).toBe(false);
+    // Volume operacional (viagens) continua disponível
+    expect(insights.find((i) => i.id === 'top-vehicle')?.label).toBe('ABC-1234');
+    expect(insights.find((i) => i.id === 'branch')?.label).toBe('São Luís');
+  });
+
+  it('Audit #6: null não compete com lucro numérico na ordenação', () => {
+    const insights = buildRelatedInsights({
+      filters: {},
+      customers: [
+        customer({
+          dimensionKey: 'c-null',
+          label: 'Sem lucro',
+          totalProfit: null,
+        }),
+        customer({
+          dimensionKey: 'c-win',
+          label: 'Com lucro',
+          totalProfit: 40,
+        }),
+      ],
+      vehicles: [],
+      routes: [
+        route({
+          dimensionKey: 'r-null',
+          label: 'Rota sem lucro',
+          totalProfit: null,
+          marginPercent: null,
+        }),
+        route({
+          dimensionKey: 'r-win',
+          label: 'Rota com lucro',
+          totalProfit: 25,
+          marginPercent: null,
+        }),
+      ],
+    });
+
+    expect(insights.find((i) => i.id === 'top-customer')?.label).toBe(
+      'Com lucro',
+    );
+    expect(insights.find((i) => i.id === 'top-customer')?.subtitle).not.toBe(
+      'Lucro —',
+    );
+    expect(insights.find((i) => i.id === 'top-route')?.label).toBe(
+      'Rota com lucro',
+    );
+    expect(insights.find((i) => i.id === 'top-route')?.subtitle).not.toBe('—');
   });
 });

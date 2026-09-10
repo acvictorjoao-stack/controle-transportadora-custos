@@ -26,12 +26,31 @@ function formatKm(value: number): string {
 }
 
 function ExecutiveKpiGrid({kpis, className}: ExecutiveKpiGridProps) {
+  const costsOnlyMode = kpis.costsOnlyMode;
   const hasOperationalData =
-    kpis.completedTrips > 0 || kpis.totalRevenue !== 0 || kpis.totalCosts !== 0;
+    kpis.completedTrips > 0 ||
+    kpis.totalRevenue !== 0 ||
+    kpis.totalCosts !== 0 ||
+    costsOnlyMode;
   const profitClass =
-    hasOperationalData && kpis.operatingProfit < 0
+    hasOperationalData &&
+    kpis.operatingProfit != null &&
+    kpis.operatingProfit < 0
       ? 'text-destructive'
       : undefined;
+
+  const revenueValue =
+    !hasOperationalData || costsOnlyMode
+      ? '—'
+      : formatCurrencyBr(kpis.totalRevenue);
+  const profitValue =
+    !hasOperationalData || costsOnlyMode || kpis.operatingProfit == null
+      ? '—'
+      : formatCurrencyBr(kpis.operatingProfit);
+  const marginValue =
+    costsOnlyMode || kpis.operatingMarginPercent == null
+      ? '—'
+      : formatPercent(kpis.operatingMarginPercent);
 
   return (
     <div className={cn('flex flex-col gap-5', className)}>
@@ -42,10 +61,7 @@ function ExecutiveKpiGrid({kpis, className}: ExecutiveKpiGridProps) {
       )}
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-4">
-        <StatCard
-          title="Receita Total"
-          value={hasOperationalData ? formatCurrencyBr(kpis.totalRevenue) : '—'}
-        />
+        <StatCard title="Receita Total" value={revenueValue} />
         <StatCard
           title="Custos Totais"
           value={hasOperationalData ? formatCurrencyBr(kpis.totalCosts) : '—'}
@@ -57,21 +73,11 @@ function ExecutiveKpiGrid({kpis, className}: ExecutiveKpiGridProps) {
         />
         <StatCard
           title="Lucro Operacional"
-          value={
-            <span className={profitClass}>
-              {hasOperationalData ? formatCurrencyBr(kpis.operatingProfit) : '—'}
-            </span>
-          }
+          value={<span className={profitClass}>{profitValue}</span>}
         />
         <StatCard
           title="Margem Operacional"
-          value={
-            <span className={profitClass}>
-              {kpis.operatingMarginPercent == null
-                ? '—'
-                : formatPercent(kpis.operatingMarginPercent)}
-            </span>
-          }
+          value={<span className={profitClass}>{marginValue}</span>}
         />
         <StatCard
           title="KM Rodados"

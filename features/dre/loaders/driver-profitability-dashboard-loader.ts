@@ -32,7 +32,8 @@ import {
 export interface DriverBarChartPoint {
   key: string;
   label: string;
-  value: number;
+  /** Null no modo só custos (Audit #6). */
+  value: number | null;
 }
 
 export interface DriverProfitabilityDashboardData {

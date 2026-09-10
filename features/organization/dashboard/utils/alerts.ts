@@ -97,7 +97,15 @@ export function buildOperationalAlerts(input: {
 
   for (const customer of input.topCustomers.slice(0, 5)) {
     const previous = input.previousCustomers.find((item) => item.id === customer.id);
-    if (!previous || previous.profit <= 0) continue;
+    // Sem lucro calculável (Audit #6) não há base para alerta de queda.
+    if (
+      !previous ||
+      previous.profit == null ||
+      previous.profit <= 0 ||
+      customer.profit == null
+    ) {
+      continue;
+    }
     const drop = (previous.profit - customer.profit) / previous.profit;
     if (drop < 0.2) continue;
 

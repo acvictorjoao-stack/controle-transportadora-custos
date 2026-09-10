@@ -190,6 +190,61 @@ describe('calculateOperationalDre', () => {
     expect(dre.revenues.totalRevenue).toBe(0);
     expect(dre.result.operatingMarginPercent).toBeNull();
     expect(dre.indicators.revenuePerKm).toBeNull();
+    expect(dre.costsOnlyMode).toBe(false);
+  });
+
+  it('Audit #6: cost center filter zeros revenue and nulls profit/margin', () => {
+    const trips = [
+      makeTrip({id: 't1', actualFreightValue: 2000, distanceKm: 100}),
+    ];
+    const expenses = [
+      makeExpense({
+        id: 'e1',
+        amount: 400,
+        categorySlug: 'combustivel',
+        tripId: 't1',
+        costCenterId: 'cc-op',
+        costCenterCode: 'OPERACIONAL',
+        costCenterName: 'Operacional',
+      }),
+    ];
+
+    const dre = calculateOperationalDre(trips, expenses, {
+      costCenterId: 'cc-op',
+    });
+
+    expect(dre.costsOnlyMode).toBe(true);
+    expect(dre.revenues.freightRevenue).toBe(0);
+    expect(dre.revenues.totalRevenue).toBe(0);
+    expect(dre.costs.totalOperatingCosts).toBe(400);
+    expect(dre.result.operatingProfit).toBeNull();
+    expect(dre.result.operatingMarginPercent).toBeNull();
+    expect(dre.indicators.revenuePerKm).toBeNull();
+    expect(dre.indicators.costPerKm).toBeNull();
+    expect(dre.indicators.profitPerKm).toBeNull();
+    expect(dre.indicators.revenuePerTrip).toBeNull();
+    expect(dre.indicators.costPerTrip).toBeNull();
+    expect(dre.indicators.profitPerTrip).toBeNull();
+    expect(dre.indicators.tripCount).toBe(1);
+    expect(dre.analyticalTable.some((row) => row.category === 'receita')).toBe(
+      false,
+    );
+    expect(dre.analyticalTable.some((row) => row.category === 'lucro')).toBe(
+      false,
+    );
+  });
+
+  it('Audit #6: cost center with no expenses keeps null P&L', () => {
+    const dre = calculateOperationalDre(
+      [makeTrip({actualFreightValue: 900})],
+      [],
+      {costCenterId: 'cc-rh'},
+    );
+    expect(dre.costsOnlyMode).toBe(true);
+    expect(dre.revenues.totalRevenue).toBe(0);
+    expect(dre.costs.totalOperatingCosts).toBe(0);
+    expect(dre.result.operatingProfit).toBeNull();
+    expect(dre.result.operatingMarginPercent).toBeNull();
   });
 
   it('applies customer and route filters to expense scope', () => {

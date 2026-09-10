@@ -23,11 +23,15 @@ type PeriodComparable = Pick<
 export interface AggregatePeriodSnapshot {
   revenue: number;
   costs: number;
-  profit: number;
+  profit: number | null;
   marginPercent?: number | null;
 }
 
-function percentChange(current: number, previous: number): number | null {
+function percentChange(
+  current: number | null,
+  previous: number | null,
+): number | null {
+  if (current == null || previous == null) return null;
   if (!Number.isFinite(previous) || previous === 0) {
     if (current === 0) return 0;
     return null;

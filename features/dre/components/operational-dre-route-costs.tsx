@@ -17,12 +17,17 @@ import {VEHICLE_NATIVE_SELECT_CLASS} from '@/features/vehicles/utils/form-styles
 import {scheduleQueryUrlSync} from '@/lib/navigation/sync-query-url';
 import {cn} from '@/lib/utils';
 
+import {isOperationalDreCostsOnlyMode} from '../services/operational-dre-costs-only';
 import type {
   OperationalDreByRouteData,
   OperationalDreFilters,
   OperationalDreRouteGroup,
   OperationalDreTripMetrics,
 } from '../types';
+import {
+  formatOptionalMoney,
+  optionalResultClass,
+} from '../utils/format-optional-money';
 import {buildOperationalDreUrl} from '../utils/list-url';
 import type {PeriodDelta} from '../utils/period-comparison';
 import {
@@ -55,10 +60,6 @@ function formatMoney(value: number): string {
 function formatRatio(value: number | null, suffix: string): string {
   if (value === null) return '—';
   return `${formatCurrencyBr(value)}${suffix}`;
-}
-
-function resultClass(value: number): string | undefined {
-  return value < 0 ? 'text-destructive' : undefined;
 }
 
 /**
@@ -113,6 +114,8 @@ function OperationalDreRouteCosts({
     [filters],
   );
 
+  const costsOnlyMode = isOperationalDreCostsOnlyMode(filters);
+
   const groupColumns = React.useMemo<
     AnalyticalExpandableColumn<OperationalDreRouteGroup>[]
   >(
@@ -161,7 +164,10 @@ function OperationalDreRouteCosts({
       {
         id: 'revenue',
         header: 'Receita Total',
-        cell: (row) => formatMoney(row.totalRevenue),
+        cell: (row) =>
+          costsOnlyMode
+            ? formatOptionalMoney(null)
+            : formatMoney(row.totalRevenue),
       },
       {
         id: 'cost',
@@ -172,8 +178,8 @@ function OperationalDreRouteCosts({
         id: 'profit',
         header: 'Lucro',
         cell: (row) => (
-          <span className={resultClass(row.totalProfit)}>
-            {formatMoney(row.totalProfit)}
+          <span className={optionalResultClass(row.totalProfit)}>
+            {formatOptionalMoney(row.totalProfit)}
           </span>
         ),
       },
@@ -194,7 +200,7 @@ function OperationalDreRouteCosts({
         cell: (row) => formatRatio(row.revenuePerKm, '/km'),
       },
     ],
-    [comparisons],
+    [comparisons, costsOnlyMode],
   );
 
   const detailColumns = React.useMemo<
@@ -235,7 +241,10 @@ function OperationalDreRouteCosts({
       {
         id: 'revenue',
         header: 'Receita',
-        cell: (row) => formatMoney(row.revenue),
+        cell: (row) =>
+          costsOnlyMode
+            ? formatOptionalMoney(null)
+            : formatMoney(row.revenue),
       },
       {
         id: 'cost',
@@ -246,7 +255,9 @@ function OperationalDreRouteCosts({
         id: 'profit',
         header: 'Lucro',
         cell: (row) => (
-          <span className={resultClass(row.profit)}>{formatMoney(row.profit)}</span>
+          <span className={optionalResultClass(row.profit)}>
+            {formatOptionalMoney(row.profit)}
+          </span>
         ),
       },
       {
@@ -268,7 +279,7 @@ function OperationalDreRouteCosts({
         ),
       },
     ],
-    [],
+    [costsOnlyMode],
   );
 
   const loadDetails = React.useCallback(

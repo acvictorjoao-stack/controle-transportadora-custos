@@ -15,7 +15,7 @@ export interface PeriodChartPoint {
   label: string;
   revenue: number;
   costs: number;
-  profit: number;
+  profit: number | null;
 }
 
 export interface RevenueCostProfitChartProps {
@@ -36,7 +36,7 @@ function RevenueCostProfitChart({
     ...points.flatMap((point) => [
       Math.abs(point.revenue),
       Math.abs(point.costs),
-      Math.abs(point.profit),
+      Math.abs(point.profit ?? 0),
     ]),
   );
 
@@ -77,12 +77,15 @@ function RevenueCostProfitChart({
                       label="Custos"
                     />
                     <Bar
-                      value={point.profit}
+                      value={point.profit ?? 0}
                       max={maxValue}
                       className={
-                        point.profit < 0 ? 'bg-destructive/80' : 'bg-sky-500/80'
+                        point.profit != null && point.profit < 0
+                          ? 'bg-destructive/80'
+                          : 'bg-sky-500/80'
                       }
                       label="Lucro"
+                      empty={point.profit == null}
                     />
                   </div>
                   <span className="text-center text-[11px] text-muted-foreground">
@@ -102,7 +105,12 @@ function RevenueCostProfitChart({
                   <p className="font-medium text-foreground">{point.label}</p>
                   <p>Receita {formatCurrencyBr(point.revenue)}</p>
                   <p>Custos {formatCurrencyBr(point.costs)}</p>
-                  <p>Lucro {formatCurrencyBr(point.profit)}</p>
+                  <p>
+                    Lucro{' '}
+                    {point.profit == null
+                      ? '—'
+                      : formatCurrencyBr(point.profit)}
+                  </p>
                 </div>
               ))}
             </div>
@@ -118,12 +126,23 @@ function Bar({
   max,
   className,
   label,
+  empty = false,
 }: {
   value: number;
   max: number;
   className: string;
   label: string;
+  empty?: boolean;
 }) {
+  if (empty) {
+    return (
+      <div
+        title={`${label}: —`}
+        className="w-2.5 rounded-t-sm bg-muted"
+        style={{height: '4px'}}
+      />
+    );
+  }
   const height = Math.max(4, (Math.abs(value) / max) * 100);
   return (
     <div

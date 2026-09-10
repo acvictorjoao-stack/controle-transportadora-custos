@@ -12,11 +12,39 @@ import type {
 } from '../types';
 import {buildCrossNavHref} from './shared-filters';
 
-function topByProfit<T extends {dimensionKey: string; label: string; totalProfit: number}>(
-  groups: T[],
-): T | null {
+type ProfitRankable = {
+  dimensionKey: string;
+  label: string;
+  totalProfit: number | null;
+};
+
+/**
+ * Null = lucro não calculável (Audit #6 costs-only).
+ * Nunca ranqueia como 0: fica abaixo de qualquer number.
+ */
+function compareProfitDesc(a: number | null, b: number | null): number {
+  if (a == null && b == null) return 0;
+  if (a == null) return 1;
+  if (b == null) return -1;
+  return b - a;
+}
+
+function formatOptionalProfit(value: number | null): string {
+  return value == null ? '—' : formatCurrencyBr(value);
+}
+
+/**
+ * Maior lucro entre grupos com lucro calculável.
+ * Se todos tiverem `totalProfit == null`, não há vencedor.
+ */
+function topByProfit<T extends ProfitRankable>(groups: T[]): T | null {
   if (groups.length === 0) return null;
-  return [...groups].sort((a, b) => b.totalProfit - a.totalProfit)[0] ?? null;
+  const ranked = [...groups].sort((a, b) =>
+    compareProfitDesc(a.totalProfit, b.totalProfit),
+  );
+  const top = ranked[0] ?? null;
+  if (top == null || top.totalProfit == null) return null;
+  return top;
 }
 
 function topByTrips<T extends {dimensionKey: string; label: string; tripCount: number}>(
@@ -47,7 +75,7 @@ export function buildRelatedInsights(input: {
       id: 'top-customer',
       title: 'Maior Cliente desta Rota',
       label: topCustomer.label,
-      subtitle: `Lucro ${formatCurrencyBr(topCustomer.totalProfit)}`,
+      subtitle: `Lucro ${formatOptionalProfit(topCustomer.totalProfit)}`,
       href: buildCrossNavHref('rentabilidade-clientes', filters, {
         customerId: topCustomer.dimensionKey,
       }),
@@ -77,7 +105,7 @@ export function buildRelatedInsights(input: {
       id: 'top-profit-vehicle',
       title: 'Veículo com maior lucro',
       label: topProfitVehicle.label,
-      subtitle: formatCurrencyBr(topProfitVehicle.totalProfit),
+      subtitle: formatOptionalProfit(topProfitVehicle.totalProfit),
       href: buildCrossNavHref('rentabilidade-veiculos', filters, {
         vehicleId: topProfitVehicle.dimensionKey,
       }),
@@ -100,7 +128,7 @@ export function buildRelatedInsights(input: {
       label: topRoute.label,
       subtitle:
         topRoute.marginPercent == null
-          ? formatCurrencyBr(topRoute.totalProfit)
+          ? formatOptionalProfit(topRoute.totalProfit)
           : `Margem ${formatPercent(topRoute.marginPercent)}`,
       href: buildCrossNavHref('rentabilidade-rotas', filters, {
         routeId: topRoute.dimensionKey,

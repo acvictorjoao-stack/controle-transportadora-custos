@@ -13,7 +13,8 @@ import {cn} from '@/lib/utils';
 export interface DimensionBarChartPoint {
   key: string;
   label: string;
-  value: number;
+  /** Null no modo só custos quando o eixo é lucro/receita (Audit #6). */
+  value: number | null;
 }
 
 export interface DimensionBarChartProps {
@@ -33,7 +34,14 @@ function DimensionBarChart({
   emptyMessage = 'Sem dados para montar o gráfico no período.',
   valueLabel = 'Valor',
 }: DimensionBarChartProps) {
-  const maxValue = Math.max(1, ...points.map((point) => Math.abs(point.value)));
+  const numericPoints = points.filter(
+    (point): point is DimensionBarChartPoint & {value: number} =>
+      point.value != null,
+  );
+  const maxValue = Math.max(
+    1,
+    ...numericPoints.map((point) => Math.abs(point.value)),
+  );
 
   return (
     <Card className={cn(className)}>
@@ -42,11 +50,11 @@ function DimensionBarChart({
         {description ? <CardDescription>{description}</CardDescription> : null}
       </CardHeader>
       <CardContent>
-        {points.length === 0 ? (
+        {numericPoints.length === 0 ? (
           <p className="text-sm text-muted-foreground">{emptyMessage}</p>
         ) : (
           <div className="space-y-3" role="img" aria-label={title}>
-            {points.map((point) => {
+            {numericPoints.map((point) => {
               const width = Math.max(4, (Math.abs(point.value) / maxValue) * 100);
               const negative = point.value < 0;
               return (

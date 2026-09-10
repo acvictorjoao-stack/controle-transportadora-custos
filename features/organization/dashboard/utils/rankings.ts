@@ -6,7 +6,7 @@ export interface TopRouteRankingItem {
   id: string;
   name: string;
   revenue: number;
-  profit: number;
+  profit: number | null;
   marginPercent: number | null;
   status: MarginStatus;
 }
@@ -15,7 +15,7 @@ export interface TopCustomerRankingItem {
   id: string;
   name: string;
   revenue: number;
-  profit: number;
+  profit: number | null;
   marginPercent: number | null;
   status?: MarginStatus;
 }
@@ -25,7 +25,7 @@ export interface RouteRankingRow {
   name: string;
   revenue: number;
   costs: number;
-  profit: number;
+  profit: number | null;
   marginPercent: number | null;
   status: MarginStatus;
   totalKm: number;
@@ -39,7 +39,7 @@ export interface CustomerRankingRow {
   name: string;
   revenue: number;
   costs: number;
-  profit: number;
+  profit: number | null;
   marginPercent: number | null;
   tripCount: number;
   status: MarginStatus;
@@ -50,7 +50,7 @@ export interface VehicleRankingRow {
   name: string;
   revenue: number;
   costs: number;
-  profit: number;
+  profit: number | null;
   totalKm: number;
   revenuePerKm: number | null;
   costPerKm: number | null;
@@ -66,7 +66,7 @@ export interface DriverRankingRow {
   tripCount: number;
   revenue: number;
   costs: number;
-  profit: number;
+  profit: number | null;
   marginPercent: number | null;
   totalKm: number;
   revenuePerTrip: number | null;
@@ -83,11 +83,19 @@ export interface VehicleHighlightItem {
   secondaryValue?: string;
 }
 
-function sortByProfitDesc<T extends {totalProfit: number; totalRevenue: number}>(
-  items: T[],
-): T[] {
+function sortByProfitDesc<
+  T extends {totalProfit: number | null; totalRevenue: number; totalCost: number},
+>(items: T[]): T[] {
   return [...items].sort((a, b) => {
-    if (b.totalProfit !== a.totalProfit) return b.totalProfit - a.totalProfit;
+    const aProfit = a.totalProfit;
+    const bProfit = b.totalProfit;
+    if (aProfit == null && bProfit == null) {
+      if (b.totalCost !== a.totalCost) return b.totalCost - a.totalCost;
+      return b.totalRevenue - a.totalRevenue;
+    }
+    if (aProfit == null) return 1;
+    if (bProfit == null) return -1;
+    if (bProfit !== aProfit) return bProfit - aProfit;
     return b.totalRevenue - a.totalRevenue;
   });
 }
@@ -152,7 +160,9 @@ export function buildRouteRankingRows(
 ): RouteRankingRow[] {
   return sortByProfitDesc(groups).map((group) => {
     const profitPerKm =
-      group.totalKm > 0 ? group.totalProfit / group.totalKm : null;
+      group.totalProfit == null || group.totalKm <= 0
+        ? null
+        : group.totalProfit / group.totalKm;
     return {
       id: group.dimensionKey,
       name: group.label,
@@ -193,7 +203,9 @@ export function buildVehicleRankingRows(
     .filter((group) => group.dimensionKey !== '__none__')
     .map((group) => {
       const profitPerKm =
-        group.totalKm > 0 ? group.totalProfit / group.totalKm : null;
+        group.totalProfit == null || group.totalKm <= 0
+          ? null
+          : group.totalProfit / group.totalKm;
       return {
         id: group.dimensionKey,
         name: group.label,
@@ -229,7 +241,10 @@ export function buildDriverRankingRows(
         totalKm: group.totalKm,
         revenuePerTrip: tripCount > 0 ? group.totalRevenue / tripCount : null,
         costPerTrip: tripCount > 0 ? group.totalCost / tripCount : null,
-        profitPerTrip: tripCount > 0 ? group.totalProfit / tripCount : null,
+        profitPerTrip:
+          group.totalProfit == null || tripCount <= 0
+            ? null
+            : group.totalProfit / tripCount,
         status: classifyMarginStatus(group.marginPercent),
       };
     });
@@ -261,7 +276,9 @@ export function buildVehicleHighlights(
     const aMargin = a.marginPercent ?? Number.POSITIVE_INFINITY;
     const bMargin = b.marginPercent ?? Number.POSITIVE_INFINITY;
     if (aMargin !== bMargin) return aMargin - bMargin;
-    return a.totalProfit - b.totalProfit;
+    const aProfit = a.totalProfit ?? Number.POSITIVE_INFINITY;
+    const bProfit = b.totalProfit ?? Number.POSITIVE_INFINITY;
+    return aProfit - bProfit;
   });
 
   const toItem = (
@@ -282,15 +299,24 @@ export function buildVehicleHighlights(
       ? '—'
       : `${value.toLocaleString('pt-BR', {maximumFractionDigits: 1})}%`;
 
+  const topProfit = byProfit[0];
+  const topMargin = byMargin[0];
+
   return {
     highestRevenue: toItem(byRevenue[0], byRevenue[0].totalRevenue),
-    highestProfit: toItem(byProfit[0], byProfit[0].totalProfit),
+    highestProfit:
+      topProfit.totalProfit == null
+        ? null
+        : toItem(topProfit, topProfit.totalProfit),
     highestCost: toItem(byCost[0], byCost[0].totalCost),
-    lowestProfitability: toItem(
-      byMargin[0],
-      byMargin[0].totalProfit,
-      'Margem',
-      formatMargin(byMargin[0].marginPercent),
-    ),
+    lowestProfitability:
+      topMargin.totalProfit == null
+        ? null
+        : toItem(
+            topMargin,
+            topMargin.totalProfit,
+            'Margem',
+            formatMargin(topMargin.marginPercent),
+          ),
   };
 }

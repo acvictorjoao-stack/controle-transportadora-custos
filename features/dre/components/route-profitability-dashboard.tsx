@@ -35,6 +35,7 @@ import type {
 } from '../types';
 import type {PeriodDelta} from '../utils/period-comparison';
 import type {PeriodChartPoint} from './revenue-cost-profit-chart';
+import {OperationalDreCostsOnlyBanner} from './operational-dre-costs-only-banner';
 import {OperationalDreFiltersBar} from './operational-dre-filters';
 import {OperationalDreRouteCosts} from './operational-dre-route-costs';
 import dynamic from 'next/dynamic';
@@ -127,8 +128,20 @@ function RouteProfitabilityDashboard({
   );
 
   const avgMargin = averageMargin(byRoute.groups);
+  const hideProfitability =
+    dre.costsOnlyMode || dre.result.operatingProfit == null;
   const profitClass =
-    dre.result.operatingProfit < 0 ? 'text-destructive' : undefined;
+    dre.result.operatingProfit != null && dre.result.operatingProfit < 0
+      ? 'text-destructive'
+      : undefined;
+  const revenueDisplay = hideProfitability
+    ? '—'
+    : formatCurrencyBr(dre.revenues.totalRevenue);
+  const profitDisplay =
+    dre.costsOnlyMode || dre.result.operatingProfit == null
+      ? '—'
+      : formatCurrencyBr(dre.result.operatingProfit);
+  const marginDisplay = hideProfitability ? '—' : formatPercent(avgMargin);
 
   const branchLabel =
     filterOptions.branches.find((b) => b.id === initialFilters.branchId)
@@ -159,13 +172,13 @@ function RouteProfitabilityDashboard({
         kpis: [
           {
             label: 'Receita Total',
-            value: formatCurrencyBr(dre.revenues.totalRevenue),
+            value: revenueDisplay,
           },
           {
             label: 'Lucro Total',
-            value: formatCurrencyBr(dre.result.operatingProfit),
+            value: profitDisplay,
           },
-          {label: 'Margem Média', value: formatPercent(avgMargin)},
+          {label: 'Margem Média', value: marginDisplay},
         ],
         columns: [
           {id: 'status', header: 'Status'},
@@ -178,13 +191,14 @@ function RouteProfitabilityDashboard({
         rows: rankingRows.map((row) => ({
           status: formatMarginStatus(row.status as MarginStatus),
           name: row.name,
-          revenue: row.revenue,
+          revenue: dre.costsOnlyMode ? '—' : row.revenue,
           costs: row.costs,
-          profit: row.profit,
+          profit:
+            dre.costsOnlyMode || row.profit == null ? '—' : row.profit,
           margin: row.marginPercent,
         })),
       }),
-    [avgMargin, dre, rankingRows],
+    [dre, marginDisplay, profitDisplay, rankingRows, revenueDisplay],
   );
 
   const crossLinks = React.useMemo(
@@ -231,28 +245,23 @@ function RouteProfitabilityDashboard({
         basePath={ROUTES.dashboardRentabilidadeRotas}
       />
 
+      <OperationalDreCostsOnlyBanner active={dre.costsOnlyMode} />
+
       <Section
         title="Indicadores"
         description="Consolidado operacional das rotas no período."
       >
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
-          <StatCard
-            title="Receita Total"
-            value={formatCurrencyBr(dre.revenues.totalRevenue)}
-          />
+          <StatCard title="Receita Total" value={revenueDisplay} />
           <StatCard
             title="Custos Totais"
             value={formatCurrencyBr(dre.costs.totalOperatingCosts)}
           />
           <StatCard
             title="Lucro Total"
-            value={
-              <span className={profitClass}>
-                {formatCurrencyBr(dre.result.operatingProfit)}
-              </span>
-            }
+            value={<span className={profitClass}>{profitDisplay}</span>}
           />
-          <StatCard title="Margem Média" value={formatPercent(avgMargin)} />
+          <StatCard title="Margem Média" value={marginDisplay} />
           <StatCard
             title="Receita por KM"
             value={formatRatio(dre.indicators.revenuePerKm, '/km')}
@@ -299,8 +308,14 @@ function RouteProfitabilityDashboard({
                 id: 'profit',
                 header: 'Lucro',
                 cell: (row: RouteRankingRow) => (
-                  <span className={row.profit < 0 ? 'text-destructive' : undefined}>
-                    {formatCurrencyBr(row.profit)}
+                  <span
+                    className={
+                      row.profit != null && row.profit < 0
+                        ? 'text-destructive'
+                        : undefined
+                    }
+                  >
+                    {row.profit == null ? '—' : formatCurrencyBr(row.profit)}
                   </span>
                 ),
               },
