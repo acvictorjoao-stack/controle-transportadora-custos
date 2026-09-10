@@ -13,6 +13,13 @@ import type {
  * Trips T já são AND-filtradas (driver/vehicle/customer/route/período/company).
  * Rota não existe no ledger → sem trip_id com routeId ativo = fora.
  * Payroll/global (sem vínculos) só entra quando F é vazio.
+ *
+ * ---
+ * Audit #7 — competência de período (política única operacional):
+ * - Receita: `trips.completed_at` (T já filtrado assim).
+ * - Custo vinculado (`trip_id ∈ T`): segue a viagem — sem filtro `entry_date`.
+ * - Custo órfão (`trip_id IS NULL`): `financial_entries.entry_date` no período.
+ * O braço órfão do `.or(...)` incorpora `entry_date`; o braço `trip_id.in.(T)` não.
  */
 
 export type OperationalDreExpenseScopeProbe = Pick<
@@ -32,7 +39,24 @@ export function hasOperationalDreDimensionalFilters(
 }
 
 /**
- * Mesma semântica usada na query PostgREST e no calculator.
+ * Predicados PostgREST de `entry_date` para o braço órfão (Audit #7).
+ */
+export function orphanExpenseEntryDateParts(
+  filters: Pick<OperationalDreFilters, 'dateFrom' | 'dateTo'>,
+): string[] {
+  const parts: string[] = [];
+  if (filters.dateFrom) parts.push(`entry_date.gte.${filters.dateFrom}`);
+  if (filters.dateTo) parts.push(`entry_date.lte.${filters.dateTo}`);
+  return parts;
+}
+
+function formatAndFilter(parts: string[]): string {
+  return parts.length === 1 ? parts[0]! : `and(${parts.join(',')})`;
+}
+
+/**
+ * Mesma semântica dimensional usada na query PostgREST e no calculator.
+ * Competência de período para vinculados: ver `expenseMatchesCompetenceScope`.
  */
 export function expenseMatchesDimensionalScope(
   expense: OperationalDreExpenseScopeProbe,
@@ -67,34 +91,54 @@ export function expenseMatchesDimensionalScope(
   return true;
 }
 
+/**
+ * Audit #7 — competência: custo com `trip_id` só entra se a viagem ∈ T
+ * (`completed_at`); órfãos passam pelo dimensional (e `entry_date` na query).
+ */
+export function expenseMatchesCompetenceScope(
+  expense: OperationalDreExpenseScopeProbe,
+  filters: OperationalDreFilters,
+  tripIds: ReadonlySet<string>,
+): boolean {
+  if (expense.tripId) {
+    return tripIds.has(expense.tripId);
+  }
+  return expenseMatchesDimensionalScope(expense, filters, tripIds);
+}
+
 export interface OperationalDreExpenseDimensionFilterResolution {
   shouldReturnEmpty: boolean;
   /**
    * Expressão PostgREST para `.or(...)`:
-   * `trip_id.in.(T)` e/ou `and(trip_id.is.null,<preds>)`.
+   * `trip_id.in.(T)` e/ou `and(trip_id.is.null,<preds>,<entry_date>)`.
+   * Sem dimensões ativas, o OR ainda separa vinculados (T) de órfãos (entry_date).
    */
   orFilter: string | null;
 }
 
 /**
- * Traduz a regra única para filtro PostgREST.
- * Filtros externos (company_id, datas, branch, centro, deleted_at) ficam AND na query base.
+ * Traduz escopo dimensional + competência de período (Audit #7) para PostgREST.
+ * Filtros externos (company_id, branch, centro, deleted_at) ficam AND na query base.
+ * Não aplicar `entry_date` na base — só no braço órfão deste OR.
  */
 export function resolveOperationalDreExpenseDimensionFilter(
   filters: OperationalDreFilters,
   tripIds: string[],
 ): OperationalDreExpenseDimensionFilterResolution {
-  if (!hasOperationalDreDimensionalFilters(filters)) {
-    return {shouldReturnEmpty: false, orFilter: null};
-  }
-
+  const dateParts = orphanExpenseEntryDateParts(filters);
   const orParts: string[] = [];
 
   if (tripIds.length > 0) {
     orParts.push(`trip_id.in.(${tripIds.join(',')})`);
   }
 
-  // Braço direto: sem trip e AND de todos os predicados exigidos.
+  if (!hasOperationalDreDimensionalFilters(filters)) {
+    const orphanParts = ['trip_id.is.null', ...dateParts];
+    orParts.push(formatAndFilter(orphanParts));
+    return {shouldReturnEmpty: false, orFilter: orParts.join(',')};
+  }
+
+  // Braço direto: sem trip e AND de todos os predicados exigidos + entry_date.
   // Com routeId ativo este braço não existe.
   if (!filters.routeId) {
     const andParts: string[] = ['trip_id.is.null'];
@@ -107,6 +151,7 @@ export function resolveOperationalDreExpenseDimensionFilter(
     if (filters.customerId) {
       andParts.push(`customer_id.eq.${filters.customerId}`);
     }
+    andParts.push(...dateParts);
 
     const hasDirectDimension =
       Boolean(filters.driverId) ||
@@ -114,9 +159,7 @@ export function resolveOperationalDreExpenseDimensionFilter(
       Boolean(filters.customerId);
 
     if (hasDirectDimension) {
-      orParts.push(
-        andParts.length === 1 ? andParts[0]! : `and(${andParts.join(',')})`,
-      );
+      orParts.push(formatAndFilter(andParts));
     }
   }
 

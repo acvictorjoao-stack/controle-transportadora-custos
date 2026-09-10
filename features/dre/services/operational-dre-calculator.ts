@@ -19,7 +19,7 @@ import type {
   OperationalDreIndicators,
   OperationalDreTripRow,
 } from '../types';
-import {expenseMatchesDimensionalScope} from './operational-dre-expense-scope';
+import {expenseMatchesCompetenceScope} from './operational-dre-expense-scope';
 import {isOperationalDreCostsOnlyMode} from './operational-dre-costs-only';
 
 function asFinite(value: number): number {
@@ -234,14 +234,14 @@ export function summarizeTripDimensions(trips: OperationalDreTripRow[]): {
  * dado o conjunto de viagens já filtradas (T).
  *
  * Delega à regra única em `operational-dre-expense-scope`
- * (mesma semântica da query PostgREST).
+ * (competência Audit #7 + dimensional — mesma semântica da query PostgREST).
  */
 export function expenseMatchesScope(
   expense: OperationalDreExpenseRow,
   filters: OperationalDreFilters,
   tripIds: Set<string>,
 ): boolean {
-  return expenseMatchesDimensionalScope(expense, filters, tripIds);
+  return expenseMatchesCompetenceScope(expense, filters, tripIds);
 }
 
 export function filterExpensesForScope(

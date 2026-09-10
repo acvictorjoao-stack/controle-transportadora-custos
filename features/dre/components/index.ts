@@ -5,6 +5,7 @@ export {CustomerProfitabilityPageView} from './customer-profitability-page-view'
 export {CustomerSideRankingCard} from './customer-side-ranking-card';
 export {DimensionBarChart} from './dimension-bar-chart';
 export {OperationalDreCostsOnlyBanner} from './operational-dre-costs-only-banner';
+export {OperationalDreCompetenceDisclaimer} from './operational-dre-competence-disclaimer';
 export {OperationalDreCustomerCosts} from './operational-dre-customer-costs';
 export {OperationalDreFiltersBar} from './operational-dre-filters';
 export {OperationalDreRouteCosts} from './operational-dre-route-costs';

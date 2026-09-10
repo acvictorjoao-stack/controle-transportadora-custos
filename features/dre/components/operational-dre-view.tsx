@@ -18,6 +18,7 @@ import type {
   OperationalDreFilterOptions,
   OperationalDreFilters,
 } from '../types';
+import {OperationalDreCompetenceDisclaimer} from './operational-dre-competence-disclaimer';
 import {OperationalDreCostsOnlyBanner} from './operational-dre-costs-only-banner';
 import {OperationalDreFiltersBar} from './operational-dre-filters';
 import {OperationalDreRouteCosts} from './operational-dre-route-costs';
@@ -124,6 +125,8 @@ function OperationalDreView({
           initialFilters={initialFilters}
           basePath={ROUTES.dashboardDre}
         />
+
+        <OperationalDreCompetenceDisclaimer />
 
         <OperationalDreCostsOnlyBanner active={costsOnlyMode} />
 

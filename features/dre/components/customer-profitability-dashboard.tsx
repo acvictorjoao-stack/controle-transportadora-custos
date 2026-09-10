@@ -44,6 +44,7 @@ import {
 } from '../utils/period-comparison';
 import {CustomerSideRankingCard} from './customer-side-ranking-card';
 import type {PeriodChartPoint} from './revenue-cost-profit-chart';
+import {OperationalDreCompetenceDisclaimer} from './operational-dre-competence-disclaimer';
 import {OperationalDreCostsOnlyBanner} from './operational-dre-costs-only-banner';
 import {OperationalDreCustomerCosts} from './operational-dre-customer-costs';
 import {OperationalDreFiltersBar} from './operational-dre-filters';
@@ -310,6 +311,8 @@ function CustomerProfitabilityDashboard({
         initialFilters={initialFilters}
         basePath={ROUTES.dashboardRentabilidadeClientes}
       />
+
+      <OperationalDreCompetenceDisclaimer />
 
       <OperationalDreCostsOnlyBanner active={dre.costsOnlyMode} />
 
