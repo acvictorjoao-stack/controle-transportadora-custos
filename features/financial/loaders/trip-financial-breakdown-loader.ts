@@ -132,6 +132,7 @@ async function fetchVehicleTripsForMileage(
 
 /**
  * Despesas do veículo sem `trip_id` no período — candidatas ao rateio.
+ * Audit #7: órfãs filtradas por `entry_date` (não por `completed_at` da viagem).
  * Paginação completa (sem `.limit(500)` / max_rows).
  */
 async function fetchVehicleUnlinkedExpenses(
@@ -172,9 +173,10 @@ async function fetchVehicleUnlinkedExpenses(
 /**
  * Loader do drill-down financeiro por viagem (RC 26.9.2).
  *
- * - Receita: `getTripFreightValue` (mesma origem da DRE).
- * - Custos com `trip_id`: valor integral.
- * - Custos sem `trip_id` + veículo + período: rateio por KM.
+ * Audit #7 — mesma política de competência da DRE operacional:
+ * - Receita: frete da viagem (competência = `completed_at` da trip).
+ * - Custos com `trip_id`: valor integral (seguem a viagem; sem filtro `entry_date`).
+ * - Custos sem `trip_id` + veículo + período: rateio por KM (`entry_date` no período).
  */
 export async function getTripFinancialBreakdown(
   supabase: SupabaseClient,

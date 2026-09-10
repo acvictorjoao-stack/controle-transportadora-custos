@@ -289,9 +289,9 @@ describe('calculateOperationalDre', () => {
     expect(dre.costs.totalOperatingCosts).toBe(100);
   });
 
-  it('keeps unscoped expenses when no customer/route filter is set', () => {
+  it('Audit #7: without dimensional filters, linked costs require trip ∈ T; orphans stay', () => {
     const dre = calculateOperationalDre(
-      [makeTrip()],
+      [makeTrip({id: 't1'})],
       [
         makeExpense({
           id: 'e1',
@@ -307,11 +307,19 @@ describe('calculateOperationalDre', () => {
           categorySlug: 'outros',
           sourceModule: 'trips',
         }),
+        makeExpense({
+          id: 'e3',
+          amount: 5,
+          tripId: 't1',
+          categorySlug: 'outros',
+          sourceModule: 'trips',
+        }),
       ],
       {branchId: 'branch-1'},
     );
 
-    expect(dre.costs.other).toBe(30);
+    // Órfão (10) + vinculado a T (5); trip fora de T (20) excluída.
+    expect(dre.costs.other).toBe(15);
   });
 
   it('scopes costs by driverId via trip or direct driver link without attributing payroll', () => {

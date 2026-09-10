@@ -15,10 +15,15 @@ export {
   OPERATIONAL_DRE_COSTS_ONLY_BANNER,
 } from './operational-dre-costs-only';
 export {
+  expenseMatchesCompetenceScope,
   expenseMatchesDimensionalScope,
   hasOperationalDreDimensionalFilters,
+  orphanExpenseEntryDateParts,
   resolveOperationalDreExpenseDimensionFilter,
 } from './operational-dre-expense-scope';
+export {
+  OPERATIONAL_DRE_COMPETENCE_DISCLAIMER,
+} from './operational-dre-competence';
 export {
   buildTripMetrics,
   calculateOperationalDreByCustomer,

@@ -33,6 +33,7 @@ import type {
   OperationalDreVehicleGroup,
 } from '../types';
 import type {PeriodDelta} from '../utils/period-comparison';
+import {OperationalDreCompetenceDisclaimer} from './operational-dre-competence-disclaimer';
 import {OperationalDreCostsOnlyBanner} from './operational-dre-costs-only-banner';
 import {OperationalDreFiltersBar} from './operational-dre-filters';
 import {OperationalDreVehicleCosts} from './operational-dre-vehicle-costs';
@@ -259,6 +260,8 @@ function VehicleProfitabilityDashboard({
         initialFilters={initialFilters}
         basePath={ROUTES.dashboardRentabilidadeVeiculos}
       />
+
+      <OperationalDreCompetenceDisclaimer />
 
       <OperationalDreCostsOnlyBanner active={dre.costsOnlyMode} />
 

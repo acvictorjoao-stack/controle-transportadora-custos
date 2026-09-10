@@ -463,7 +463,7 @@ export async function fetchOperationalDreTripDetails(
 
 export interface FetchOperationalDreExpensesOptions {
   filters?: OperationalDreFilters;
-  /** Viagens já filtradas (T) — AND dimensional + período. */
+  /** Viagens já filtradas (T) — competência `completed_at` + dimensões. */
   tripIds?: string[];
 }
 
@@ -471,8 +471,11 @@ export interface FetchOperationalDreExpensesOptions {
  * Despesas operacionais em `financial_entries` — mesma fonte de
  * combustível/manutenção/pneus (`get_financial_stats`) e contas a pagar.
  *
- * Escopo dimensional: regra única `resolveOperationalDreExpenseDimensionFilter`
- * = (trip_id ∈ T) OR (trip_id IS NULL AND predicados diretos AND).
+ * Escopo: `resolveOperationalDreExpenseDimensionFilter`
+ * = (trip_id ∈ T) OR (trip_id IS NULL AND predicados AND entry_date).
+ *
+ * Audit #7 — competência: vinculados seguem T (`completed_at`); órfãos usam
+ * `entry_date` só no braço do OR (não na query base).
  *
  * Paginação completa: evita truncamento silencioso PostgREST (max_rows=1000).
  */
@@ -506,8 +509,6 @@ export async function fetchOperationalDreExpenses(
       if (filters.costCenterId) {
         query = query.eq('cost_center_id', filters.costCenterId);
       }
-      if (filters.dateFrom) query = query.gte('entry_date', filters.dateFrom);
-      if (filters.dateTo) query = query.lte('entry_date', filters.dateTo);
 
       if (dimensionScope.orFilter) {
         query = query.or(dimensionScope.orFilter);
@@ -562,6 +563,7 @@ export async function fetchOperationalDreTripsForVehicles(
 
 /**
  * Despesas sem `trip_id` vinculadas aos veículos — candidatas ao rateio por KM.
+ * Audit #7: órfãs usam competência por `entry_date` (não `completed_at`).
  *
  * Paginação completa: evita truncamento silencioso PostgREST (max_rows=1000).
  */

@@ -1,8 +1,10 @@
 import {describe, expect, it} from 'vitest';
 
 import {
+  expenseMatchesCompetenceScope,
   expenseMatchesDimensionalScope,
   hasOperationalDreDimensionalFilters,
+  orphanExpenseEntryDateParts,
   resolveOperationalDreExpenseDimensionFilter,
 } from '../../services/operational-dre-expense-scope';
 import type {OperationalDreExpenseRow} from '../../types';
@@ -26,15 +28,21 @@ function expense(
 
 describe('operational-dre-expense-scope (AND dimensional)', () => {
   describe('A) nenhum filtro dimensional', () => {
-    it('não aplica filtro PostgREST e aceita qualquer expense (incl. payroll/global)', () => {
+    it('OR separa vinculados (T) de órfãos; aceita payroll/global no braço órfão', () => {
       expect(hasOperationalDreDimensionalFilters({branchId: 'b1'})).toBe(false);
       expect(
         resolveOperationalDreExpenseDimensionFilter({branchId: 'b1'}, ['t1']),
-      ).toEqual({shouldReturnEmpty: false, orFilter: null});
+      ).toEqual({
+        shouldReturnEmpty: false,
+        orFilter: 'trip_id.in.(t1),trip_id.is.null',
+      });
 
       const payroll = expense({id: 'payroll'});
       expect(
         expenseMatchesDimensionalScope(payroll, {branchId: 'b1'}, new Set()),
+      ).toBe(true);
+      expect(
+        expenseMatchesCompetenceScope(payroll, {branchId: 'b1'}, new Set()),
       ).toBe(true);
     });
   });
@@ -341,6 +349,88 @@ describe('operational-dre-expense-scope (AND dimensional)', () => {
         ['t1'],
       );
       expect(scope.orFilter).not.toMatch(/deleted/);
+    });
+  });
+});
+
+describe('Audit #7 — competência completed_at (T) vs entry_date (órfãos)', () => {
+  const period = {dateFrom: '2026-07-01', dateTo: '2026-07-31'};
+
+  it('orphanExpenseEntryDateParts monta gte/lte', () => {
+    expect(orphanExpenseEntryDateParts(period)).toEqual([
+      'entry_date.gte.2026-07-01',
+      'entry_date.lte.2026-07-31',
+    ]);
+    expect(orphanExpenseEntryDateParts({})).toEqual([]);
+  });
+
+  it('sem dimensões: vinculados via T sem entry_date; órfãos com entry_date no OR', () => {
+    expect(
+      resolveOperationalDreExpenseDimensionFilter(period, ['trip-m1']),
+    ).toEqual({
+      shouldReturnEmpty: false,
+      orFilter:
+        'trip_id.in.(trip-m1),and(trip_id.is.null,entry_date.gte.2026-07-01,entry_date.lte.2026-07-31)',
+    });
+  });
+
+  it('com motorista: entry_date só no braço órfão', () => {
+    expect(
+      resolveOperationalDreExpenseDimensionFilter(
+        {...period, driverId: 'A'},
+        ['trip-m1'],
+      ),
+    ).toEqual({
+      shouldReturnEmpty: false,
+      orFilter:
+        'trip_id.in.(trip-m1),and(trip_id.is.null,driver_id.eq.A,entry_date.gte.2026-07-01,entry_date.lte.2026-07-31)',
+    });
+  });
+
+  it('rota dimensional: só trip_id.in — sem entry_date (vinculados seguem viagem)', () => {
+    expect(
+      resolveOperationalDreExpenseDimensionFilter(
+        {...period, routeId: 'R'},
+        ['trip-m1'],
+      ),
+    ).toEqual({
+      shouldReturnEmpty: false,
+      orFilter: 'trip_id.in.(trip-m1)',
+    });
+  });
+
+  it('virada de mês: custo vinculado a T entra mesmo se entry_date fosse M2 (client-side)', () => {
+    const T = new Set(['trip-m1']);
+    const linkedLateBooking = expense({tripId: 'trip-m1'});
+    expect(expenseMatchesCompetenceScope(linkedLateBooking, period, T)).toBe(
+      true,
+    );
+  });
+
+  it('virada de mês: custo vinculado a viagem fora de T não entra no período', () => {
+    const T = new Set(['trip-m1']);
+    const linkedOtherMonth = expense({tripId: 'trip-m0'});
+    expect(expenseMatchesCompetenceScope(linkedOtherMonth, period, T)).toBe(
+      false,
+    );
+    // Sem competência, dimensional “vazio” aceitaria — Audit #7 fecha o buraco.
+    expect(expenseMatchesDimensionalScope(linkedOtherMonth, period, T)).toBe(
+      true,
+    );
+  });
+
+  it('órfão sem trip: competência client-side aceita (entry_date é da query)', () => {
+    const orphan = expense({});
+    expect(
+      expenseMatchesCompetenceScope(orphan, period, new Set(['trip-m1'])),
+    ).toBe(true);
+  });
+
+  it('sem trips no período: só braço órfão com entry_date', () => {
+    expect(resolveOperationalDreExpenseDimensionFilter(period, [])).toEqual({
+      shouldReturnEmpty: false,
+      orFilter:
+        'and(trip_id.is.null,entry_date.gte.2026-07-01,entry_date.lte.2026-07-31)',
     });
   });
 });

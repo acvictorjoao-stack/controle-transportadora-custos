@@ -35,6 +35,7 @@ import type {
 } from '../types';
 import type {PeriodDelta} from '../utils/period-comparison';
 import type {PeriodChartPoint} from './revenue-cost-profit-chart';
+import {OperationalDreCompetenceDisclaimer} from './operational-dre-competence-disclaimer';
 import {OperationalDreCostsOnlyBanner} from './operational-dre-costs-only-banner';
 import {OperationalDreFiltersBar} from './operational-dre-filters';
 import {OperationalDreRouteCosts} from './operational-dre-route-costs';
@@ -244,6 +245,8 @@ function RouteProfitabilityDashboard({
         initialFilters={initialFilters}
         basePath={ROUTES.dashboardRentabilidadeRotas}
       />
+
+      <OperationalDreCompetenceDisclaimer />
 
       <OperationalDreCostsOnlyBanner active={dre.costsOnlyMode} />
 
