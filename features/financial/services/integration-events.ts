@@ -4,6 +4,7 @@ import type {FuelRecord} from '@/features/fuel/types';
 import type {MaintenanceRecord} from '@/features/maintenance/types';
 import type {Tire} from '@/features/tires/types';
 import type {Trip} from '@/features/trips/types';
+import {getTripFreightValue} from '@/features/trips/utils/trip-lifecycle';
 
 import {
   createFinancialEntry,
@@ -205,10 +206,15 @@ export async function onTripCompleted(
 
   const metadataRevenue =
     typeof trip.metadata?.freight_value === 'number' ? trip.metadata.freight_value : 0;
+  // Audit #8 — mesma preferência da DRE (`getTripFreightValue`: actual ?? contracted).
+  const hasTripFreight =
+    trip.actualFreightValue != null || trip.contractedFreightValue != null;
   const revenue =
     totalRevenue > 0
       ? totalRevenue
-      : (trip.contractedFreightValue ?? trip.actualFreightValue ?? metadataRevenue);
+      : hasTripFreight
+        ? getTripFreightValue(trip)
+        : metadataRevenue;
 
   const freightMargin =
     trip.contractedFreightValue !== null && trip.actualFreightValue !== null
