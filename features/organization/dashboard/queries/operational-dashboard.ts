@@ -2,6 +2,7 @@ import type {SupabaseClient} from '@supabase/supabase-js';
 
 import {getCustomerStats} from '@/features/customers/queries';
 import {getDriverStats} from '@/features/drivers/queries';
+import {mapDatabaseError} from '@/features/master/companies/utils/database-error';
 import {listTrips} from '@/features/trips/queries';
 import type {TripStatus} from '@/features/trips/types';
 import {getTripFreightValue} from '@/features/trips/utils/trip-lifecycle';
@@ -32,7 +33,9 @@ async function countActiveRoutes(
     .eq('operational_status', 'active')
     .is('deleted_at', null);
 
-  if (error) return 0;
+  if (error) {
+    throw new Error(mapDatabaseError(error));
+  }
   return count ?? 0;
 }
 
@@ -57,17 +60,11 @@ async function loadTripFinancialAggregates(
     .eq('company_id', companyId)
     .is('deleted_at', null);
 
-  if (error || !data) {
-    return {
-      programmed: 0,
-      inProgress: 0,
-      completed: 0,
-      cancelled: 0,
-      totalFreight: 0,
-      tripCount: 0,
-      vehiclesOnTrip: 0,
-      driversOnTrip: 0,
-    };
+  if (error) {
+    throw new Error(mapDatabaseError(error));
+  }
+  if (!data) {
+    throw new Error('Não foi possível carregar os indicadores de viagens.');
   }
 
   let programmed = 0;
@@ -121,7 +118,12 @@ async function loadTripExpensesTotal(
     .eq('company_id', companyId)
     .is('deleted_at', null);
 
-  if (error || !data) return 0;
+  if (error) {
+    throw new Error(mapDatabaseError(error));
+  }
+  if (!data) {
+    throw new Error('Não foi possível carregar as despesas das viagens.');
+  }
 
   return data.reduce((sum, row) => sum + asNumber(row.amount), 0);
 }
