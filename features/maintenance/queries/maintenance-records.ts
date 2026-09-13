@@ -342,7 +342,8 @@ export async function softDeleteMaintenanceRecord(
       updated_by: profileId,
     })
     .eq('id', maintenanceRecordId)
-    .eq('company_id', companyId);
+    .eq('company_id', companyId)
+    .is('deleted_at', null);
 
   if (error) {
     throw new Error(mapDatabaseError(error));
@@ -507,7 +508,8 @@ export async function softDeleteMaintenanceDocument(
     .from('maintenance_documents')
     .update({deleted_at: new Date().toISOString()})
     .eq('id', documentId)
-    .eq('company_id', companyId);
+    .eq('company_id', companyId)
+    .is('deleted_at', null);
 
   if (error) {
     throw new Error(mapDatabaseError(error));
@@ -634,7 +636,8 @@ export async function softDeleteMaintenancePart(
     .from('maintenance_parts')
     .update({deleted_at: new Date().toISOString(), updated_by: profileId})
     .eq('id', partId)
-    .eq('company_id', companyId);
+    .eq('company_id', companyId)
+    .is('deleted_at', null);
 
   if (error) {
     throw new Error(mapDatabaseError(error));
@@ -755,7 +758,8 @@ export async function softDeleteMaintenanceService(
     .from('maintenance_services')
     .update({deleted_at: new Date().toISOString(), updated_by: profileId})
     .eq('id', serviceId)
-    .eq('company_id', companyId);
+    .eq('company_id', companyId)
+    .is('deleted_at', null);
 
   if (error) {
     throw new Error(mapDatabaseError(error));

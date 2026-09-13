@@ -675,7 +675,8 @@ export async function softDeleteTrip(
       updated_by: profileId,
     })
     .eq('id', tripId)
-    .eq('company_id', companyId);
+    .eq('company_id', companyId)
+    .is('deleted_at', null);
 
   if (error) {
     throw new Error(mapDatabaseError(error));
@@ -1035,7 +1036,8 @@ export async function softDeleteTripDocument(
     .from('trip_documents')
     .update({deleted_at: new Date().toISOString()})
     .eq('id', documentId)
-    .eq('company_id', companyId);
+    .eq('company_id', companyId)
+    .is('deleted_at', null);
 
   if (error) {
     throw new Error(mapDatabaseError(error));
@@ -1101,6 +1103,7 @@ export async function upsertTripChecklist(
       .update(payload)
       .eq('id', existing.id)
       .eq('company_id', companyId)
+      .is('deleted_at', null)
       .select(TRIP_CHECKLIST_COLUMNS)
       .single();
 

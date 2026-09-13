@@ -427,7 +427,8 @@ export async function softDeleteFuelRecord(
       updated_by: profileId,
     })
     .eq('id', fuelRecordId)
-    .eq('company_id', companyId);
+    .eq('company_id', companyId)
+    .is('deleted_at', null);
 
   if (error) {
     throw new Error(mapDatabaseError(error));
@@ -631,7 +632,8 @@ export async function softDeleteFuelDocument(
     .from('fuel_documents')
     .update({deleted_at: new Date().toISOString()})
     .eq('id', documentId)
-    .eq('company_id', companyId);
+    .eq('company_id', companyId)
+    .is('deleted_at', null);
 
   if (error) {
     throw new Error(mapDatabaseError(error));
