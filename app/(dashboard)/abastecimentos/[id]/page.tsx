@@ -10,6 +10,8 @@ import {listBranchesForSelect} from '@/features/organization/branches/queries';
 import type {BranchSelectOption} from '@/features/organization/branches/types';
 import {getSuppliersForSelect} from '@/features/suppliers/loaders';
 import type {SupplierSelectOption} from '@/features/suppliers/types';
+import {listTripsForSelect} from '@/features/trips/queries';
+import type {TripSelectOption} from '@/features/trips/types';
 import {listVehiclesForSelect} from '@/features/vehicles/queries';
 import type {VehicleSelectOption} from '@/features/vehicles/types';
 import {
@@ -42,14 +44,16 @@ export default async function AbastecimentoDetailPage({params}: AbastecimentoDet
   let drivers: DriverSelectOption[];
   let vehicles: VehicleSelectOption[];
   let suppliers: SupplierSelectOption[];
+  let trips: TripSelectOption[];
 
   try {
-    [data, branches, drivers, vehicles, suppliers] = await Promise.all([
+    [data, branches, drivers, vehicles, suppliers, trips] = await Promise.all([
       getFuelDetail(supabase, companyId, id),
       listBranchesForSelect(supabase, companyId),
       listDriversForSelect(supabase, companyId),
       listVehiclesForSelect(supabase, companyId),
       getSuppliersForSelect(supabase, companyId, {category: 'posto'}),
+      listTripsForSelect(supabase, companyId),
     ]);
   } catch {
     notFound();
@@ -67,6 +71,7 @@ export default async function AbastecimentoDetailPage({params}: AbastecimentoDet
       drivers={drivers}
       vehicles={vehicles}
       suppliers={suppliers}
+      trips={trips}
     />
   );
 }

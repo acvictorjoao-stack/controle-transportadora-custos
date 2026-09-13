@@ -17,6 +17,7 @@ import type {DriverSelectOption} from '@/features/drivers/types';
 import {SupplierSelect} from '@/features/suppliers/components';
 import {useSupplierOptions} from '@/features/suppliers/hooks/use-supplier-options';
 import type {SupplierSelectOption} from '@/features/suppliers/types';
+import type {TripSelectOption} from '@/features/trips/types';
 import type {VehicleSelectOption} from '@/features/vehicles/types';
 
 import {createFuelRecordAction, getVehicleLastFuelOdometerAction, updateFuelRecordAction} from '../actions';
@@ -34,6 +35,7 @@ export interface FuelFormModalProps {
   drivers: DriverSelectOption[];
   vehicles: VehicleSelectOption[];
   suppliers: SupplierSelectOption[];
+  trips: TripSelectOption[];
   onSaved: (record: FuelRecord) => void;
 }
 
@@ -62,6 +64,7 @@ function FuelFormModal({
   drivers,
   vehicles,
   suppliers,
+  trips,
   onSaved,
 }: FuelFormModalProps) {
   const isEdit = Boolean(record);
@@ -85,6 +88,7 @@ function FuelFormModal({
         drivers={drivers}
         vehicles={vehicles}
         suppliers={suppliers}
+        trips={trips}
         onClose={onClose}
         onSaved={onSaved}
       />
@@ -99,6 +103,7 @@ function FuelFormContent({
   drivers,
   vehicles,
   suppliers: initialSuppliers,
+  trips,
   onClose,
   onSaved,
 }: {
@@ -108,6 +113,7 @@ function FuelFormContent({
   drivers: DriverSelectOption[];
   vehicles: VehicleSelectOption[];
   suppliers: SupplierSelectOption[];
+  trips: TripSelectOption[];
   onClose: () => void;
   onSaved: (record: FuelRecord) => void;
 }) {
@@ -117,6 +123,7 @@ function FuelFormContent({
     vehicleId: record?.vehicleId ?? vehicles[0]?.id ?? '',
     driverId: record?.driverId ?? drivers[0]?.id ?? '',
     branchId: record?.branchId ?? null,
+    tripId: record?.tripId ?? null,
     supplierId: record?.supplierId ?? '',
     stationName: record?.stationName ?? '',
     stationBrand: record?.stationBrand ?? null,
@@ -290,6 +297,21 @@ function FuelFormContent({
             {branches.map((branch) => (
               <option key={branch.id} value={branch.id}>
                 {branch.name}
+              </option>
+            ))}
+          </select>
+        </FormField>
+        <FormField label="Viagem (opcional)" htmlFor="fuel-trip" error={fieldErrors.tripId}>
+          <select
+            id="fuel-trip"
+            value={formData.tripId ?? ''}
+            onChange={(e) => updateField('tripId', e.target.value || null)}
+            className={FUEL_NATIVE_SELECT_CLASS}
+          >
+            <option value="">Sem viagem</option>
+            {trips.map((trip) => (
+              <option key={trip.id} value={trip.id}>
+                {trip.tripNumber}
               </option>
             ))}
           </select>

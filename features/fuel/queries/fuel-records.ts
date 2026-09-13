@@ -189,6 +189,7 @@ function buildFuelPayload(
     vehicle_id: input.vehicleId,
     driver_id: input.driverId,
     branch_id: input.branchId,
+    trip_id: input.tripId ?? null,
     supplier_id: input.supplierId,
     station_name: input.stationName,
     station_brand: input.stationBrand,

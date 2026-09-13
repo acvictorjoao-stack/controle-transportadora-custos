@@ -22,6 +22,7 @@ import {ROUTES} from '@/constants/routes/paths';
 import type {BranchSelectOption} from '@/features/organization/branches/types';
 import type {DriverSelectOption} from '@/features/drivers/types';
 import type {SupplierSelectOption} from '@/features/suppliers/types';
+import type {TripSelectOption} from '@/features/trips/types';
 import type {VehicleSelectOption} from '@/features/vehicles/types';
 
 import {deleteFuelRecordAction} from '../actions';
@@ -53,6 +54,7 @@ export interface FuelListProps {
   drivers: DriverSelectOption[];
   vehicles: VehicleSelectOption[];
   suppliers: SupplierSelectOption[];
+  trips: TripSelectOption[];
   error: string | null;
 }
 
@@ -65,6 +67,7 @@ function FuelList({
   drivers,
   vehicles,
   suppliers,
+  trips,
   error: initialError,
 }: FuelListProps) {
   const router = useRouter();
@@ -151,6 +154,21 @@ function FuelList({
       id: 'driver',
       header: 'Motorista',
       cell: (row: FuelRecord) => row.driverName ?? '—',
+    },
+    {
+      id: 'trip',
+      header: 'Viagem',
+      cell: (row: FuelRecord) =>
+        row.tripId && row.tripNumber ? (
+          <Link
+            href={ROUTES.viagemDetail(row.tripId)}
+            className="text-sm font-medium hover:underline"
+          >
+            {row.tripNumber}
+          </Link>
+        ) : (
+          '—'
+        ),
     },
     {
       id: 'station',
@@ -294,6 +312,7 @@ function FuelList({
         drivers={drivers}
         vehicles={vehicles}
         suppliers={suppliers}
+        trips={trips}
         onSaved={handleSaved}
       />
     </PageTemplate>

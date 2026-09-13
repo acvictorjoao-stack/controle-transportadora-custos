@@ -15,6 +15,7 @@ import {ROUTES} from '@/constants/routes/paths';
 import type {BranchSelectOption} from '@/features/organization/branches/types';
 import type {DriverSelectOption} from '@/features/drivers/types';
 import type {SupplierSelectOption} from '@/features/suppliers/types';
+import type {TripSelectOption} from '@/features/trips/types';
 import type {VehicleSelectOption} from '@/features/vehicles/types';
 
 import {deleteFuelDocumentAction} from '../actions';
@@ -43,6 +44,7 @@ export interface FuelDetailViewProps {
   drivers: DriverSelectOption[];
   vehicles: VehicleSelectOption[];
   suppliers: SupplierSelectOption[];
+  trips: TripSelectOption[];
 }
 
 const TABS = [
@@ -65,6 +67,7 @@ function FuelDetailView({
   drivers,
   vehicles,
   suppliers,
+  trips,
 }: FuelDetailViewProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = React.useState<TabId>('resumo');
@@ -87,6 +90,7 @@ function FuelDetailView({
   const infoRows = [
     ['Veículo', record.vehiclePlate ?? '—'],
     ['Motorista', record.driverName ?? '—'],
+    ['Viagem', record.tripNumber ?? '—'],
     ['Filial', record.branchName ?? '—'],
     ['Posto', record.stationName ?? '—'],
     ['Bandeira', record.stationBrand ?? '—'],
@@ -156,7 +160,7 @@ function FuelDetailView({
       </div>
 
       {activeTab === 'resumo' && (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium">Veículo</CardTitle>
@@ -171,6 +175,23 @@ function FuelDetailView({
             </CardHeader>
             <CardContent className="text-lg font-semibold">
               {record.driverName ?? '—'}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Viagem</CardTitle>
+            </CardHeader>
+            <CardContent className="text-lg font-semibold">
+              {record.tripId && record.tripNumber ? (
+                <Link
+                  href={ROUTES.viagemDetail(record.tripId)}
+                  className="hover:underline"
+                >
+                  {record.tripNumber}
+                </Link>
+              ) : (
+                '—'
+              )}
             </CardContent>
           </Card>
           <Card>
@@ -471,6 +492,7 @@ function FuelDetailView({
         drivers={drivers}
         vehicles={vehicles}
         suppliers={suppliers}
+        trips={trips}
         onSaved={handleRefresh}
       />
     </PageTemplate>

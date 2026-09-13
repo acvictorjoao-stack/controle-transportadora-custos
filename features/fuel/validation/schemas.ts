@@ -40,6 +40,13 @@ const nonNegativeNumber = z
     return Number.isFinite(n) && n >= 0 ? n : null;
   });
 
+const optionalUuid = z
+  .string()
+  .uuid()
+  .nullable()
+  .optional()
+  .transform((v) => v ?? null);
+
 export const fuelTypeSchema = z.enum(FUEL_TYPES);
 
 const fuelBaseSchema = z
@@ -52,6 +59,7 @@ const fuelBaseSchema = z
       .nullable()
       .optional()
       .transform((v) => v ?? null),
+    tripId: optionalUuid,
     supplierId: z.string().uuid('Selecione o fornecedor.'),
     stationName: z.string().trim().min(1, 'Informe o posto.'),
     stationBrand: optionalString,
