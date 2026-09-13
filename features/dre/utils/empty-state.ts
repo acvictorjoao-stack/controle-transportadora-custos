@@ -17,6 +17,8 @@ export const EMPTY_OPERATIONAL_DRE: OperationalDreData = {
     accountsPayable: 0,
     other: 0,
     totalOperatingCosts: 0,
+    allocatedOperatingCosts: 0,
+    unattributableOperatingCosts: 0,
   },
   result: {operatingProfit: 0, operatingMarginPercent: null},
   indicators: {

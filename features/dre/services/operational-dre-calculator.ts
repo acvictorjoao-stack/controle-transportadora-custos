@@ -1,3 +1,4 @@
+import {allocateOperationalCostsByMileage} from '@/features/financial/services/allocate-operational-costs-by-mileage';
 import {getTripFreightValue} from '@/features/trips/utils/trip-lifecycle';
 
 import {
@@ -83,6 +84,8 @@ export function aggregateCosts(expenses: OperationalDreExpenseRow[]): Operationa
     accountsPayable: 0,
     other: 0,
     totalOperatingCosts: 0,
+    allocatedOperatingCosts: 0,
+    unattributableOperatingCosts: 0,
   };
 
   for (const expense of expenses) {
@@ -100,6 +103,36 @@ export function aggregateCosts(expenses: OperationalDreExpenseRow[]): Operationa
     costs.other;
 
   return costs;
+}
+
+/**
+ * Audit #12 — preenche atribuído vs não atribuível via o mesmo rateio dos rankings.
+ * Conservação: allocated + unattributable = total (amounts ≠ 0).
+ */
+export function applyCostAllocationCoverage(
+  costs: OperationalDreCosts,
+  expenses: OperationalDreExpenseRow[],
+  trips: OperationalDreTripRow[],
+): OperationalDreCosts {
+  const allocation = allocateOperationalCostsByMileage(
+    expenses.map((expense) => ({
+      id: expense.id,
+      amount: expense.amount,
+      tripId: expense.tripId,
+      vehicleId: expense.vehicleId,
+    })),
+    trips.map((trip) => ({
+      tripId: trip.id,
+      vehicleId: trip.vehicleId,
+      distanceKm: trip.distanceKm,
+    })),
+  );
+
+  return {
+    ...costs,
+    allocatedOperatingCosts: allocation.allocatedTotal,
+    unattributableOperatingCosts: allocation.unattributableTotal,
+  };
 }
 
 export function buildIndicators(input: {
@@ -338,7 +371,11 @@ export function calculateOperationalDre(
   const scopedExpenses = filterExpensesForScope(expenses, filters, trips);
   const freightRevenue = costsOnlyMode ? 0 : sumFreightRevenue(trips);
   const totalRevenue = freightRevenue;
-  const costs = aggregateCosts(scopedExpenses);
+  const costs = applyCostAllocationCoverage(
+    aggregateCosts(scopedExpenses),
+    scopedExpenses,
+    trips,
+  );
   const costCenterBreakdown = aggregateCostsByCostCenter(scopedExpenses);
   const operatingProfit = costsOnlyMode
     ? null

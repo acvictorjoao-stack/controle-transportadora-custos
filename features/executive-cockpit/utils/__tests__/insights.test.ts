@@ -20,6 +20,8 @@ function emptyDre(overrides: Partial<OperationalDreData> = {}): OperationalDreDa
       accountsPayable: 0,
       other: 0,
       totalOperatingCosts: 300,
+      allocatedOperatingCosts: 300,
+      unattributableOperatingCosts: 0,
     },
     result: {operatingProfit: 700, operatingMarginPercent: 70},
     indicators: {
@@ -76,6 +78,8 @@ describe('buildExecutiveInsights', () => {
           accountsPayable: 0,
           other: 0,
           totalOperatingCosts: 450,
+          allocatedOperatingCosts: 450,
+          unattributableOperatingCosts: 0,
         },
       }),
       previousDre: emptyDre(),

@@ -45,6 +45,7 @@ import {
 import {CustomerSideRankingCard} from './customer-side-ranking-card';
 import type {PeriodChartPoint} from './revenue-cost-profit-chart';
 import {OperationalDreCompetenceDisclaimer} from './operational-dre-competence-disclaimer';
+import {OperationalDreCostAllocationDisclaimer} from './operational-dre-cost-allocation-disclaimer';
 import {OperationalDreCostsOnlyBanner} from './operational-dre-costs-only-banner';
 import {OperationalDreCustomerCosts} from './operational-dre-customer-costs';
 import {OperationalDreFiltersBar} from './operational-dre-filters';
@@ -314,6 +315,8 @@ function CustomerProfitabilityDashboard({
 
       <OperationalDreCompetenceDisclaimer />
 
+      <OperationalDreCostAllocationDisclaimer />
+
       <OperationalDreCostsOnlyBanner active={dre.costsOnlyMode} />
 
       <Section
@@ -337,6 +340,16 @@ function CustomerProfitabilityDashboard({
                 invertGood
               />
             }
+          />
+          <StatCard
+            title="Custos Atribuídos"
+            value={formatCurrencyBr(dre.costs.allocatedOperatingCosts)}
+            subtitle="Entram no ranking"
+          />
+          <StatCard
+            title="Não Atribuíveis"
+            value={formatCurrencyBr(dre.costs.unattributableOperatingCosts)}
+            subtitle="Fora do ranking"
           />
           <StatCard
             title="Lucro Operacional"

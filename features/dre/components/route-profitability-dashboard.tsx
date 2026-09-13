@@ -36,6 +36,7 @@ import type {
 import type {PeriodDelta} from '../utils/period-comparison';
 import type {PeriodChartPoint} from './revenue-cost-profit-chart';
 import {OperationalDreCompetenceDisclaimer} from './operational-dre-competence-disclaimer';
+import {OperationalDreCostAllocationDisclaimer} from './operational-dre-cost-allocation-disclaimer';
 import {OperationalDreCostsOnlyBanner} from './operational-dre-costs-only-banner';
 import {OperationalDreFiltersBar} from './operational-dre-filters';
 import {OperationalDreRouteCosts} from './operational-dre-route-costs';
@@ -248,6 +249,8 @@ function RouteProfitabilityDashboard({
 
       <OperationalDreCompetenceDisclaimer />
 
+      <OperationalDreCostAllocationDisclaimer />
+
       <OperationalDreCostsOnlyBanner active={dre.costsOnlyMode} />
 
       <Section
@@ -259,6 +262,16 @@ function RouteProfitabilityDashboard({
           <StatCard
             title="Custos Totais"
             value={formatCurrencyBr(dre.costs.totalOperatingCosts)}
+          />
+          <StatCard
+            title="Custos Atribuídos"
+            value={formatCurrencyBr(dre.costs.allocatedOperatingCosts)}
+            subtitle="Entram no ranking"
+          />
+          <StatCard
+            title="Não Atribuíveis"
+            value={formatCurrencyBr(dre.costs.unattributableOperatingCosts)}
+            subtitle="Fora do ranking"
           />
           <StatCard
             title="Lucro Total"

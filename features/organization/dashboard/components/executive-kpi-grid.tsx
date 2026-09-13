@@ -18,7 +18,8 @@ export const EXECUTIVE_OPEN_BALANCE_LABELS = {
   accountsReceivableTitle: 'Saldo em aberto — Contas a Receber',
   accountsPayableSubtitle: 'Empresa inteira • sem folha',
   accountsReceivableSubtitle: 'Empresa inteira • independente dos filtros',
-  costsSubtitle: 'Inclui folha no escopo da DRE',
+  costsSubtitle:
+    'Total DRE = atribuídos + não atribuíveis; rankings usam só atribuídos',
 } as const;
 
 function formatKm(value: number): string {

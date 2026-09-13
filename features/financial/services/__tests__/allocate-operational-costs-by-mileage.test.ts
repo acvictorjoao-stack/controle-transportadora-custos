@@ -75,6 +75,8 @@ describe('allocateOperationalCostsByMileage', () => {
 
     expect(result.allocations).toHaveLength(0);
     expect(result.totalsByTripId.size).toBe(0);
+    expect(result.allocatedTotal).toBe(0);
+    expect(result.unattributableTotal).toBe(999);
   });
 
   it('skips mileage allocation when vehicle has zero total km', () => {
@@ -87,6 +89,8 @@ describe('allocateOperationalCostsByMileage', () => {
     );
 
     expect(result.allocations).toHaveLength(0);
+    expect(result.allocatedTotal).toBe(0);
+    expect(result.unattributableTotal).toBe(2000);
   });
 
   it('does not cross-allocate between different vehicles', () => {
@@ -114,5 +118,29 @@ describe('allocateOperationalCostsByMileage', () => {
 
     const allocated = result.allocations.reduce((sum, item) => sum + item.amount, 0);
     expect(allocated).toBeCloseTo(333, 10);
+    expect(result.allocatedTotal).toBe(333);
+    expect(result.unattributableTotal).toBe(0);
+    expect(result.allocatedTotal + result.unattributableTotal).toBe(333);
+  });
+
+  it('Audit #12: splits allocated vs unattributable without duplication', () => {
+    const result = allocateOperationalCostsByMileage(
+      [
+        {id: 'linked', amount: 100, tripId: 'trip-a', vehicleId: 'vehicle-1'},
+        {id: 'shared', amount: 400, tripId: null, vehicleId: 'vehicle-1'},
+        {id: 'payroll', amount: 700, tripId: null, vehicleId: null},
+      ],
+      [
+        {tripId: 'trip-a', vehicleId: 'vehicle-1', distanceKm: 50},
+        {tripId: 'trip-b', vehicleId: 'vehicle-1', distanceKm: 50},
+      ],
+    );
+
+    expect(result.allocatedTotal).toBe(500);
+    expect(result.unattributableTotal).toBe(700);
+    expect(result.allocatedTotal + result.unattributableTotal).toBe(1200);
+    expect(result.allocations.every((item) => item.expenseId !== 'payroll')).toBe(
+      true,
+    );
   });
 });

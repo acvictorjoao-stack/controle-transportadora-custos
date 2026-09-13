@@ -19,9 +19,11 @@ import type {
   OperationalDreFilters,
 } from '../types';
 import {OperationalDreCompetenceDisclaimer} from './operational-dre-competence-disclaimer';
+import {OperationalDreCostAllocationDisclaimer} from './operational-dre-cost-allocation-disclaimer';
 import {OperationalDreCostsOnlyBanner} from './operational-dre-costs-only-banner';
 import {OperationalDreFiltersBar} from './operational-dre-filters';
 import {OperationalDreRouteCosts} from './operational-dre-route-costs';
+import {OPERATIONAL_DRE_COST_ALLOCATION_LABELS} from '../services/operational-dre-cost-allocation';
 
 export interface OperationalDreViewProps {
   data: OperationalDreData;
@@ -128,6 +130,8 @@ function OperationalDreView({
 
         <OperationalDreCompetenceDisclaimer />
 
+        <OperationalDreCostAllocationDisclaimer />
+
         <OperationalDreCostsOnlyBanner active={costsOnlyMode} />
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
@@ -162,12 +166,23 @@ function OperationalDreView({
               <CostLine label="Financeiro" value={costs.financial} />
               <CostLine label="Contas Operacionais" value={costs.accountsPayable} />
               <CostLine label="Outros Custos" value={costs.other} />
-              <div className="border-t pt-2">
+              <div className="border-t pt-2 space-y-2">
                 <CostLine
-                  label="Total de Custos"
+                  label={OPERATIONAL_DRE_COST_ALLOCATION_LABELS.allocated}
+                  value={costs.allocatedOperatingCosts}
+                />
+                <CostLine
+                  label={OPERATIONAL_DRE_COST_ALLOCATION_LABELS.unattributable}
+                  value={costs.unattributableOperatingCosts}
+                />
+                <CostLine
+                  label={OPERATIONAL_DRE_COST_ALLOCATION_LABELS.total}
                   value={costs.totalOperatingCosts}
                   emphasize
                 />
+                <p className="text-xs text-muted-foreground">
+                  {OPERATIONAL_DRE_COST_ALLOCATION_LABELS.rankingHint}
+                </p>
               </div>
             </CardContent>
           </Card>

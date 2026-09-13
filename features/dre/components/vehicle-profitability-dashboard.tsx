@@ -34,6 +34,7 @@ import type {
 } from '../types';
 import type {PeriodDelta} from '../utils/period-comparison';
 import {OperationalDreCompetenceDisclaimer} from './operational-dre-competence-disclaimer';
+import {OperationalDreCostAllocationDisclaimer} from './operational-dre-cost-allocation-disclaimer';
 import {OperationalDreCostsOnlyBanner} from './operational-dre-costs-only-banner';
 import {OperationalDreFiltersBar} from './operational-dre-filters';
 import {OperationalDreVehicleCosts} from './operational-dre-vehicle-costs';
@@ -263,6 +264,8 @@ function VehicleProfitabilityDashboard({
 
       <OperationalDreCompetenceDisclaimer />
 
+      <OperationalDreCostAllocationDisclaimer />
+
       <OperationalDreCostsOnlyBanner active={dre.costsOnlyMode} />
 
       <Section
@@ -274,6 +277,17 @@ function VehicleProfitabilityDashboard({
           <StatCard
             title="Custos"
             value={formatCurrencyBr(dre.costs.totalOperatingCosts)}
+            subtitle="Total DRE"
+          />
+          <StatCard
+            title="Custos Atribuídos"
+            value={formatCurrencyBr(dre.costs.allocatedOperatingCosts)}
+            subtitle="Entram no ranking"
+          />
+          <StatCard
+            title="Não Atribuíveis"
+            value={formatCurrencyBr(dre.costs.unattributableOperatingCosts)}
+            subtitle="Fora do ranking"
           />
           <StatCard
             title="Lucro"

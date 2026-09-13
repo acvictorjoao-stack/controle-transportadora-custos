@@ -33,6 +33,16 @@ export interface OperationalDreCosts {
   accountsPayable: number;
   other: number;
   totalOperatingCosts: number;
+  /**
+   * Parcela do total que possui vínculo direto com viagem ou rateio por KM
+   * (Audit #12). Ranking de rentabilidade usa apenas este valor.
+   */
+  allocatedOperatingCosts: number;
+  /**
+   * Parcela sem vínculo operacional atribuível (ex.: folha sem veículo/viagem).
+   * Audit #12 — explícito; não entra no ranking.
+   */
+  unattributableOperatingCosts: number;
 }
 
 export interface OperationalDreResult {

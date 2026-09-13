@@ -58,6 +58,8 @@ function makeDre(overrides: {
       accountsPayable: 0,
       other: overrides.costs,
       totalOperatingCosts: overrides.costs,
+      allocatedOperatingCosts: overrides.costs,
+      unattributableOperatingCosts: 0,
     },
     result: {
       operatingProfit,

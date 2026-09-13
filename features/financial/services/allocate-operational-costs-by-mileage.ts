@@ -41,6 +41,14 @@ export interface AllocatedOperationalCost {
 export interface AllocateOperationalCostsByMileageResult {
   allocations: AllocatedOperationalCost[];
   totalsByTripId: Map<string, number>;
+  /** Soma dos valores efetivamente atribuídos a viagens (direto + rateio). */
+  allocatedTotal: number;
+  /**
+   * Soma dos valores que não puderam ser atribuídos (sem viagem/veículo,
+   * ou veículo sem KM positivo no conjunto de viagens).
+   * Conservação: allocatedTotal + unattributableTotal ≈ Σ amounts (≠ 0).
+   */
+  unattributableTotal: number;
   getForTrip: (tripId: string) => AllocatedOperationalCost[];
 }
 
@@ -59,10 +67,12 @@ function positiveKm(value: number): number {
  * - Despesas com `tripId`: 100% na viagem (mesmo sem veículo/KM).
  * - Despesas sem `tripId` e com `vehicleId`: proporção `tripKm / vehicleTotalKm`
  *   entre as viagens do mesmo veículo presentes em `trips`.
- * - Demais despesas (sem viagem e sem veículo): ignoradas (não atribuíveis).
+ * - Demais despesas (sem viagem e sem veículo, ou veículo sem KM):
+ *   contabilizadas em `unattributableTotal` (não atribuíveis) — Audit #12.
  *
  * Conservação: a soma dos valores rateados de uma despesa com KM > 0
  * equivale ao valor original (ruído de ponto flutuante à parte).
+ * `allocatedTotal + unattributableTotal` cobre todos os amounts ≠ 0.
  */
 export function allocateOperationalCostsByMileage(
   expenses: MileageAllocationExpense[],
@@ -85,6 +95,8 @@ export function allocateOperationalCostsByMileage(
 
   const allocations: AllocatedOperationalCost[] = [];
   const totalsByTripId = new Map<string, number>();
+  let allocatedTotal = 0;
+  let unattributableTotal = 0;
 
   const addAllocation = (item: AllocatedOperationalCost) => {
     allocations.push(item);
@@ -110,24 +122,34 @@ export function allocateOperationalCostsByMileage(
         vehicleTotalKm: null,
         tripKm: null,
       });
+      allocatedTotal += amount;
       continue;
     }
 
-    if (!expense.vehicleId) continue;
+    if (!expense.vehicleId) {
+      unattributableTotal += amount;
+      continue;
+    }
 
     const vehicleTrips = tripsByVehicle.get(expense.vehicleId) ?? [];
     const vehicleTotalKm = totalKmByVehicle.get(expense.vehicleId) ?? 0;
-    if (vehicleTotalKm <= 0 || vehicleTrips.length === 0) continue;
+    if (vehicleTotalKm <= 0 || vehicleTrips.length === 0) {
+      unattributableTotal += amount;
+      continue;
+    }
 
+    let allocatedShare = 0;
     for (const trip of vehicleTrips) {
       const tripKm = positiveKm(trip.distanceKm);
       if (tripKm <= 0) continue;
 
       const share = tripKm / vehicleTotalKm;
+      const shareAmount = amount * share;
+      allocatedShare += shareAmount;
       addAllocation({
         expenseId: expense.id,
         tripId: trip.tripId,
-        amount: amount * share,
+        amount: shareAmount,
         originalAmount: amount,
         share,
         allocation: 'mileage',
@@ -136,11 +158,19 @@ export function allocateOperationalCostsByMileage(
         tripKm,
       });
     }
+
+    if (allocatedShare > 0) {
+      allocatedTotal += amount;
+    } else {
+      unattributableTotal += amount;
+    }
   }
 
   return {
     allocations,
     totalsByTripId,
+    allocatedTotal,
+    unattributableTotal,
     getForTrip: (tripId: string) =>
       allocations.filter((item) => item.tripId === tripId),
   };

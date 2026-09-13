@@ -37,7 +37,9 @@ describe('ExecutiveKpiGrid copy contract', () => {
   });
 
   it('deixa explícito payroll no custo DRE e fora do AP', () => {
-    expect(componentSource).toContain('Inclui folha no escopo da DRE');
+    expect(componentSource).toContain(
+      'Total DRE = atribuídos + não atribuíveis; rankings usam só atribuídos',
+    );
     expect(componentSource).toContain('Empresa inteira • sem folha');
     expect(EXECUTIVE_OPEN_BALANCE_META.includesPayroll).toBe(false);
   });
