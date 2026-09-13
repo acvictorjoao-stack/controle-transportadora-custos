@@ -31,6 +31,7 @@ function createPagedQueryMock<T extends {id: string}>(allRows: T[]) {
     builder.not = vi.fn(self);
     builder.gte = vi.fn(self);
     builder.lte = vi.fn(self);
+    builder.lt = vi.fn(self);
     builder.in = vi.fn(self);
     builder.or = vi.fn(self);
     builder.order = vi.fn((column: string, opts?: {ascending?: boolean}) => {

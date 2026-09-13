@@ -11,6 +11,7 @@ import type {
   OperationalDreTripDetailRow,
   OperationalDreTripRow,
 } from '../types';
+import {buildCompletedAtPeriodBounds} from '../utils/completed-at-period-bounds';
 import {formatOperationalDreRouteLabel} from '../utils/route-label';
 
 const DRE_TRIP_COLUMNS = `
@@ -238,7 +239,7 @@ function applyTripFilters<T extends {
   eq: (column: string, value: string) => T;
   is: (column: string, value: null) => T;
   gte: (column: string, value: string) => T;
-  lte: (column: string, value: string) => T;
+  lt: (column: string, value: string) => T;
 }>(
   query: T,
   filters: OperationalDreFilters,
@@ -266,9 +267,13 @@ function applyTripFilters<T extends {
   } else if (filters.driverId) {
     next = next.eq('driver_id', filters.driverId);
   }
-  if (filters.dateFrom) next = next.gte('completed_at', filters.dateFrom);
-  if (filters.dateTo) {
-    next = next.lte('completed_at', `${filters.dateTo}T23:59:59.999Z`);
+  // Audit #15 — datas civis no fuso de negócio → bounds UTC semiabertos [start, end).
+  const completedAtBounds = buildCompletedAtPeriodBounds(filters);
+  if (completedAtBounds.gte) {
+    next = next.gte('completed_at', completedAtBounds.gte);
+  }
+  if (completedAtBounds.lt) {
+    next = next.lt('completed_at', completedAtBounds.lt);
   }
   return next;
 }
@@ -548,9 +553,13 @@ export async function fetchOperationalDreTripsForVehicles(
         .in('vehicle_id', uniqueIds);
 
       if (filters.branchId) query = query.eq('branch_id', filters.branchId);
-      if (filters.dateFrom) query = query.gte('completed_at', filters.dateFrom);
-      if (filters.dateTo) {
-        query = query.lte('completed_at', `${filters.dateTo}T23:59:59.999Z`);
+      // Audit #15 — mesma conversão civil→UTC de applyTripFilters.
+      const completedAtBounds = buildCompletedAtPeriodBounds(filters);
+      if (completedAtBounds.gte) {
+        query = query.gte('completed_at', completedAtBounds.gte);
+      }
+      if (completedAtBounds.lt) {
+        query = query.lt('completed_at', completedAtBounds.lt);
       }
 
       return query.order('id', {ascending: true}).range(from, to);
