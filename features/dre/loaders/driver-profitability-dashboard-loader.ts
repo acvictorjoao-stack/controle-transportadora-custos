@@ -16,6 +16,7 @@ import type {
   OperationalDreVehicleGroup,
 } from '@/features/dre/types';
 import type {PeriodChartPoint} from '@/features/dre/components/revenue-cost-profit-chart';
+import {buildAllocatedPeriodChartPoint} from '@/features/dre/utils/period-chart-from-allocated-dre';
 import {buildDimensionComparisons} from '@/features/dre/utils/period-comparison';
 import type {PeriodDelta} from '@/features/dre/utils/period-comparison';
 import {EMPTY_OPERATIONAL_DRE_FILTER_OPTIONS} from '@/features/dre/utils/empty-state';
@@ -75,13 +76,7 @@ export async function getDriverProfitabilityDashboardData(
       Promise.all(
         buckets.map(async (bucket) => {
           const dre = await getOperationalDRE(supabase, companyId, bucket.filters);
-          return {
-            key: bucket.key,
-            label: bucket.label,
-            revenue: dre.revenues.totalRevenue,
-            costs: dre.costs.totalOperatingCosts,
-            profit: dre.result.operatingProfit,
-          } satisfies PeriodChartPoint;
+          return buildAllocatedPeriodChartPoint(bucket, dre);
         }),
       ),
     ]);

@@ -15,6 +15,7 @@ import type {
   OperationalDreFilters,
 } from '@/features/dre/types';
 import type {PeriodChartPoint} from '@/features/dre/components/revenue-cost-profit-chart';
+import {buildAllocatedPeriodChartPoint} from '@/features/dre/utils/period-chart-from-allocated-dre';
 import {
   buildDimensionComparisons,
   compareAggregatePeriods,
@@ -84,13 +85,7 @@ export async function getCustomerProfitabilityDashboardData(
       Promise.all(
         buckets.map(async (bucket) => {
           const dre = await getOperationalDRE(supabase, companyId, bucket.filters);
-          return {
-            key: bucket.key,
-            label: bucket.label,
-            revenue: dre.revenues.totalRevenue,
-            costs: dre.costs.totalOperatingCosts,
-            profit: dre.result.operatingProfit,
-          } satisfies PeriodChartPoint;
+          return buildAllocatedPeriodChartPoint(bucket, dre);
         }),
       ),
     ]);
