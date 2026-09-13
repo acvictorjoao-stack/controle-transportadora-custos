@@ -24,6 +24,7 @@ import {
 import type {DriverRankingRow} from '@/features/organization/dashboard/utils/rankings';
 import {VEHICLE_NATIVE_SELECT_CLASS} from '@/features/vehicles/utils/form-styles';
 import type {BreadcrumbItem} from '@/types/global/navigation';
+import {consolidatedRankingMarginPercent} from '@/features/dre/utils/consolidated-ranking-margin';
 
 import type {
   OperationalDreByDriverData,
@@ -94,16 +95,6 @@ function formatRatio(value: number | null, suffix = ''): string {
 
 function formatKm(value: number): string {
   return `${value.toLocaleString('pt-BR', {maximumFractionDigits: 1})} km`;
-}
-
-function averageMargin(groups: OperationalDreDriverGroup[]): number {
-  const withMargin = groups.filter((group) => group.marginPercent != null);
-  if (withMargin.length === 0) return 0;
-  const sum = withMargin.reduce(
-    (acc, group) => acc + (group.marginPercent ?? 0),
-    0,
-  );
-  return sum / withMargin.length;
 }
 
 function sortDriverRows(
@@ -199,7 +190,7 @@ function DriverProfitabilityDashboard({
     dre.result.operatingProfit != null && dre.result.operatingProfit < 0
       ? 'text-destructive'
       : undefined;
-  const avgMargin = averageMargin(byDriver.groups);
+  const avgMargin = consolidatedRankingMarginPercent(byDriver.groups);
   const revenueDisplay = hideProfitability
     ? '—'
     : formatCurrencyBr(dre.revenues.totalRevenue);

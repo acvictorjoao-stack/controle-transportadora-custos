@@ -23,6 +23,8 @@ import {
 import type {RouteRankingRow} from '@/features/organization/dashboard/utils/rankings';
 import type {BreadcrumbItem} from '@/types/global/navigation';
 
+import {consolidatedRankingMarginPercent} from '@/features/dre/utils/consolidated-ranking-margin';
+
 import type {
   OperationalDreByRouteData,
   OperationalDreCustomerGroup,
@@ -68,15 +70,6 @@ function formatRatio(value: number | null, suffix: string): string {
   return `${formatCurrencyBr(value)}${suffix}`;
 }
 
-function averageMargin(groups: OperationalDreRouteGroup[]): number {
-  const withMargin = groups.filter((group) => group.marginPercent != null);
-  if (withMargin.length === 0) return 0;
-  const sum = withMargin.reduce(
-    (acc, group) => acc + (group.marginPercent ?? 0),
-    0,
-  );
-  return sum / withMargin.length;
-}
 
 /**
  * Dashboard especializado de Rentabilidade por Rota (RC 27.6.0).
@@ -129,7 +122,7 @@ function RouteProfitabilityDashboard({
     [initialFilters, onBreadcrumbTrailChange],
   );
 
-  const avgMargin = averageMargin(byRoute.groups);
+  const avgMargin = consolidatedRankingMarginPercent(byRoute.groups);
   const hideProfitability =
     dre.costsOnlyMode || dre.result.operatingProfit == null;
   const profitClass =

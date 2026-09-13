@@ -26,6 +26,7 @@ import type {
 } from '@/features/organization/dashboard/utils/rankings';
 import type {BreadcrumbItem} from '@/types/global/navigation';
 import {cn} from '@/lib/utils';
+import {consolidatedRankingMarginPercent} from '@/features/dre/utils/consolidated-ranking-margin';
 
 import type {
   OperationalDreByCustomerData,
@@ -91,16 +92,6 @@ export interface CustomerProfitabilityDashboardProps {
 function formatRatio(value: number | null): string {
   if (value === null) return '—';
   return formatCurrencyBr(value);
-}
-
-function averageMargin(groups: OperationalDreCustomerGroup[]): number {
-  const withMargin = groups.filter((group) => group.marginPercent != null);
-  if (withMargin.length === 0) return 0;
-  const sum = withMargin.reduce(
-    (acc, group) => acc + (group.marginPercent ?? 0),
-    0,
-  );
-  return sum / withMargin.length;
 }
 
 function DeltaSubtitle({
@@ -183,7 +174,7 @@ function CustomerProfitabilityDashboard({
     [initialFilters, onBreadcrumbTrailChange],
   );
 
-  const avgMargin = averageMargin(byCustomer.groups);
+  const avgMargin = consolidatedRankingMarginPercent(byCustomer.groups);
   const customerCount = byCustomer.groups.length;
   const ticketMedio =
     customerCount > 0 ? dre.revenues.totalRevenue / customerCount : null;
