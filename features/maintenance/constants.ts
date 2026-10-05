@@ -3,7 +3,7 @@ export const MAINTENANCE_LIST_COLUMNS = `
   maintenance_type, priority, maintenance_status,
   supplier_id, supplier, workshop, opened_at, completed_at,
   odometer_km, hour_meter, downtime_hours,
-  description, estimated_amount, final_amount, total_cost,
+  description, estimated_amount, final_amount, parts_total, services_total, total_cost, cost_per_km,
   responsible, payment_type, payment_due_date,
   installment_count, installment_interval_days, status, created_at,
   branches:branch_id (id, name, code),
