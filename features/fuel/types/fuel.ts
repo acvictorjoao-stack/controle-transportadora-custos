@@ -55,7 +55,7 @@ export interface FuelRecordRow {
   created_by: string | null;
   updated_by: string | null;
   branches?: {id: string; name: string; code: string} | {id: string; name: string; code: string}[] | null;
-  vehicles?: {id: string; plate: string; model: string | null; fuel_type?: FuelType; tank_capacity_liters?: number | null} | {id: string; plate: string; model: string | null; fuel_type?: FuelType; tank_capacity_liters?: number | null}[] | null;
+  vehicles?: {id: string; plate: string; model: string | null; fuel_type?: FuelType} | {id: string; plate: string; model: string | null; fuel_type?: FuelType}[] | null;
   drivers?: {id: string; name: string; cpf?: string} | {id: string; name: string; cpf?: string}[] | null;
   trips?: {id: string; trip_number: string; origin?: string | null; destination?: string | null; trip_status?: string} | {id: string; trip_number: string; origin?: string | null; destination?: string | null; trip_status?: string}[] | null;
 }

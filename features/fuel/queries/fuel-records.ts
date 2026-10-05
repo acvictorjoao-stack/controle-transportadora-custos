@@ -9,7 +9,6 @@ import {
   FUEL_STORAGE_BUCKET,
 } from '../constants';
 import {
-  getVehicleTankCapacity,
   mapFuelDocumentRow,
   mapFuelHistoryRow,
   mapFuelRecordRow,
@@ -664,9 +663,7 @@ export async function getFuelRecordDetailRow(
 
   if (!data) return null;
 
-  const row = data as unknown as FuelRecordRow;
   return {
-    record: mapFuelRecordRow(row),
-    tankCapacity: getVehicleTankCapacity(row),
+    record: mapFuelRecordRow(data as unknown as FuelRecordRow),
   };
 }

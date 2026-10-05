@@ -94,9 +94,3 @@ export function mapFuelDocumentRow(row: FuelDocumentRow): FuelDocument {
     createdAt: row.created_at,
   };
 }
-
-export function getVehicleTankCapacity(row: FuelRecordRow): number | null {
-  const vehicle = firstRelation(row.vehicles);
-  if (!vehicle?.tank_capacity_liters) return null;
-  return Number(vehicle.tank_capacity_liters);
-}
