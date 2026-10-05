@@ -4,13 +4,12 @@ import {describe, expect, it} from 'vitest';
 
 import {EXECUTIVE_OPEN_BALANCE_META} from '../../loaders/executive-dashboard-loader';
 
-const componentSource = readFileSync(
-  resolve(
-    process.cwd(),
-    'features/organization/dashboard/components/executive-kpi-grid.tsx',
-  ),
-  'utf8',
-);
+const componentSource = [
+  'features/organization/dashboard/components/executive-kpi-grid.tsx',
+  'features/organization/dashboard/utils/executive-kpi-display.ts',
+]
+  .map((file) => readFileSync(resolve(process.cwd(), file), 'utf8'))
+  .join('\n');
 
 describe('ExecutiveKpiGrid copy contract', () => {
   it('separa P&L do período da posição financeira company-wide', () => {

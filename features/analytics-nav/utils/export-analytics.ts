@@ -1,4 +1,8 @@
-import type {AnalyticsExportPayload} from '../types';
+import type {
+  AnalyticsExportColumn,
+  AnalyticsExportPayload,
+  AnalyticsExportRow,
+} from '../types';
 
 export const ANALYTICS_XLSX_MIME_TYPE =
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
@@ -6,9 +10,21 @@ export const ANALYTICS_XLSX_EXTENSION = '.xlsx';
 
 type AnalyticsSheetCell = string | number | null;
 
+function pushTable(
+  matrix: AnalyticsSheetCell[][],
+  columns: AnalyticsExportColumn[],
+  rows: AnalyticsExportRow[],
+) {
+  matrix.push(columns.map((col) => col.header));
+  for (const row of rows) {
+    matrix.push(columns.map((col) => row[col.id] ?? null));
+  }
+}
+
 /**
  * Matriz única da exportação (CSV e XLSX): bloco de KPIs, linha em branco,
- * cabeçalho e linhas da tabela, na ordem de `payload.columns`.
+ * tabela principal (título opcional, cabeçalho e linhas, na ordem de
+ * `payload.columns`) e, para cada seção, linha em branco + título + tabela.
  */
 export function analyticsPayloadToMatrix(
   payload: AnalyticsExportPayload,
@@ -23,12 +39,26 @@ export function analyticsPayloadToMatrix(
     matrix.push([]);
   }
 
-  matrix.push(payload.columns.map((col) => col.header));
-  for (const row of payload.rows) {
-    matrix.push(payload.columns.map((col) => row[col.id] ?? null));
+  if (payload.tableTitle) matrix.push([payload.tableTitle]);
+  pushTable(matrix, payload.columns, payload.rows);
+
+  for (const section of payload.sections ?? []) {
+    matrix.push([], [section.title]);
+    pushTable(matrix, section.columns, section.rows);
   }
 
   return matrix;
+}
+
+/** Sufixo de período no nome do arquivo: `prefixo_AAAA-MM-DD_AAAA-MM-DD`. */
+export function analyticsFilenameBase(
+  prefix: string,
+  period: {dateFrom?: string; dateTo?: string} = {},
+): string {
+  const parts = [prefix, period.dateFrom, period.dateTo]
+    .map((part) => part?.trim().replace(/[^\w-]+/g, '-'))
+    .filter(Boolean);
+  return parts.join('_');
 }
 
 function escapeCsvCell(value: AnalyticsSheetCell): string {
@@ -96,6 +126,33 @@ function escapeHtml(value: string): string {
     .replace(/"/g, '&quot;');
 }
 
+function renderTableSectionHtml(
+  title: string,
+  columns: AnalyticsExportColumn[],
+  rows: AnalyticsExportRow[],
+): string {
+  const headerHtml = columns
+    .map((col) => `<th>${escapeHtml(col.header)}</th>`)
+    .join('');
+
+  const bodyHtml = rows
+    .map((row) => {
+      const cells = columns
+        .map((col) => `<td>${escapeHtml(String(row[col.id] ?? ''))}</td>`)
+        .join('');
+      return `<tr>${cells}</tr>`;
+    })
+    .join('');
+
+  return `<section>
+    <h2>${escapeHtml(title)}</h2>
+    <table>
+      <thead><tr>${headerHtml}</tr></thead>
+      <tbody>${bodyHtml || '<tr><td colspan="99">Sem dados</td></tr>'}</tbody>
+    </table>
+  </section>`;
+}
+
 /** Abre documento imprimível para salvar como PDF. */
 export function exportAnalyticsPdf(
   payload: AnalyticsExportPayload,
@@ -110,17 +167,8 @@ export function exportAnalyticsPdf(
         .join('')}</ul></section>`
     : '';
 
-  const headerHtml = payload.columns
-    .map((col) => `<th>${escapeHtml(col.header)}</th>`)
-    .join('');
-
-  const bodyHtml = payload.rows
-    .map((row) => {
-      const cells = payload.columns
-        .map((col) => `<td>${escapeHtml(String(row[col.id] ?? ''))}</td>`)
-        .join('');
-      return `<tr>${cells}</tr>`;
-    })
+  const sectionsHtml = (payload.sections ?? [])
+    .map((section) => renderTableSectionHtml(section.title, section.columns, section.rows))
     .join('');
 
   const html = `<!DOCTYPE html>
@@ -142,13 +190,8 @@ export function exportAnalyticsPdf(
   <h1>${escapeHtml(payload.title)}</h1>
   <p style="color:#666;font-size:12px">Arquivo: ${escapeHtml(filenameBase)}.pdf</p>
   ${kpiHtml}
-  <section>
-    <h2>Tabela / Ranking</h2>
-    <table>
-      <thead><tr>${headerHtml}</tr></thead>
-      <tbody>${bodyHtml || '<tr><td colspan="99">Sem dados</td></tr>'}</tbody>
-    </table>
-  </section>
+  ${renderTableSectionHtml(payload.tableTitle ?? 'Tabela / Ranking', payload.columns, payload.rows)}
+  ${sectionsHtml}
   <script>window.onload = function () { window.print(); };</script>
 </body>
 </html>`;

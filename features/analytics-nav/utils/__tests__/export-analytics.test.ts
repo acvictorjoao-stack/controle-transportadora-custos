@@ -7,10 +7,13 @@ import type {AnalyticsExportPayload} from '../../types';
 import {
   ANALYTICS_XLSX_EXTENSION,
   ANALYTICS_XLSX_MIME_TYPE,
+  analyticsFilenameBase,
   analyticsPayloadToCsv,
+  analyticsPayloadToMatrix,
   analyticsPayloadToXlsx,
   analyticsXlsxFilename,
   exportAnalyticsExcel,
+  exportAnalyticsPdf,
   toAnalyticsSheetName,
 } from '../export-analytics';
 
@@ -170,6 +173,104 @@ describe('Audit #23 — download do botão “Excel”', () => {
     expect(start).toBeGreaterThan(-1);
     expect(block).not.toMatch(/csv/i);
     expect(block).toContain('analyticsPayloadToXlsx');
+  });
+});
+
+describe('Audit #24 — título da tabela e seções adicionais', () => {
+  const withSections: AnalyticsExportPayload = {
+    title: 'DRE Operacional',
+    kpis: [{label: 'Receita Total', value: 'R$ 100,00'}],
+    tableTitle: 'Tabela Analítica',
+    columns: [
+      {id: 'category', header: 'Categoria'},
+      {id: 'value', header: 'Valor'},
+    ],
+    rows: [{category: 'Receita', value: 100}],
+    sections: [
+      {
+        title: 'Indicadores',
+        columns: [
+          {id: 'indicator', header: 'Indicador'},
+          {id: 'value', header: 'Valor'},
+        ],
+        rows: [{indicator: 'Viagens', value: 3}],
+      },
+      {
+        title: 'Custos por Rota',
+        columns: [{id: 'route', header: 'Rota'}],
+        rows: [],
+      },
+    ],
+  };
+
+  it('matriz inclui título da principal e cada seção com título e cabeçalho', () => {
+    expect(analyticsPayloadToMatrix(withSections)).toEqual([
+      ['KPI', 'Valor'],
+      ['Receita Total', 'R$ 100,00'],
+      [],
+      ['Tabela Analítica'],
+      ['Categoria', 'Valor'],
+      ['Receita', 100],
+      [],
+      ['Indicadores'],
+      ['Indicador', 'Valor'],
+      ['Viagens', 3],
+      [],
+      ['Custos por Rota'],
+      ['Rota'],
+    ]);
+  });
+
+  it('XLSX contém as seções com valores numéricos preservados', async () => {
+    const {sheet} = readWorkbook(await analyticsPayloadToXlsx(withSections));
+    expect(sheet.A4).toMatchObject({v: 'Tabela Analítica'});
+    expect(sheet.B6).toMatchObject({t: 'n', v: 100});
+    expect(sheet.A8).toMatchObject({v: 'Indicadores'});
+    expect(sheet.B10).toMatchObject({t: 'n', v: 3});
+    expect(sheet.A12).toMatchObject({v: 'Custos por Rota'});
+  });
+
+  it('payload sem tableTitle/sections mantém a matriz anterior', () => {
+    const matrix = analyticsPayloadToMatrix(payload);
+    expect(matrix[4]).toEqual(['Cliente', 'Receita', 'Lucro', 'Status']);
+    expect(matrix).toHaveLength(8);
+  });
+
+  it('PDF renderiza título da principal e as seções', () => {
+    const written: string[] = [];
+    const fakeWindow = {
+      document: {
+        open: vi.fn(),
+        write: (html: string) => written.push(html),
+        close: vi.fn(),
+      },
+    };
+    vi.stubGlobal('window', {open: vi.fn(() => fakeWindow)});
+    try {
+      exportAnalyticsPdf(withSections, 'dre-operacional_2026-10-01_2026-10-31');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+
+    const html = written.join('');
+    expect(html).toContain('<h2>Tabela Analítica</h2>');
+    expect(html).toContain('<h2>Indicadores</h2>');
+    expect(html).toContain('<td>Viagens</td><td>3</td>');
+    expect(html).toContain('<h2>Custos por Rota</h2>');
+    expect(html).toContain('Sem dados');
+    expect(html).toContain('dre-operacional_2026-10-01_2026-10-31.pdf');
+    expect(html).not.toContain('Tabela / Ranking');
+  });
+
+  it('nome base inclui o período quando existe', () => {
+    expect(
+      analyticsFilenameBase('dre-operacional', {dateFrom: '2026-10-01', dateTo: '2026-10-31'}),
+    ).toBe('dre-operacional_2026-10-01_2026-10-31');
+    expect(analyticsFilenameBase('dashboard-executivo', {dateFrom: '2026-10-01'})).toBe(
+      'dashboard-executivo_2026-10-01',
+    );
+    expect(analyticsFilenameBase('dre-operacional')).toBe('dre-operacional');
+    expect(analyticsFilenameBase('x', {dateFrom: '../a b'})).toBe('x_-a-b');
   });
 });
 

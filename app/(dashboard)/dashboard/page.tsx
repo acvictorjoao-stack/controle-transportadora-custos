@@ -5,6 +5,7 @@ import {PageTemplate} from '@/components/layout/page-template';
 import {Section} from '@/components/layout/section';
 import {Skeleton} from '@/components/ui/skeleton';
 import {ROUTES} from '@/constants/routes/paths';
+import {AnalyticsExportToolbar} from '@/features/analytics-nav/components/analytics-export-toolbar';
 import {RoutesWithoutLeadTimeAlert} from '@/features/cadastro-quality/components';
 import {OperationalDreFiltersBar} from '@/features/dre/components';
 import {OperationalDreCostsOnlyBanner} from '@/features/dre/components/operational-dre-costs-only-banner';
@@ -23,6 +24,10 @@ import {
   getExecutiveDashboardSecondary,
   type ExecutiveDashboardCoreData,
 } from '@/features/organization/dashboard/loaders/executive-dashboard-loader';
+import {
+  buildExecutiveDashboardExportPayload,
+  executiveDashboardExportFilenameBase,
+} from '@/features/organization/dashboard/utils/export-payload';
 import {
   formatEntityFilterSummary,
   formatPeriodRangeLabel,
@@ -134,6 +139,13 @@ export default async function DashboardPage({searchParams}: DashboardPageProps) 
             ) : null}
             <OperationalDreCostsOnlyBanner active={core.kpis.costsOnlyMode} />
           </div>
+
+          <AnalyticsExportToolbar
+            filters={core.period}
+            basePath={ROUTES.dashboard}
+            filenameBase={executiveDashboardExportFilenameBase(core.period)}
+            payload={buildExecutiveDashboardExportPayload({core, filterOptions})}
+          />
 
           <Section
             title="Indicadores executivos"

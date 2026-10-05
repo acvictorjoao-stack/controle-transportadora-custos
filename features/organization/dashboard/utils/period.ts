@@ -94,6 +94,24 @@ export function formatEntityFilterSummary(
   return parts.join(' · ');
 }
 
+/** Resumo de escopo para exportação: "Nenhum" só quando não há filtro de entidade. */
+export function formatEntityFilterScope(
+  filters: OperationalDreFilters,
+  options: OperationalDreFilterOptions,
+): string {
+  const summary = formatEntityFilterSummary(filters, options);
+  if (summary) return summary;
+  const hasEntityFilter = Boolean(
+    filters.branchId ||
+      filters.customerId ||
+      filters.routeId ||
+      filters.vehicleId ||
+      filters.driverId ||
+      filters.costCenterId,
+  );
+  return hasEntityFilter ? 'Filtros aplicados' : 'Nenhum';
+}
+
 /**
  * Período imediatamente anterior com a mesma duração.
  * Ex.: 01–31 mar → 01–28/29 fev; 10–20 mar → 24 fev–06 mar.

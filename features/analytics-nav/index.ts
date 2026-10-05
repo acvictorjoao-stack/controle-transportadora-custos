@@ -3,6 +3,7 @@ export type {
   AnalyticsExportColumn,
   AnalyticsExportPayload,
   AnalyticsExportRow,
+  AnalyticsExportSection,
   AnalyticsModuleId,
   AnalyticsNavLink,
   AnalyticsRelatedInsight,
@@ -19,6 +20,7 @@ export {buildContextualAnalyticsBreadcrumbs} from './utils/contextual-breadcrumb
 export {
   ANALYTICS_XLSX_EXTENSION,
   ANALYTICS_XLSX_MIME_TYPE,
+  analyticsFilenameBase,
   analyticsPayloadToCsv,
   analyticsPayloadToXlsx,
   analyticsXlsxFilename,

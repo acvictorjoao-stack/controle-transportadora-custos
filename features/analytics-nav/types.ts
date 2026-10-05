@@ -41,11 +41,21 @@ export interface AnalyticsExportRow {
   [key: string]: string | number | null | undefined;
 }
 
+export interface AnalyticsExportSection {
+  title: string;
+  columns: AnalyticsExportColumn[];
+  rows: AnalyticsExportRow[];
+}
+
 export interface AnalyticsExportPayload {
   title: string;
   columns: AnalyticsExportColumn[];
   rows: AnalyticsExportRow[];
   kpis?: Array<{label: string; value: string}>;
+  /** Título da tabela principal (linha própria no arquivo / cabeçalho no PDF). */
+  tableTitle?: string;
+  /** Tabelas adicionais exportadas após a principal, na mesma ordem da tela. */
+  sections?: AnalyticsExportSection[];
 }
 
 export interface AnalyticsContextEntity {

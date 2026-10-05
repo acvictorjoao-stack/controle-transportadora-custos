@@ -3,36 +3,22 @@ import {formatCurrencyBr, formatPercent} from '@/features/financial/utils/financ
 import {cn} from '@/lib/utils';
 
 import type {ExecutiveDashboardKpis} from '../loaders/executive-dashboard-loader';
+import {
+  EXECUTIVE_OPEN_BALANCE_LABELS,
+  formatExecutiveKm,
+  hasExecutiveOperationalData,
+} from '../utils/executive-kpi-display';
+
+export {EXECUTIVE_OPEN_BALANCE_LABELS};
 
 export interface ExecutiveKpiGridProps {
   kpis: ExecutiveDashboardKpis;
   className?: string;
 }
 
-/** Rótulos estáveis dos cards de posição financeira (AP/AR). */
-export const EXECUTIVE_OPEN_BALANCE_LABELS = {
-  sectionTitle: 'Posição financeira da empresa',
-  sectionHint:
-    'Saldo em aberto • empresa inteira • independente dos filtros',
-  accountsPayableTitle: 'Saldo em aberto — Contas a Pagar',
-  accountsReceivableTitle: 'Saldo em aberto — Contas a Receber',
-  accountsPayableSubtitle: 'Empresa inteira • sem folha',
-  accountsReceivableSubtitle: 'Empresa inteira • independente dos filtros',
-  costsSubtitle:
-    'Total DRE = atribuídos + não atribuíveis; rankings usam só atribuídos',
-} as const;
-
-function formatKm(value: number): string {
-  return `${value.toLocaleString('pt-BR', {maximumFractionDigits: 1})} km`;
-}
-
 function ExecutiveKpiGrid({kpis, className}: ExecutiveKpiGridProps) {
   const costsOnlyMode = kpis.costsOnlyMode;
-  const hasOperationalData =
-    kpis.completedTrips > 0 ||
-    kpis.totalRevenue !== 0 ||
-    kpis.totalCosts !== 0 ||
-    costsOnlyMode;
+  const hasOperationalData = hasExecutiveOperationalData(kpis);
   const profitClass =
     hasOperationalData &&
     kpis.operatingProfit != null &&
@@ -82,7 +68,7 @@ function ExecutiveKpiGrid({kpis, className}: ExecutiveKpiGridProps) {
         />
         <StatCard
           title="KM Rodados"
-          value={hasOperationalData ? formatKm(kpis.totalKm) : '—'}
+          value={hasOperationalData ? formatExecutiveKm(kpis.totalKm) : '—'}
         />
         <StatCard
           title="Viagens Concluídas"

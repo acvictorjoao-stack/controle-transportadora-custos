@@ -5,6 +5,7 @@ import {Section} from '@/components/layout/section';
 import {Alert, AlertDescription} from '@/components/ui/alert';
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
 import {ROUTES} from '@/constants/routes/paths';
+import {AnalyticsExportToolbar} from '@/features/analytics-nav/components/analytics-export-toolbar';
 import {
   formatCurrencyBr,
   formatPercent,
@@ -24,6 +25,10 @@ import {OperationalDreCostsOnlyBanner} from './operational-dre-costs-only-banner
 import {OperationalDreFiltersBar} from './operational-dre-filters';
 import {OperationalDreRouteCosts} from './operational-dre-route-costs';
 import {OPERATIONAL_DRE_COST_ALLOCATION_LABELS} from '../services/operational-dre-cost-allocation';
+import {
+  buildOperationalDreExportPayload,
+  operationalDreExportFilenameBase,
+} from '../utils/export-payload';
 
 export interface OperationalDreViewProps {
   data: OperationalDreData;
@@ -121,6 +126,18 @@ function OperationalDreView({
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         ) : null}
+
+        <AnalyticsExportToolbar
+          filters={initialFilters}
+          basePath={ROUTES.dashboardDre}
+          filenameBase={operationalDreExportFilenameBase(initialFilters)}
+          payload={buildOperationalDreExportPayload({
+            data,
+            byRoute,
+            filters: initialFilters,
+            filterOptions,
+          })}
+        />
 
         <OperationalDreFiltersBar
           options={filterOptions}
