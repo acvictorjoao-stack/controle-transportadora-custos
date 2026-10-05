@@ -1,3 +1,6 @@
+import {COMPANY_LOGOS_STORAGE_BUCKET} from '@/lib/storage/buckets';
+import {buildStorageFileUrl} from '@/lib/storage/private-files';
+
 import {mapCompanySettings} from '../../settings/services/settings-mapper';
 import type {CompanyProfile, CompanyProfileRow} from '../types';
 
@@ -22,7 +25,7 @@ export function mapCompanyProfileRow(row: CompanyProfileRow): CompanyProfile {
     addressState: row.address_state,
     addressZip: row.address_zip,
     addressCountry: row.address_country,
-    logoUrl: row.logo_url,
+    logoUrl: buildStorageFileUrl(COMPANY_LOGOS_STORAGE_BUCKET, row.logo_url, row.updated_at),
     settings: mapCompanySettings(row.settings),
     status: row.status,
     createdAt: row.created_at,

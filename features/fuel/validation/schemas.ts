@@ -1,5 +1,7 @@
 import {z} from 'zod';
 
+import {storageObjectPathSchema} from '@/lib/storage/private-files';
+
 import {
   operationPaymentFieldsSchema,
   refineOperationPaymentFields,
@@ -85,8 +87,7 @@ export const updateFuelRecordSchema = fuelBaseSchema;
 
 export const uploadFuelFileSchema = z.object({
   fuelRecordId: z.string().uuid(),
-  fileUrl: z.string().url(),
-  storagePath: z.string().trim().min(1),
+  storagePath: storageObjectPathSchema,
   name: z.string().trim().min(1),
   documentType: z.enum(FUEL_DOCUMENT_TYPES),
   mimeType: z.string().optional().nullable(),

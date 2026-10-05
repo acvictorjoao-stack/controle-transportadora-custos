@@ -1,5 +1,7 @@
 import {z} from 'zod';
 
+import {storageObjectPathSchema} from '@/lib/storage/private-files';
+
 import {
   operationPaymentFieldsSchema,
   refineOperationPaymentFields,
@@ -94,8 +96,7 @@ export const updateMaintenanceRecordSchema = maintenanceBaseSchema;
 
 export const uploadMaintenanceFileSchema = z.object({
   maintenanceRecordId: z.string().uuid(),
-  fileUrl: z.string().url(),
-  storagePath: z.string().trim().min(1),
+  storagePath: storageObjectPathSchema,
   name: z.string().trim().min(1),
   documentType: z.enum(MAINTENANCE_DOCUMENT_TYPES),
   mimeType: z.string().optional().nullable(),

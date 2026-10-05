@@ -87,14 +87,8 @@ function MaintenanceFileUpload({
         throw new Error(uploadError.message);
       }
 
-      const {data: urlData} = supabase.storage
-        .from(MAINTENANCE_STORAGE_BUCKET)
-        .getPublicUrl(path);
-
-      const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
       const result = await registerMaintenanceFileAction({
         maintenanceRecordId,
-        fileUrl: publicUrl,
         storagePath: path,
         name: file.name,
         documentType,

@@ -1,5 +1,7 @@
 import {z} from 'zod';
 
+import {storageObjectPathSchema} from '@/lib/storage/private-files';
+
 import {
   FINANCIAL_DOCUMENT_TYPES,
   FINANCIAL_ENTRY_STATUSES,
@@ -64,8 +66,7 @@ export const reverseFinancialEntrySchema = z.object({
 
 export const uploadFinancialFileSchema = z.object({
   financialEntryId: z.string().uuid(),
-  fileUrl: z.string().url(),
-  storagePath: z.string().trim().min(1),
+  storagePath: storageObjectPathSchema,
   name: z.string().trim().min(1),
   documentType: z.enum(FINANCIAL_DOCUMENT_TYPES),
   mimeType: z.string().optional().nullable(),

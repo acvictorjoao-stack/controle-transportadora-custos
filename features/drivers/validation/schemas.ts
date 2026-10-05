@@ -1,6 +1,7 @@
 import {z} from 'zod';
 
 import {digitsOnly} from '@/features/master/companies/utils/format';
+import {storageObjectPathSchema} from '@/lib/storage/private-files';
 
 import {
   DRIVER_CONTRACT_TYPES,
@@ -127,8 +128,7 @@ export const updateDriverStatusSchema = z.object({
 
 export const uploadDriverFileSchema = z.object({
   driverId: z.string().uuid(),
-  fileUrl: z.string().url(),
-  storagePath: z.string().trim().min(1),
+  storagePath: storageObjectPathSchema,
   name: z.string().trim().min(1),
   documentType: z.enum(DRIVER_DOCUMENT_TYPES),
   mimeType: z.string().optional().nullable(),

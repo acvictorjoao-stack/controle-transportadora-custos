@@ -1,5 +1,8 @@
 import {z} from 'zod';
 
+import {TRIP_STORAGE_BUCKET} from '@/lib/storage/buckets';
+import {storageObjectPathSchema, storageReferenceSchema} from '@/lib/storage/private-files';
+
 import {
   SIMPLE_TRIP_STATUSES,
   TRIP_DOCUMENT_TYPES,
@@ -14,6 +17,14 @@ const optionalString = z
   .trim()
   .nullish()
   .transform((v) => (v?.length ? v : null));
+
+/** Comprovante: grava só o path do objeto em trip-files. */
+const optionalReceiptPath = z
+  .preprocess(
+    (v) => (typeof v === 'string' && v.trim() === '' ? null : v),
+    storageReferenceSchema(TRIP_STORAGE_BUCKET).nullish(),
+  )
+  .transform((v) => v ?? null);
 
 const optionalUppercaseString = z
   .string()
@@ -209,8 +220,7 @@ export const completeTripSchema = z.object({
 
 export const uploadTripFileSchema = z.object({
   tripId: z.string().uuid(),
-  fileUrl: z.string().url(),
-  storagePath: z.string().trim().min(1),
+  storagePath: storageObjectPathSchema,
   name: z.string().trim().min(1),
   documentType: tripDocumentTypeSchema,
   mimeType: z.string().optional().nullable(),
@@ -252,7 +262,7 @@ export const createTripExpenseSchema = z.object({
   description: optionalString,
   notes: optionalString,
   expenseDate: optionalDate,
-  receiptUrl: optionalString,
+  receiptUrl: optionalReceiptPath,
 });
 
 export const updateTripExpenseSchema = z.object({
@@ -269,7 +279,7 @@ export const updateTripExpenseSchema = z.object({
   description: optionalString,
   notes: optionalString,
   expenseDate: optionalDate,
-  receiptUrl: optionalString,
+  receiptUrl: optionalReceiptPath,
 });
 
 export const deleteTripExpenseSchema = z.object({

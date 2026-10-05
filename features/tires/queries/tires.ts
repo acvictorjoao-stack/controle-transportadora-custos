@@ -574,7 +574,7 @@ export async function createTireDocument(
       maintenance_record_id: tire.maintenanceRecordId,
       tire_id: input.tireId,
       name: input.name,
-      file_url: input.fileUrl,
+      file_url: input.storagePath,
       storage_path: input.storagePath,
       document_type: input.documentType,
       mime_type: input.mimeType,

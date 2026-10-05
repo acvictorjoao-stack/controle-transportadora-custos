@@ -11,6 +11,7 @@ import {
   getServerSupabaseClient,
   getUserCompanyMembership,
 } from '@/lib/auth/company';
+import {isCompanyStoragePath, STORAGE_PATH_OUTSIDE_COMPANY} from '@/lib/storage/private-files';
 import {zodFieldErrors} from '@/lib/validators/zod-field-errors';
 
 import {
@@ -209,6 +210,9 @@ export async function registerFuelFileAction(
       fieldErrors: zodFieldErrors(parsed.error.issues),
     };
   }
+  if (!isCompanyStoragePath(resolved.data.companyId, parsed.data.storagePath)) {
+    return {success: false, error: STORAGE_PATH_OUTSIDE_COMPANY};
+  }
 
   try {
     const supabase = await getServerSupabaseClient();
@@ -228,7 +232,7 @@ export async function registerFuelFileAction(
       parsed.data.fuelRecordId,
       {
         name: parsed.data.name,
-        fileUrl: parsed.data.fileUrl,
+        fileUrl: parsed.data.storagePath,
         storagePath: parsed.data.storagePath,
         documentType: parsed.data.documentType,
         mimeType: parsed.data.mimeType,

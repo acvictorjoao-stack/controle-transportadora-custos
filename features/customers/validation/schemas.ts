@@ -1,6 +1,7 @@
 import {z} from 'zod';
 
 import {digitsOnly} from '@/features/master/companies/utils/format';
+import {storageObjectPathSchema} from '@/lib/storage/private-files';
 
 import {
   CUSTOMER_ADDRESS_TYPES,
@@ -213,8 +214,7 @@ export const updateCustomerContractSchema = createCustomerContractSchema.omit({c
 export const uploadCustomerFileSchema = z.object({
   customerId: z.string().uuid(),
   contractId: z.string().uuid().nullable().optional(),
-  fileUrl: z.string().url(),
-  storagePath: z.string().trim().min(1),
+  storagePath: storageObjectPathSchema,
   name: z.string().trim().min(1),
   documentType: z.enum(CUSTOMER_DOCUMENT_TYPES),
   mimeType: z.string().optional().nullable(),

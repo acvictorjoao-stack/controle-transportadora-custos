@@ -11,6 +11,7 @@ import {
   getServerSupabaseClient,
   getUserCompanyMembership,
 } from '@/lib/auth/company';
+import {isCompanyStoragePath, STORAGE_PATH_OUTSIDE_COMPANY} from '@/lib/storage/private-files';
 import {zodFieldErrors} from '@/lib/validators/zod-field-errors';
 
 import {
@@ -266,6 +267,9 @@ export async function registerTireFileAction(
       error: 'Dados do arquivo inválidos.',
       fieldErrors: zodFieldErrors(parsed.error.issues),
     };
+  }
+  if (!isCompanyStoragePath(resolved.data.companyId, parsed.data.storagePath)) {
+    return {success: false, error: STORAGE_PATH_OUTSIDE_COMPANY};
   }
 
   try {

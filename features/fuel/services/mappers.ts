@@ -1,3 +1,6 @@
+import {FUEL_STORAGE_BUCKET} from '@/lib/storage/buckets';
+import {buildStorageFileUrl} from '@/lib/storage/private-files';
+
 import type {
   FuelDocument,
   FuelDocumentRow,
@@ -86,7 +89,7 @@ export function mapFuelDocumentRow(row: FuelDocumentRow): FuelDocument {
     id: row.id,
     fuelRecordId: row.fuel_record_id,
     name: row.name,
-    fileUrl: row.file_url,
+    fileUrl: buildStorageFileUrl(FUEL_STORAGE_BUCKET, row.storage_path ?? row.file_url) ?? '',
     storagePath: row.storage_path ?? null,
     documentType: row.document_type,
     mimeType: row.mime_type,

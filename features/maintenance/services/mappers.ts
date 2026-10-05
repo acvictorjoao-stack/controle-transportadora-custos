@@ -1,3 +1,6 @@
+import {MAINTENANCE_STORAGE_BUCKET} from '@/lib/storage/buckets';
+import {buildStorageFileUrl} from '@/lib/storage/private-files';
+
 import type {
   MaintenanceDocument,
   MaintenanceDocumentRow,
@@ -94,7 +97,7 @@ export function mapMaintenanceDocumentRow(row: MaintenanceDocumentRow): Maintena
     id: row.id,
     maintenanceRecordId: row.maintenance_record_id,
     name: row.name,
-    fileUrl: row.file_url,
+    fileUrl: buildStorageFileUrl(MAINTENANCE_STORAGE_BUCKET, row.storage_path ?? row.file_url) ?? '',
     storagePath: row.storage_path ?? null,
     documentType: row.document_type,
     mimeType: row.mime_type,

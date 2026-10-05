@@ -1,3 +1,6 @@
+import {DRIVER_STORAGE_BUCKET} from '@/lib/storage/buckets';
+import {buildStorageFileUrl} from '@/lib/storage/private-files';
+
 import type {
   Driver,
   DriverDocument,
@@ -39,7 +42,11 @@ export function mapDriverRow(row: DriverRow): Driver {
     city: row.city,
     state: row.state,
     notes: row.notes,
-    photoUrl: row.photo_url,
+    photoUrl: buildStorageFileUrl(
+      DRIVER_STORAGE_BUCKET,
+      row.photo_storage_path ?? row.photo_url,
+      row.updated_at,
+    ),
     photoStoragePath: row.photo_storage_path ?? null,
     operationalStatus: row.operational_status,
     hiredAt: row.hired_at,
@@ -73,7 +80,7 @@ export function mapDriverDocumentRow(row: DriverDocumentRow): DriverDocument {
     id: row.id,
     driverId: row.driver_id,
     name: row.name,
-    fileUrl: row.file_url,
+    fileUrl: buildStorageFileUrl(DRIVER_STORAGE_BUCKET, row.storage_path ?? row.file_url) ?? '',
     storagePath: row.storage_path ?? null,
     documentType: row.document_type,
     mimeType: row.mime_type,

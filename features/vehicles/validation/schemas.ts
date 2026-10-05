@@ -1,5 +1,7 @@
 import {z} from 'zod';
 
+import {storageObjectPathSchema} from '@/lib/storage/private-files';
+
 import {
   VEHICLE_ASSET_STATUSES,
   VEHICLE_BODY_TYPE_OPTIONS,
@@ -115,8 +117,7 @@ export const updateVehicleStatusSchema = z.object({
 
 export const uploadVehicleFileSchema = z.object({
   vehicleId: z.string().uuid(),
-  fileUrl: z.string().url(),
-  storagePath: z.string().trim().min(1),
+  storagePath: storageObjectPathSchema,
   name: z.string().trim().min(1),
   documentType: z.enum(['photo', 'crlv', 'document']),
   mimeType: z.string().optional().nullable(),

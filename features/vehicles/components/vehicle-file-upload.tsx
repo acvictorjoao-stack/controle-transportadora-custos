@@ -90,14 +90,8 @@ function VehicleFileUpload({
         throw new Error(uploadError.message);
       }
 
-      const {data: urlData} = supabase.storage
-        .from(VEHICLE_STORAGE_BUCKET)
-        .getPublicUrl(path);
-
-      const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
       const result = await registerVehicleFileAction({
         vehicleId,
-        fileUrl: publicUrl,
         storagePath: path,
         name: file.name,
         documentType,

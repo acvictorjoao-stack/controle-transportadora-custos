@@ -72,19 +72,14 @@ function LogoUpload({companyId, logoUrl, onUploaded}: LogoUploadProps) {
         throw new Error('Não foi possível enviar a logo. Tente novamente.');
       }
 
-      const {data: urlData} = supabase.storage
-        .from(COMPANY_LOGOS_STORAGE_BUCKET)
-        .getPublicUrl(path);
-
-      const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
-      const result = await updateCompanyLogoAction({logoUrl: publicUrl});
+      const result = await updateCompanyLogoAction({logoUrl: path});
 
       if (!result.success) {
         throw new Error(result.error ?? MSG.operationFailed);
       }
 
-      setLocalPreview(publicUrl);
-      onUploaded(publicUrl);
+      setLocalPreview(result.data.logoUrl);
+      onUploaded(result.data.logoUrl);
       toast.success('Logo atualizada com sucesso.');
     } catch (err) {
       setError(err instanceof Error ? err.message : MSG.operationFailed);

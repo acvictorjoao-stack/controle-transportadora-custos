@@ -89,14 +89,8 @@ function TripFileUpload({
         throw new Error(uploadError.message);
       }
 
-      const {data: urlData} = supabase.storage
-        .from(TRIP_STORAGE_BUCKET)
-        .getPublicUrl(path);
-
-      const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
       const result = await registerTripFileAction({
         tripId,
-        fileUrl: publicUrl,
         storagePath: path,
         name: file.name,
         documentType,

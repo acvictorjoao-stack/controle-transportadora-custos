@@ -12,6 +12,7 @@ import {Input} from '@/components/ui/input';
 import {Textarea} from '@/components/ui/textarea';
 import {useConfirm} from '@/contexts/feedback/confirm-context';
 import {MSG} from '@/lib/feedback/messages';
+import {buildStorageFileUrl} from '@/lib/storage/private-files';
 import {createClient} from '@/supabase/client';
 
 import {
@@ -127,11 +128,7 @@ function TripExpensesTab({
 
       if (uploadError) throw new Error(uploadError.message);
 
-      const {data: urlData} = supabase.storage
-        .from(TRIP_STORAGE_BUCKET)
-        .getPublicUrl(path);
-
-      setReceiptUrl(`${urlData.publicUrl}?t=${Date.now()}`);
+      setReceiptUrl(buildStorageFileUrl(TRIP_STORAGE_BUCKET, path));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao enviar comprovante.');
     } finally {

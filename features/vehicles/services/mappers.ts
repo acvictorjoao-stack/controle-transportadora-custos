@@ -1,3 +1,6 @@
+import {VEHICLE_STORAGE_BUCKET} from '@/lib/storage/buckets';
+import {buildStorageFileUrl} from '@/lib/storage/private-files';
+
 import type {
   Vehicle,
   VehicleBodyType,
@@ -42,8 +45,16 @@ export function mapVehicleRow(row: VehicleRow): Vehicle {
     currentOdometerKm: Number(row.current_odometer_km),
     hourMeter: row.hour_meter !== null ? Number(row.hour_meter) : null,
     assetStatus: row.asset_status,
-    photoUrl: row.photo_url,
-    crlvUrl: row.crlv_url,
+    photoUrl: buildStorageFileUrl(
+      VEHICLE_STORAGE_BUCKET,
+      row.photo_storage_path ?? row.photo_url,
+      row.updated_at,
+    ),
+    crlvUrl: buildStorageFileUrl(
+      VEHICLE_STORAGE_BUCKET,
+      row.crlv_storage_path ?? row.crlv_url,
+      row.updated_at,
+    ),
     photoStoragePath: row.photo_storage_path ?? null,
     crlvStoragePath: row.crlv_storage_path ?? null,
     externalId: row.external_id ?? null,
@@ -74,7 +85,7 @@ export function mapVehicleDocumentRow(row: VehicleDocumentRow): VehicleDocument 
     id: row.id,
     vehicleId: row.vehicle_id,
     name: row.name,
-    fileUrl: row.file_url,
+    fileUrl: buildStorageFileUrl(VEHICLE_STORAGE_BUCKET, row.storage_path ?? row.file_url) ?? '',
     storagePath: row.storage_path ?? null,
     documentType: row.document_type,
     mimeType: row.mime_type,

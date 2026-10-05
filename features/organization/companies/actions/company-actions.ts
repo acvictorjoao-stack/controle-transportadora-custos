@@ -10,6 +10,7 @@ import {
   requireCompanyMembership,
   COMPANY_ACCESS_DENIED,
 } from '@/lib/auth/company';
+import {isCompanyStoragePath, STORAGE_PATH_OUTSIDE_COMPANY} from '@/lib/storage/private-files';
 import {zodFieldErrors} from '@/lib/validators/zod-field-errors';
 import type {ActionResult} from '@/features/organization/shared/action-result';
 
@@ -150,9 +151,15 @@ export async function updateCompanyLogoAction(
   if (!parsed.success) {
     return {
       success: false,
-      error: 'URL da logo inválida.',
+      error: 'Arquivo da logo inválido.',
       fieldErrors: zodFieldErrors(parsed.error.issues),
     };
+  }
+  if (
+    parsed.data.logoUrl !== null &&
+    !isCompanyStoragePath(resolved.data.companyId, parsed.data.logoUrl)
+  ) {
+    return {success: false, error: STORAGE_PATH_OUTSIDE_COMPANY};
   }
 
   try {

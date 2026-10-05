@@ -1,6 +1,8 @@
 import {z} from 'zod';
 
 import {digitsOnly} from '@/features/master/companies/utils/format';
+import {COMPANY_LOGOS_STORAGE_BUCKET} from '@/lib/storage/buckets';
+import {storageReferenceSchema} from '@/lib/storage/private-files';
 
 const taxIdSchema = z
   .string()
@@ -119,7 +121,7 @@ export const companySettingsSchema = z.object({
 export type CompanySettingsInput = z.infer<typeof companySettingsSchema>;
 
 export const logoUrlSchema = z.object({
-  logoUrl: z.string().url('URL da logo inválida.').nullable(),
+  logoUrl: storageReferenceSchema(COMPANY_LOGOS_STORAGE_BUCKET).nullable(),
 });
 
 export type LogoUrlInput = z.infer<typeof logoUrlSchema>;

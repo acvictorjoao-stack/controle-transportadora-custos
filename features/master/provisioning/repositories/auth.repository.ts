@@ -2,7 +2,11 @@ import {createAdminClient} from '@/supabase/server/admin';
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
-async function hasActiveCompanyMembership(
+/**
+ * Vínculo inativo também conta: o usuário segue pertencendo àquela empresa e
+ * não pode ser apagado por quem cria membro com o mesmo e-mail em outra.
+ */
+async function hasCompanyMembership(
   admin: AdminClient,
   profileId: string,
 ): Promise<boolean> {
@@ -10,8 +14,7 @@ async function hasActiveCompanyMembership(
     .from('company_members')
     .select('id', {count: 'exact', head: true})
     .eq('profile_id', profileId)
-    .is('deleted_at', null)
-    .eq('status', 'active');
+    .is('deleted_at', null);
 
   if (error) {
     throw new Error(error.message);
@@ -37,7 +40,7 @@ async function isActivePortalUser(
   return (count ?? 0) > 0;
 }
 
-/** Profile sem vínculo ativo com empresas e que não é operador do Portal Master. */
+/** Profile sem vínculo (ativo ou inativo) com empresas e que não é operador do Portal Master. */
 export async function isOrphanedTenantProfile(profileId: string): Promise<boolean> {
   const admin = createAdminClient();
 
@@ -45,7 +48,7 @@ export async function isOrphanedTenantProfile(profileId: string): Promise<boolea
     return false;
   }
 
-  return !(await hasActiveCompanyMembership(admin, profileId));
+  return !(await hasCompanyMembership(admin, profileId));
 }
 
 /** Remove auth.users (e profile em cascade) de perfis órfãos após exclusão de empresa. */

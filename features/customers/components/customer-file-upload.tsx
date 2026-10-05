@@ -73,12 +73,9 @@ function CustomerFileUpload({
 
       if (uploadError) throw uploadError;
 
-      const {data: urlData} = supabase.storage.from(CUSTOMER_STORAGE_BUCKET).getPublicUrl(storagePath);
-
       const payload = {
         customerId,
         contractId: contractId ?? replacingDocument?.contractId ?? null,
-        fileUrl: urlData.publicUrl,
         storagePath,
         name: file.name,
         documentType: activeDocumentType,

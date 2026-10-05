@@ -11,6 +11,7 @@ import {
   getServerSupabaseClient,
   getUserCompanyMembership,
 } from '@/lib/auth/company';
+import {isCompanyStoragePath, STORAGE_PATH_OUTSIDE_COMPANY} from '@/lib/storage/private-files';
 import {zodFieldErrors} from '@/lib/validators/zod-field-errors';
 
 import {
@@ -209,10 +210,14 @@ export async function registerDriverFileAction(
     };
   }
 
+  const {driverId, storagePath, name, documentType, mimeType, fileSize} = parsed.data;
+  if (!isCompanyStoragePath(resolved.data.companyId, storagePath)) {
+    return {success: false, error: STORAGE_PATH_OUTSIDE_COMPANY};
+  }
+  const fileUrl = storagePath;
+
   try {
     const supabase = await getServerSupabaseClient();
-    const {driverId, fileUrl, storagePath, name, documentType, mimeType, fileSize} =
-      parsed.data;
 
     if (documentType === 'photo') {
       const driver = await updateDriverPhotoUrl(

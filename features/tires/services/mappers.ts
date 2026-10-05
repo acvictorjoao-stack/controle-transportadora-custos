@@ -1,3 +1,6 @@
+import {TIRE_STORAGE_BUCKET} from '@/lib/storage/buckets';
+import {buildStorageFileUrl} from '@/lib/storage/private-files';
+
 import type {
   Tire,
   TireDocument,
@@ -137,7 +140,7 @@ export function mapTireDocumentRow(row: TireDocumentRow): TireDocument {
     id: row.id,
     tireId: row.tire_id,
     name: row.name,
-    fileUrl: row.file_url,
+    fileUrl: buildStorageFileUrl(TIRE_STORAGE_BUCKET, row.storage_path ?? row.file_url) ?? '',
     storagePath: row.storage_path,
     documentType: row.document_type,
     mimeType: row.mime_type,

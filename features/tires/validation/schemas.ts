@@ -1,5 +1,7 @@
 import {z} from 'zod';
 
+import {storageObjectPathSchema} from '@/lib/storage/private-files';
+
 import {
   operationPaymentFieldsSchema,
   refineOperationPaymentFields,
@@ -153,8 +155,7 @@ export const createTireRecapSchema = z.object({
 
 export const uploadTireFileSchema = z.object({
   tireId: z.string().uuid(),
-  fileUrl: z.string().url(),
-  storagePath: z.string().min(1),
+  storagePath: storageObjectPathSchema,
   name: z.string().trim().min(1),
   documentType: z.enum(TIRE_DOCUMENT_TYPES),
   mimeType: optionalString,

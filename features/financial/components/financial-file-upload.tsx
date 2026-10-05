@@ -82,14 +82,8 @@ function FinancialFileUpload({
         throw new Error(uploadError.message);
       }
 
-      const {data: urlData} = supabase.storage
-        .from(FINANCIAL_STORAGE_BUCKET)
-        .getPublicUrl(path);
-
-      const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
       const result = await uploadFinancialFileAction({
         financialEntryId,
-        fileUrl: publicUrl,
         storagePath: path,
         name: file.name,
         documentType,

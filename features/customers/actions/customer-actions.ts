@@ -11,6 +11,7 @@ import {
   getServerSupabaseClient,
   getUserCompanyMembership,
 } from '@/lib/auth/company';
+import {isCompanyStoragePath, STORAGE_PATH_OUTSIDE_COMPANY} from '@/lib/storage/private-files';
 import {zodFieldErrors, zodValidationSummary} from '@/lib/validators/zod-field-errors';
 
 import {
@@ -489,6 +490,9 @@ export async function registerCustomerFileAction(
   if (!parsed.success) {
     return {success: false, error: 'Dados do arquivo inválidos.'};
   }
+  if (!isCompanyStoragePath(resolved.data.companyId, parsed.data.storagePath)) {
+    return {success: false, error: STORAGE_PATH_OUTSIDE_COMPANY};
+  }
 
   try {
     const supabase = await getServerSupabaseClient();
@@ -499,7 +503,7 @@ export async function registerCustomerFileAction(
       {
         contractId: parsed.data.contractId,
         name: parsed.data.name,
-        fileUrl: parsed.data.fileUrl,
+        fileUrl: parsed.data.storagePath,
         storagePath: parsed.data.storagePath,
         documentType: parsed.data.documentType,
         mimeType: parsed.data.mimeType,
@@ -529,6 +533,9 @@ export async function replaceCustomerDocumentAction(
   if (!parsed.success) {
     return {success: false, error: 'Dados do arquivo inválidos.'};
   }
+  if (!isCompanyStoragePath(resolved.data.companyId, parsed.data.storagePath)) {
+    return {success: false, error: STORAGE_PATH_OUTSIDE_COMPANY};
+  }
 
   if (parsed.data.customerId !== customerId) {
     return {success: false, error: 'Cliente inválido para o documento.'};
@@ -542,7 +549,7 @@ export async function replaceCustomerDocumentAction(
       documentId,
       {
         name: parsed.data.name,
-        fileUrl: parsed.data.fileUrl,
+        fileUrl: parsed.data.storagePath,
         storagePath: parsed.data.storagePath,
         documentType: parsed.data.documentType,
         mimeType: parsed.data.mimeType,

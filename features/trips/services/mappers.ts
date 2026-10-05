@@ -1,3 +1,6 @@
+import {TRIP_STORAGE_BUCKET} from '@/lib/storage/buckets';
+import {buildStorageFileUrl} from '@/lib/storage/private-files';
+
 import {computeTripActualDistanceKm} from '../utils/trip-distance';
 
 import type {
@@ -162,7 +165,7 @@ export function mapTripDocumentRow(row: TripDocumentRow): TripDocument {
     id: row.id,
     tripId: row.trip_id,
     name: row.name,
-    fileUrl: row.file_url,
+    fileUrl: buildStorageFileUrl(TRIP_STORAGE_BUCKET, row.storage_path ?? row.file_url) ?? '',
     storagePath: row.storage_path ?? null,
     documentType: row.document_type,
     mimeType: row.mime_type,
@@ -219,7 +222,7 @@ export function mapTripExpenseRow(row: TripExpenseRow): TripExpense {
     description: row.description,
     notes: row.notes ?? null,
     expenseDate: row.expense_date,
-    receiptUrl: row.receipt_url,
+    receiptUrl: buildStorageFileUrl(TRIP_STORAGE_BUCKET, row.receipt_url),
     createdAt: row.created_at,
   };
 }

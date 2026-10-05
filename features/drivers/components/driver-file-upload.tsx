@@ -94,14 +94,8 @@ function DriverFileUpload({
         throw new Error(uploadError.message);
       }
 
-      const {data: urlData} = supabase.storage
-        .from(DRIVER_STORAGE_BUCKET)
-        .getPublicUrl(path);
-
-      const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
       const result = await registerDriverFileAction({
         driverId,
-        fileUrl: publicUrl,
         storagePath: path,
         name: file.name,
         documentType,
