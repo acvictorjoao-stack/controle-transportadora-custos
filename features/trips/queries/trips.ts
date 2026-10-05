@@ -1,6 +1,7 @@
 import type {SupabaseClient} from '@supabase/supabase-js';
 
 import {mapDatabaseError} from '@/features/master/companies/utils/database-error';
+import {fetchAllPagedRows} from '@/lib/supabase/fetch-all-pages';
 
 import {
   TRIP_CHECKLIST_COLUMNS,
@@ -36,10 +37,12 @@ import type {
   TripListFilters,
   TripLocation,
   TripOccurrence,
+  TripOccurrenceRow,
   TripResourceAvailability,
   TripRow,
   TripSortOptions,
   TripStats,
+  TripStatus,
   TripStop,
 } from '../types';
 import {
@@ -258,6 +261,75 @@ export async function listTrips(
     pageSize,
     totalPages: Math.max(1, Math.ceil(total / pageSize)),
   };
+}
+
+/** Bounds UTC semiabertos `[gte, lt)` (ver `buildCompletedAtPeriodBounds`). */
+export interface TripWindowBounds {
+  gte?: string;
+  lt?: string;
+}
+
+export interface ListTripsInOperationalWindowOptions {
+  departedAt: TripWindowBounds;
+  /** Viagens nesses status entram mesmo fora de `departedAt` (operação em aberto). */
+  openStatuses?: readonly TripStatus[];
+  branchId?: string;
+  customerId?: string;
+  routeId?: string;
+  vehicleId?: string;
+  driverId?: string;
+}
+
+/**
+ * Viagens da Inteligência Operacional na janela analítica.
+ * Paginação completa (sem truncamento silencioso); o volume é limitado
+ * pela janela de `departed_at`.
+ */
+export async function listTripsInOperationalWindow(
+  supabase: SupabaseClient,
+  companyId: string,
+  options: ListTripsInOperationalWindowOptions,
+): Promise<Trip[]> {
+  const {departedAt, openStatuses} = options;
+  const windowConditions = [
+    departedAt.gte ? `departed_at.gte."${departedAt.gte}"` : null,
+    departedAt.lt ? `departed_at.lt."${departedAt.lt}"` : null,
+  ].filter((condition): condition is string => condition != null);
+  const includeOpen =
+    openStatuses != null && openStatuses.length > 0 && windowConditions.length > 0;
+
+  const rows = await fetchAllPagedRows<unknown>(
+    async (from, to) => {
+      let query = supabase
+        .from('trips')
+        .select(TRIP_LIST_COLUMNS, {count: 'exact'})
+        .eq('company_id', companyId)
+        .is('deleted_at', null);
+
+      if (options.branchId) query = query.eq('branch_id', options.branchId);
+      if (options.customerId) query = query.eq('customer_id', options.customerId);
+      if (options.routeId) query = query.eq('route_id', options.routeId);
+      if (options.vehicleId) query = query.eq('vehicle_id', options.vehicleId);
+      if (options.driverId) query = query.eq('driver_id', options.driverId);
+
+      if (includeOpen) {
+        query = query.or(
+          `and(${windowConditions.join(',')}),trip_status.in.(${openStatuses.join(',')})`,
+        );
+      } else {
+        if (departedAt.gte) query = query.gte('departed_at', departedAt.gte);
+        if (departedAt.lt) query = query.lt('departed_at', departedAt.lt);
+      }
+
+      return query
+        .order('departed_at', {ascending: false, nullsFirst: false})
+        .order('id', {ascending: true})
+        .range(from, to);
+    },
+    {mapError: (error) => new Error(mapDatabaseError(error))},
+  );
+
+  return rows.map((row) => mapTripRow(row as TripRow));
 }
 
 export async function listTripsForSelect(
@@ -1142,55 +1214,54 @@ export async function listTripOccurrences(
 }
 
 export interface ListCompanyTripOccurrencesOptions {
-  dateFrom?: string;
-  dateTo?: string;
+  occurredAt: TripWindowBounds;
   branchId?: string;
-  /** Quando informado, restringe a ocorrências dessas viagens (AND dimensional). */
+  /**
+   * Restringe a ocorrências dessas viagens (AND dimensional).
+   * Aplicado em memória: a lista pode ter milhares de ids (limite de URL do PostgREST).
+   */
   tripIds?: string[];
-  limit?: number;
 }
 
 /**
- * Ocorrências da empresa no recorte (reutiliza `trip_occurrences`).
- * Usado pela Inteligência Operacional — sem tabelas novas.
+ * Ocorrências da empresa na janela (reutiliza `trip_occurrences`).
+ * Usado pela Inteligência Operacional — paginação completa, volume
+ * limitado pela janela de `occurred_at`.
  */
 export async function listCompanyTripOccurrences(
   supabase: SupabaseClient,
   companyId: string,
-  options: ListCompanyTripOccurrencesOptions = {},
+  options: ListCompanyTripOccurrencesOptions,
 ): Promise<TripOccurrence[]> {
   if (options.tripIds && options.tripIds.length === 0) {
     return [];
   }
 
-  const limit = options.limit ?? 500;
-  let query = supabase
-    .from('trip_occurrences')
-    .select(TRIP_OCCURRENCE_COLUMNS)
-    .eq('company_id', companyId)
-    .is('deleted_at', null)
-    .order('occurred_at', {ascending: false})
-    .limit(limit);
+  const {occurredAt} = options;
+  const rows = await fetchAllPagedRows<TripOccurrenceRow>(
+    async (from, to) => {
+      let query = supabase
+        .from('trip_occurrences')
+        .select(TRIP_OCCURRENCE_COLUMNS, {count: 'exact'})
+        .eq('company_id', companyId)
+        .is('deleted_at', null);
 
-  if (options.dateFrom) {
-    query = query.gte('occurred_at', options.dateFrom);
-  }
-  if (options.dateTo) {
-    query = query.lte('occurred_at', `${options.dateTo}T23:59:59.999Z`);
-  }
-  if (options.branchId) {
-    query = query.eq('branch_id', options.branchId);
-  }
-  if (options.tripIds && options.tripIds.length > 0) {
-    query = query.in('trip_id', options.tripIds);
-  }
+      if (occurredAt.gte) query = query.gte('occurred_at', occurredAt.gte);
+      if (occurredAt.lt) query = query.lt('occurred_at', occurredAt.lt);
+      if (options.branchId) query = query.eq('branch_id', options.branchId);
 
-  const {data, error} = await query;
-  if (error) throw new Error(mapDatabaseError(error));
-
-  return (data ?? []).map((row) =>
-    mapTripOccurrenceRow(row as Parameters<typeof mapTripOccurrenceRow>[0]),
+      return query
+        .order('occurred_at', {ascending: false})
+        .order('id', {ascending: true})
+        .range(from, to);
+    },
+    {mapError: (error) => new Error(mapDatabaseError(error))},
   );
+
+  const tripIds = options.tripIds ? new Set(options.tripIds) : null;
+  return rows
+    .filter((row) => tripIds == null || tripIds.has(row.trip_id))
+    .map((row) => mapTripOccurrenceRow(row));
 }
 
 export async function createTripOccurrence(

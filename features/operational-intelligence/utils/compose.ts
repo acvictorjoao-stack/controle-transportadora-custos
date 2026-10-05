@@ -1,5 +1,6 @@
 import type {Trip, TripOccurrence, TripStatus} from '@/features/trips/types';
 import {TRIP_OCCURRENCE_TYPE_LABELS} from '@/features/trips/types';
+import {buildCompletedAtPeriodBounds} from '@/features/dre/utils/completed-at-period-bounds';
 import {ROUTES} from '@/constants/routes/paths';
 
 import type {
@@ -147,14 +148,20 @@ function toLocalDayKey(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-function isIsoInLocalPeriod(
+/** Mesmos bounds `[gte, lt)` no fuso de negócio usados pelo loader. */
+function isIsoInPeriod(
   iso: string | null,
   period?: OperationalPeriodRange,
 ): boolean {
   if (!iso) return false;
-  const key = localDayKey(iso);
-  if (period?.dateFrom && key < period.dateFrom.slice(0, 10)) return false;
-  if (period?.dateTo && key > period.dateTo.slice(0, 10)) return false;
+  const ms = Date.parse(iso);
+  if (!Number.isFinite(ms)) return false;
+  const bounds = buildCompletedAtPeriodBounds({
+    dateFrom: period?.dateFrom?.slice(0, 10),
+    dateTo: period?.dateTo?.slice(0, 10),
+  });
+  if (bounds.gte && ms < Date.parse(bounds.gte)) return false;
+  if (bounds.lt && ms >= Date.parse(bounds.lt)) return false;
   return true;
 }
 
@@ -309,7 +316,7 @@ export function buildOperationalKpis(
     ? trips.filter((trip) => {
         if (trip.tripStatus !== 'completed') return false;
         if (!trip.completedAt) return true;
-        return isIsoInLocalPeriod(trip.completedAt, options.period);
+        return isIsoInPeriod(trip.completedAt, options.period);
       }).length
     : trips.filter(
         (trip) =>

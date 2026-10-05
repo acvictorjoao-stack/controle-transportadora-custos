@@ -1,5 +1,6 @@
 export {
   listTrips,
+  listTripsInOperationalWindow,
   listTripsForSelect,
   listTripResourceAvailability,
   getTripById,

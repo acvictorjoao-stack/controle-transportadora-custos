@@ -49,6 +49,15 @@ function parseCivilDate(civilDate: string): {
   };
 }
 
+/** Data civil YYYY-MM-DD de um instante no fuso de negócio informado. */
+export function civilDateInTimeZone(
+  instant: Date,
+  timeZone: string = BUSINESS_TIMEZONE,
+): string {
+  const {year, month, day} = readZonedWallParts(instant.getTime(), timeZone);
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
 /** Soma dias em uma data civil YYYY-MM-DD (calendário gregoriano). */
 export function addCivilDays(civilDate: string, days: number): string {
   const {year, month, day} = parseCivilDate(civilDate);
