@@ -1,6 +1,7 @@
 import type {SupabaseClient} from '@supabase/supabase-js';
 
 import {mapDatabaseError} from '@/features/master/companies/utils/database-error';
+import {resolveTripOperationalDistanceKm} from '@/features/trips/utils/trip-distance';
 import {formatPlate} from '@/features/vehicles/utils/vehicle-format';
 import {resolveOperationalDreExpenseDimensionFilter} from '@/features/dre/services/operational-dre-expense-scope';
 import {fetchAllPagedRows} from '@/lib/supabase/fetch-all-pages';
@@ -46,12 +47,6 @@ const DRE_EXPENSE_COLUMNS = `
 function asNumber(value: unknown): number {
   const num = typeof value === 'number' ? value : Number(value);
   return Number.isFinite(num) ? num : 0;
-}
-
-function computeDistanceKm(initial: number | null, final: number | null): number {
-  if (initial === null || final === null) return 0;
-  const diff = final - initial;
-  return diff >= 0 ? diff : 0;
 }
 
 function firstRelation<T>(value: T | T[] | null | undefined): T | null {
@@ -207,16 +202,6 @@ export interface FetchOperationalDreTripsOptions {
   unassignedDriverOnly?: boolean;
 }
 
-function mapTripDistance(row: TripRawRow): number {
-  const odometerKm = computeDistanceKm(
-    row.initial_odometer_km !== null ? asNumber(row.initial_odometer_km) : null,
-    row.final_odometer_km !== null ? asNumber(row.final_odometer_km) : null,
-  );
-  const plannedKm =
-    row.planned_distance_km !== null ? asNumber(row.planned_distance_km) : 0;
-  return odometerKm > 0 ? odometerKm : plannedKm;
-}
-
 function mapTripRow(row: TripRawRow): OperationalDreTripRow {
   return {
     id: row.id,
@@ -231,7 +216,11 @@ function mapTripRow(row: TripRawRow): OperationalDreTripRow {
         : null,
     actualFreightValue:
       row.actual_freight_value !== null ? asNumber(row.actual_freight_value) : null,
-    distanceKm: mapTripDistance(row),
+    distanceKm: resolveTripOperationalDistanceKm({
+      initialOdometerKm: row.initial_odometer_km,
+      finalOdometerKm: row.final_odometer_km,
+      plannedDistanceKm: row.planned_distance_km,
+    }),
   };
 }
 

@@ -2,6 +2,7 @@ import type {SupabaseClient} from '@supabase/supabase-js';
 
 import {mapDatabaseError} from '@/features/master/companies/utils/database-error';
 import {getTripById} from '@/features/trips/queries';
+import {resolveTripOperationalDistanceKm} from '@/features/trips/utils/trip-distance';
 import {getTripFreightValue} from '@/features/trips/utils/trip-lifecycle';
 import {fetchAllPagedRows} from '@/lib/supabase/fetch-all-pages';
 
@@ -19,17 +20,6 @@ import type {
   TripFinancialBreakdownPeriod,
   TripFinancialBreakdownSourceRow,
 } from '../types/trip-financial-breakdown';
-
-function asNumber(value: unknown): number {
-  const num = typeof value === 'number' ? value : Number(value);
-  return Number.isFinite(num) ? num : 0;
-}
-
-function computeDistanceKm(initial: number | null, final: number | null): number {
-  if (initial === null || final === null) return 0;
-  const diff = final - initial;
-  return diff >= 0 ? diff : 0;
-}
 
 function toSourceRow(
   entry: FinancialEntry,
@@ -115,19 +105,15 @@ async function fetchVehicleTripsForMileage(
     {mapError: (error) => new Error(mapDatabaseError(error))},
   );
 
-  return rows.map((row) => {
-    const odometerKm = computeDistanceKm(
-      row.initial_odometer_km !== null ? asNumber(row.initial_odometer_km) : null,
-      row.final_odometer_km !== null ? asNumber(row.final_odometer_km) : null,
-    );
-    const plannedKm =
-      row.planned_distance_km !== null ? asNumber(row.planned_distance_km) : 0;
-    return {
-      tripId: row.id,
-      vehicleId: row.vehicle_id,
-      distanceKm: odometerKm > 0 ? odometerKm : plannedKm,
-    };
-  });
+  return rows.map((row) => ({
+    tripId: row.id,
+    vehicleId: row.vehicle_id,
+    distanceKm: resolveTripOperationalDistanceKm({
+      initialOdometerKm: row.initial_odometer_km,
+      finalOdometerKm: row.final_odometer_km,
+      plannedDistanceKm: row.planned_distance_km,
+    }),
+  }));
 }
 
 /**

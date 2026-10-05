@@ -112,6 +112,7 @@ export interface OperationalDreTripRow {
   driverId: string | null;
   contractedFreightValue: number | null;
   actualFreightValue: number | null;
+  /** KM operacional (`resolveTripOperationalDistanceKm`) — Audit #17. */
   distanceKm: number;
 }
 

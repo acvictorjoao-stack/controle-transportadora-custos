@@ -1,3 +1,5 @@
+import {computeTripActualDistanceKm} from '../utils/trip-distance';
+
 import type {
   Trip,
   TripChecklist,
@@ -39,15 +41,6 @@ function mapBranchName(row: TripRow): string | null {
   if (!branch) return null;
   if (Array.isArray(branch)) return branch[0]?.name ?? null;
   return branch.name ?? null;
-}
-
-function computeDistanceKm(
-  initial: number | null,
-  final: number | null,
-): number | null {
-  if (initial === null || final === null) return null;
-  const diff = final - initial;
-  return diff >= 0 ? diff : null;
 }
 
 function addMinutesIso(iso: string | null, minutes: number | null): string | null {
@@ -147,7 +140,7 @@ export function mapTripRow(row: TripRow): Trip {
     integrationSource: row.integration_source ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-    distanceKm: computeDistanceKm(initialOdometer, finalOdometer),
+    distanceKm: computeTripActualDistanceKm(initialOdometer, finalOdometer),
   };
 }
 
