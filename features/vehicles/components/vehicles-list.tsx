@@ -22,7 +22,11 @@ import {ROUTES} from '@/constants/routes/paths';
 import type {BranchSelectOption} from '@/features/organization/branches/types';
 import {MSG} from '@/lib/feedback/messages';
 
-import {deleteVehicleAction, updateVehicleStatusAction} from '../actions';
+import {
+  deleteVehicleAction,
+  getVehicleForEditAction,
+  updateVehicleStatusAction,
+} from '../actions';
 import type {
 
   PaginatedVehicles,
@@ -84,8 +88,15 @@ function VehiclesList({
     setModalOpen(true);
   }
 
-  function openEdit(vehicle: Vehicle) {
-    setEditingVehicle(vehicle);
+  async function openEdit(vehicle: Vehicle) {
+    setActionLoading(vehicle.id);
+    const result = await getVehicleForEditAction(vehicle.id);
+    setActionLoading(null);
+    if (!result.success) {
+      toast.error(result.error ?? MSG.operationFailed);
+      return;
+    }
+    setEditingVehicle(result.data);
     setModalOpen(true);
   }
 
@@ -201,8 +212,8 @@ function VehiclesList({
           </Link>
           <RowActionsMenuItem
             onClick={() => {
-              openEdit(row);
               setOpenMenuId(null);
+              openEdit(row);
             }}
           >
             <Pencil className="size-4" /> Editar

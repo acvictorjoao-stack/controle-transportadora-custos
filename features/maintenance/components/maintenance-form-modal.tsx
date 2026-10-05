@@ -11,7 +11,6 @@ import {Input} from '@/components/ui/input';
 import {Textarea} from '@/components/ui/textarea';
 import {useToast} from '@/contexts/feedback/toast-context';
 import {OperationPaymentFields} from '@/features/financial/components/operation-payment-fields';
-import {DEFAULT_INSTALLMENT_INTERVAL_DAYS} from '@/features/financial/utils/installment-schedule';
 import {SupplierSelect} from '@/features/suppliers/components';
 import {useSupplierOptions} from '@/features/suppliers/hooks/use-supplier-options';
 import type {SupplierSelectOption} from '@/features/suppliers/types';
@@ -29,8 +28,13 @@ import {
   MAINTENANCE_STATUS_LABELS,
   MAINTENANCE_TYPE_LABELS,
 } from '../types';
-import type {CreateMaintenanceRecordInput} from '../validation';
 import {MAINTENANCE_NATIVE_SELECT_CLASS} from '../utils/form-styles';
+import {
+  buildMaintenanceFormPayload,
+  buildMaintenanceFormState,
+  type MaintenanceFormState,
+  resolveBranchIdFromVehicle,
+} from '../utils/maintenance-form-state';
 
 export interface MaintenanceFormModalProps {
   open: boolean;
@@ -41,22 +45,7 @@ export interface MaintenanceFormModalProps {
   onSaved: (record: MaintenanceRecord) => void;
 }
 
-type FieldErrors = Partial<Record<keyof CreateMaintenanceRecordInput, string>>;
-
-function toLocalDateTimeValue(iso: string | null | undefined): string {
-  if (!iso) return '';
-  const date = new Date(iso);
-  const offset = date.getTimezoneOffset();
-  const local = new Date(date.getTime() - offset * 60_000);
-  return local.toISOString().slice(0, 16);
-}
-
-function resolveBranchIdFromVehicle(
-  vehicles: VehicleSelectOption[],
-  vehicleId: string,
-): string | null {
-  return vehicles.find((v) => v.id === vehicleId)?.branchId ?? null;
-}
+type FieldErrors = Partial<Record<keyof MaintenanceFormState, string>>;
 
 function MaintenanceFormModal({
   open,
@@ -107,47 +96,20 @@ function MaintenanceFormContent({
   onClose: () => void;
   onSaved: (record: MaintenanceRecord) => void;
 }) {
-  const initialVehicleId = record?.vehicleId ?? vehicles[0]?.id ?? '';
   const {options: suppliers, onOptionsChange} = useSupplierOptions(initialSuppliers);
 
-  const [formData, setFormData] = React.useState<CreateMaintenanceRecordInput>(() => ({
-    vehicleId: initialVehicleId,
-    branchId:
-      record?.branchId ?? resolveBranchIdFromVehicle(vehicles, initialVehicleId),
-    maintenanceType: record?.maintenanceType ?? 'corrective',
-    priority: record?.priority ?? 'medium',
-    maintenanceStatus: record?.maintenanceStatus ?? 'open',
-    supplierId: record?.supplierId ?? '',
-    supplier: record?.supplier ?? '',
-    workshop: null,
-    openedAt: record?.openedAt
-      ? toLocalDateTimeValue(record.openedAt)
-      : toLocalDateTimeValue(new Date().toISOString()),
-    completedAt: record?.completedAt ? toLocalDateTimeValue(record.completedAt) : null,
-    odometerKm: record?.odometerKm ?? null,
-    hourMeter: record?.hourMeter ?? null,
-    description: record?.description ?? null,
-    diagnosis: record?.diagnosis ?? null,
-    solution: record?.solution ?? null,
-    notes: record?.notes ?? null,
-    estimatedAmount: record?.estimatedAmount ?? null,
-    finalAmount: record?.finalAmount ?? null,
-    responsible: record?.responsible ?? null,
-    paymentType: record?.paymentType ?? 'cash',
-    paymentDueDate: record?.paymentDueDate ?? null,
-    installmentCount: record?.installmentCount ?? 1,
-    installmentIntervalDays:
-      record?.installmentIntervalDays ?? DEFAULT_INSTALLMENT_INTERVAL_DAYS,
-  }));
+  const [formData, setFormData] = React.useState<MaintenanceFormState>(() =>
+    buildMaintenanceFormState(record, vehicles),
+  );
 
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = React.useState<FieldErrors>({});
   const toast = useToast();
 
-  function updateField<K extends keyof CreateMaintenanceRecordInput>(
+  function updateField<K extends keyof MaintenanceFormState>(
     key: K,
-    value: CreateMaintenanceRecordInput[K],
+    value: MaintenanceFormState[K],
   ) {
     setFormData((prev) => ({...prev, [key]: value}));
     setFieldErrors((prev) => ({...prev, [key]: undefined}));
@@ -172,19 +134,7 @@ function MaintenanceFormContent({
     setError(null);
     setFieldErrors({});
 
-    const payload = {
-      ...formData,
-      workshop: null,
-      branchId:
-        formData.branchId ??
-        resolveBranchIdFromVehicle(vehicles, formData.vehicleId),
-      openedAt: formData.openedAt.includes('T')
-        ? new Date(formData.openedAt).toISOString()
-        : formData.openedAt,
-      completedAt: formData.completedAt
-        ? new Date(formData.completedAt).toISOString()
-        : null,
-    };
+    const payload = buildMaintenanceFormPayload(formData, vehicles);
 
     const result = isEdit && record
       ? await updateMaintenanceRecordAction(record.id, payload)
@@ -279,7 +229,7 @@ function MaintenanceFormContent({
           <select
             id="maint-priority"
             value={formData.priority}
-            onChange={(e) => updateField('priority', e.target.value as CreateMaintenanceRecordInput['priority'])}
+            onChange={(e) => updateField('priority', e.target.value as MaintenanceFormState['priority'])}
             className={MAINTENANCE_NATIVE_SELECT_CLASS}
           >
             {MAINTENANCE_PRIORITIES.map((p) => (

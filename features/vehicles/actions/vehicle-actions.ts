@@ -19,6 +19,7 @@ import {
   countVehicles,
   createVehicle,
   createVehicleDocument,
+  getVehicleById,
   softDeleteVehicle,
   softDeleteVehicleDocument,
   updateVehicle,
@@ -138,6 +139,28 @@ export async function createVehicleAction(
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Erro ao criar veículo.',
+    };
+  }
+}
+
+/** Registro completo para o formulário de edição (a listagem só traz colunas de exibição). */
+export async function getVehicleForEditAction(
+  vehicleId: string,
+): Promise<ActionResult<Vehicle>> {
+  const resolved = await resolveVehicleAccess('vehicles:update');
+  if (!resolved.success) return resolved;
+
+  try {
+    const supabase = await getServerSupabaseClient();
+    const vehicle = await getVehicleById(supabase, resolved.data.companyId, vehicleId);
+    if (!vehicle) {
+      return {success: false, error: 'Veículo não encontrado.'};
+    }
+    return {success: true, data: vehicle};
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Erro ao carregar veículo.',
     };
   }
 }

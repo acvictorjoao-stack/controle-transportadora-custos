@@ -19,6 +19,13 @@ const optionalString = z
   .nullish()
   .transform((v) => (v?.length ? v : null));
 
+/** Ausente = não altera no update; null/vazio = limpa explicitamente. */
+const preservedOptionalString = z
+  .string()
+  .trim()
+  .nullish()
+  .transform((v) => (v === undefined ? undefined : v?.length ? v : null));
+
 const optionalNumber = z
   .union([z.number(), z.string()])
   .nullish()
@@ -69,9 +76,10 @@ const maintenanceBaseSchema = z
     odometerKm: optionalNumber,
     hourMeter: optionalNumber,
     description: optionalString,
-    diagnosis: optionalString,
-    solution: optionalString,
-    notes: optionalString,
+    /** Sem campo no formulário: o update só grava quando a chave é enviada. */
+    diagnosis: preservedOptionalString,
+    solution: preservedOptionalString,
+    notes: preservedOptionalString,
     estimatedAmount: nonNegativeNumber,
     finalAmount: nonNegativeNumber,
     responsible: optionalString,

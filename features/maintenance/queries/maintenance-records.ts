@@ -92,9 +92,6 @@ function buildMaintenancePayload(
     hour_meter: input.hourMeter,
     downtime_hours: metrics.downtimeHours,
     description: input.description,
-    diagnosis: input.diagnosis,
-    solution: input.solution,
-    notes: input.notes,
     estimated_amount: input.estimatedAmount,
     final_amount: input.finalAmount ?? metrics.totalCost,
     total_cost: metrics.totalCost,
@@ -116,6 +113,19 @@ function buildMaintenancePayload(
     payload.driver_id = input.driverId ?? null;
   } else if (input.driverId !== undefined) {
     payload.driver_id = input.driverId;
+  }
+
+  const preservedTextFields = {
+    diagnosis: input.diagnosis,
+    solution: input.solution,
+    notes: input.notes,
+  };
+  for (const [column, value] of Object.entries(preservedTextFields)) {
+    if (isCreate) {
+      payload[column] = value ?? null;
+    } else if (value !== undefined) {
+      payload[column] = value;
+    }
   }
 
   return payload;

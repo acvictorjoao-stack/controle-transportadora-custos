@@ -2,6 +2,7 @@ export {
   createVehicleAction,
   deleteVehicleAction,
   deleteVehicleDocumentAction,
+  getVehicleForEditAction,
   registerVehicleFileAction,
   updateVehicleAction,
   updateVehicleStatusAction,

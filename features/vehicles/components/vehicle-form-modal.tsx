@@ -32,6 +32,12 @@ import {
   formatYearInput,
   toUpperTrimmed,
 } from '../utils/vehicle-format';
+import {
+  buildVehicleFormPayload,
+  buildVehicleFormState,
+  getMissingVehicleFormFields,
+  type VehicleFormState,
+} from '../utils/vehicle-form-state';
 
 export interface VehicleFormModalProps {
   open: boolean;
@@ -41,53 +47,9 @@ export interface VehicleFormModalProps {
   onSaved: (vehicle: Vehicle) => void;
 }
 
-type FormState = {
-  plate: string;
-  vehicleType: string;
-  bodyType: VehicleBodyType | null;
-  brand: string;
-  model: string;
-  year: string;
-  renavam: string;
-  chassis: string;
-  color: string;
-  fuelType: VehicleFuelType | null;
-  loadCapacityKg: string;
-  grossWeightKg: string;
-  tareKg: string;
-  axles: string;
-  initialOdometerKm: string;
-  assetStatus: VehicleAssetStatus;
-  branchId: string | null;
-  notes: string;
-};
+type FormState = VehicleFormState;
 
 type FieldErrors = Partial<Record<keyof FormState | 'currentOdometerKm', string>>;
-
-function buildInitialState(vehicle?: Vehicle | null): FormState {
-  return {
-    plate: formatPlateInput(vehicle?.plate),
-    vehicleType: vehicle?.vehicleType ?? '',
-    bodyType: vehicle?.bodyType ?? null,
-    brand: vehicle?.brand ? toUpperTrimmed(vehicle.brand) : '',
-    model: vehicle?.model ? toUpperTrimmed(vehicle.model) : '',
-    year: vehicle?.year != null ? String(vehicle.year) : '',
-    renavam: formatRenavamInput(vehicle?.renavam),
-    chassis: formatChassisInput(vehicle?.chassis),
-    color: vehicle?.color ? toUpperTrimmed(vehicle.color) : '',
-    fuelType: vehicle?.fuelType ?? null,
-    loadCapacityKg:
-      vehicle?.loadCapacityKg != null ? String(vehicle.loadCapacityKg) : '',
-    grossWeightKg:
-      vehicle?.grossWeightKg != null ? String(vehicle.grossWeightKg) : '',
-    tareKg: vehicle?.tareKg != null ? String(vehicle.tareKg) : '',
-    axles: vehicle?.axles != null ? String(vehicle.axles) : '',
-    initialOdometerKm: String(vehicle?.initialOdometerKm ?? 0),
-    assetStatus: vehicle?.assetStatus ?? 'active',
-    branchId: vehicle?.branchId ?? null,
-    notes: vehicle?.notes ? toUpperTrimmed(vehicle.notes) : '',
-  };
-}
 
 function VehicleFormModal({
   open,
@@ -135,7 +97,7 @@ function VehicleFormContent({
   onSaved: (vehicle: Vehicle) => void;
 }) {
   const [formData, setFormData] = React.useState<FormState>(() =>
-    buildInitialState(vehicle),
+    buildVehicleFormState(vehicle),
   );
   const [currentOdometerKm, setCurrentOdometerKm] = React.useState(
     String(vehicle?.currentOdometerKm ?? 0),
@@ -163,27 +125,13 @@ function VehicleFormContent({
     setFormError(null);
     setFieldErrors({});
 
-    const payload = {
-      plate: formData.plate,
-      vehicleType: formData.vehicleType,
-      bodyType: formData.bodyType,
-      brand: formData.brand || null,
-      model: formData.model || null,
-      year: formData.year || null,
-      renavam: formData.renavam || null,
-      chassis: formData.chassis || null,
-      color: formData.color || null,
-      fuelType: formData.fuelType,
-      loadCapacityKg: formData.loadCapacityKg || null,
-      grossWeightKg: formData.grossWeightKg || null,
-      tareKg: formData.tareKg || null,
-      axles: formData.axles || null,
-      initialOdometerKm: formData.initialOdometerKm || 0,
-      assetStatus: formData.assetStatus,
-      branchId: formData.branchId,
-      notes: formData.notes || null,
-      ...(isEdit ? {currentOdometerKm: currentOdometerKm || 0} : {}),
-    };
+    if (isEdit && vehicle && getMissingVehicleFormFields(vehicle).length > 0) {
+      setFormError('Dados do veículo incompletos. Feche e abra a edição novamente.');
+      setSubmitting(false);
+      return;
+    }
+
+    const payload = buildVehicleFormPayload(formData, {isEdit, currentOdometerKm});
 
     const result =
       isEdit && vehicle
