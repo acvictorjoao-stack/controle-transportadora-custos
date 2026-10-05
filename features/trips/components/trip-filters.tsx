@@ -9,7 +9,7 @@ import type {RouteFilterOptions, RouteSelectOption} from '@/features/routes/type
 import type {VehicleSelectOption} from '@/features/vehicles/types';
 import {scheduleQueryUrlSync} from '@/lib/navigation/sync-query-url';
 
-import {SIMPLE_TRIP_STATUSES} from '../constants/enums';
+import {TRIP_STATUSES} from '../constants/enums';
 import type {TripListFilters, TripSortOptions, TripStatus} from '../types';
 import {TRIP_STATUS_LABELS} from '../types';
 import {buildTripsListUrl} from '../utils/list-url';
@@ -62,7 +62,7 @@ function TripFilters({
         className={TRIP_NATIVE_SELECT_CLASS}
       >
         <option value="">Status</option>
-        {SIMPLE_TRIP_STATUSES.map((status) => (
+        {TRIP_STATUSES.map((status) => (
           <option key={status} value={status}>
             {TRIP_STATUS_LABELS[status]}
           </option>
