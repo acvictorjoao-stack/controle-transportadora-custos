@@ -78,7 +78,6 @@ function buildMaintenancePayload(
   const payload: Record<string, unknown> = {
     vehicle_id: input.vehicleId,
     // RC 27.1 — manutenção pertence ao veículo; rateio por KM (sem vínculo manual)
-    driver_id: null,
     trip_id: null,
     branch_id: input.branchId,
     maintenance_type: input.maintenanceType,
@@ -114,9 +113,60 @@ function buildMaintenancePayload(
 
   if (isCreate) {
     payload.created_by = profileId;
+    payload.driver_id = input.driverId ?? null;
+  } else if (input.driverId !== undefined) {
+    payload.driver_id = input.driverId;
   }
 
   return payload;
+}
+
+/**
+ * Novo vínculo de motorista exige motorista da mesma empresa e não excluído
+ * (mesmo contrato de listDriversForSelect). Manter o motorista já gravado no
+ * registro não revalida, para preservar histórico de motorista excluído depois.
+ */
+async function assertMaintenanceDriverAssignable(
+  supabase: SupabaseClient,
+  companyId: string,
+  driverId: string | null | undefined,
+  currentDriverId: string | null = null,
+): Promise<void> {
+  if (!driverId || driverId === currentDriverId) return;
+
+  const {data, error} = await supabase
+    .from('drivers')
+    .select('id')
+    .eq('id', driverId)
+    .eq('company_id', companyId)
+    .is('deleted_at', null)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(mapDatabaseError(error));
+  }
+  if (!data) {
+    throw new Error('Motorista inválido para esta empresa.');
+  }
+}
+
+async function getCurrentMaintenanceDriverId(
+  supabase: SupabaseClient,
+  companyId: string,
+  maintenanceRecordId: string,
+): Promise<string | null> {
+  const {data, error} = await supabase
+    .from('maintenance_records')
+    .select('driver_id')
+    .eq('id', maintenanceRecordId)
+    .eq('company_id', companyId)
+    .is('deleted_at', null)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(mapDatabaseError(error));
+  }
+  return (data?.driver_id as string | null | undefined) ?? null;
 }
 
 export async function listMaintenanceRecords(
@@ -242,6 +292,7 @@ export async function createMaintenanceRecord(
     odometerKm: input.odometerKm,
     finalAmount: input.finalAmount,
   });
+  await assertMaintenanceDriverAssignable(supabase, companyId, input.driverId);
   const payload = buildMaintenancePayload(input, profileId, metrics, true);
 
   const {data, error} = await supabase
@@ -283,6 +334,19 @@ export async function updateMaintenanceRecord(
     odometerKm: input.odometerKm,
     finalAmount: input.finalAmount,
   });
+  if (input.driverId) {
+    const currentDriverId = await getCurrentMaintenanceDriverId(
+      supabase,
+      companyId,
+      maintenanceRecordId,
+    );
+    await assertMaintenanceDriverAssignable(
+      supabase,
+      companyId,
+      input.driverId,
+      currentDriverId,
+    );
+  }
   const payload = buildMaintenancePayload(input, profileId, metrics, false);
 
   const {data, error} = await supabase

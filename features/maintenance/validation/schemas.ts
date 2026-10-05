@@ -51,6 +51,11 @@ const maintenanceBaseSchema = z
       .nullable()
       .optional()
       .transform((v) => v ?? null),
+    /**
+     * Opcional e sem campo no formulário (RC 27.1). Ausente = não altera o
+     * vínculo existente no update; null = remove explicitamente.
+     */
+    driverId: z.string().uuid('Motorista inválido.').nullable().optional(),
     maintenanceType: maintenanceTypeSchema,
     priority: maintenancePrioritySchema.default('medium'),
     maintenanceStatus: maintenanceStatusSchema.default('open'),
