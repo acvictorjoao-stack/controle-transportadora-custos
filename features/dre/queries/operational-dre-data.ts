@@ -329,6 +329,7 @@ export async function fetchOperationalDreRouteLabels(
     .from('routes')
     .select('id, name, origin, destination')
     .eq('company_id', companyId)
+    .is('deleted_at', null)
     .in('id', uniqueIds);
 
   if (error) {
@@ -365,6 +366,7 @@ export async function fetchOperationalDreVehicleLabels(
     .from('vehicles')
     .select('id, plate')
     .eq('company_id', companyId)
+    .is('deleted_at', null)
     .in('id', uniqueIds);
 
   if (error) {
@@ -394,6 +396,7 @@ export async function fetchOperationalDreDriverLabels(
     .from('drivers')
     .select('id, name')
     .eq('company_id', companyId)
+    .is('deleted_at', null)
     .in('id', uniqueIds);
 
   if (error) {
