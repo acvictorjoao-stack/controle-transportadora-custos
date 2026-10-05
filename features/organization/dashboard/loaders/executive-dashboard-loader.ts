@@ -10,7 +10,7 @@ import {listRoutesWithoutLeadTime} from '@/features/cadastro-quality/queries';
 import type {CadastroQualityRouteItem} from '@/features/cadastro-quality/types';
 import {getFinancialDashboardData} from '@/features/financial-dashboard/queries';
 import type {FinancialDashboardData} from '@/features/financial-dashboard/types';
-import {getMaintenanceStats} from '@/features/maintenance/queries';
+import {countOverdueMaintenanceSchedules} from '@/features/maintenance/queries';
 import type {MaintenanceStats} from '@/features/maintenance/types';
 
 import {buildOperationalAlerts, type OperationalAlertItem} from '../utils/alerts';
@@ -38,6 +38,12 @@ export const EXECUTIVE_OPEN_BALANCE_META = {
 
 export type ExecutiveOpenBalanceMeta = typeof EXECUTIVE_OPEN_BALANCE_META;
 
+/**
+ * Audit #22 — manutenção vencida (estado atual) no escopo dimensional do
+ * dashboard: company + filial/veículo/motorista; independe do período.
+ */
+export type ExecutiveMaintenanceAlertData = Pick<MaintenanceStats, 'overdueSchedules'>;
+
 export interface ExecutiveDashboardKpis {
   totalRevenue: number;
   totalCosts: number;
@@ -61,7 +67,7 @@ export interface ExecutiveDashboardCoreData {
   dre: OperationalDreData;
   byRoute: {groups: OperationalDreRouteGroup[]; filters: OperationalDreFilters};
   financial: FinancialDashboardData;
-  maintenance: MaintenanceStats;
+  maintenance: ExecutiveMaintenanceAlertData;
 }
 
 export interface ExecutiveDashboardSecondaryData {
@@ -93,7 +99,8 @@ export function buildExecutiveDashboardKpis(
 }
 
 /**
- * Caminho crítico: DRE do período/filtros + financeiro company-wide + manutenção.
+ * Caminho crítico: DRE do período/filtros + financeiro company-wide +
+ * manutenção vencida no escopo dimensional dos filtros.
  */
 export async function getExecutiveDashboardCore(
   supabase: SupabaseClient,
@@ -106,10 +113,10 @@ export async function getExecutiveDashboardCore(
     dateTo: filters.dateTo ?? currentMonthFilters().dateTo,
   };
 
-  const [bundle, financial, maintenance] = await Promise.all([
+  const [bundle, financial, overdueSchedules] = await Promise.all([
     getOperationalDreBundle(supabase, companyId, period),
     getFinancialDashboardData(supabase, companyId),
-    getMaintenanceStats(supabase, companyId),
+    countOverdueMaintenanceSchedules(supabase, companyId, period),
   ]);
 
   return {
@@ -120,7 +127,7 @@ export async function getExecutiveDashboardCore(
     dre: bundle.dre,
     byRoute: bundle.byRoute,
     financial,
-    maintenance,
+    maintenance: {overdueSchedules},
   };
 }
 

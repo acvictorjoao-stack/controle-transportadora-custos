@@ -21,4 +21,10 @@ export {
   getMaintenanceRecordDetailRow,
 } from './maintenance-records';
 
+export {
+  countOverdueMaintenanceSchedules,
+  isOverdueMaintenanceScheduleScopeAttributable,
+  type OverdueMaintenanceScheduleScope,
+} from './maintenance-schedule-alerts';
+
 export {composeMaintenanceDetail as getMaintenanceDetail} from '../loaders/maintenance-detail-loader';

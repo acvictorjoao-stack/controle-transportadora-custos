@@ -13,7 +13,7 @@ import {
 
 const getOperationalDreBundle = vi.hoisted(() => vi.fn());
 const getFinancialDashboardData = vi.hoisted(() => vi.fn());
-const getMaintenanceStats = vi.hoisted(() => vi.fn());
+const countOverdueMaintenanceSchedules = vi.hoisted(() => vi.fn());
 const listRoutesWithoutLeadTime = vi.hoisted(() => vi.fn());
 
 vi.mock('@/features/dre/loaders', () => ({
@@ -25,7 +25,7 @@ vi.mock('@/features/financial-dashboard/queries', () => ({
 }));
 
 vi.mock('@/features/maintenance/queries', () => ({
-  getMaintenanceStats,
+  countOverdueMaintenanceSchedules,
 }));
 
 vi.mock('@/features/cadastro-quality/queries', () => ({
@@ -183,10 +183,10 @@ describe('getExecutiveDashboardCore', () => {
   beforeEach(() => {
     getOperationalDreBundle.mockReset();
     getFinancialDashboardData.mockReset();
-    getMaintenanceStats.mockReset();
+    countOverdueMaintenanceSchedules.mockReset();
   });
 
-  it('passa filtros só para a DRE e chama financeiro só com companyId', async () => {
+  it('passa filtros para a DRE e chama financeiro só com companyId', async () => {
     const dre = makeDre({revenue: 10, costs: 5, trips: 1, km: 2});
     getOperationalDreBundle.mockResolvedValue({
       dre,
@@ -194,12 +194,7 @@ describe('getExecutiveDashboardCore', () => {
       byCustomer: [],
     });
     getFinancialDashboardData.mockResolvedValue(makeFinancial(50, 60));
-    getMaintenanceStats.mockResolvedValue({
-      totalRecords: 0,
-      openCount: 0,
-      completedCount: 0,
-      totalAmount: 0,
-    });
+    countOverdueMaintenanceSchedules.mockResolvedValue(0);
 
     const filters = {
       dateFrom: '2026-09-01',
