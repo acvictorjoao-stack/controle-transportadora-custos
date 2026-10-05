@@ -91,7 +91,11 @@ function AnalyticsExportToolbar({
           type="button"
           variant="outline"
           size="sm"
-          onClick={() => exportAnalyticsExcel(payload, filenameBase)}
+          onClick={() => {
+            exportAnalyticsExcel(payload, filenameBase).catch(() => {
+              toast.error('Não foi possível gerar o arquivo Excel');
+            });
+          }}
         >
           <FileSpreadsheet className="size-4" />
           Excel

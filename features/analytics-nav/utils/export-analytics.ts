@@ -1,6 +1,37 @@
 import type {AnalyticsExportPayload} from '../types';
 
-function escapeCsvCell(value: string | number | null | undefined): string {
+export const ANALYTICS_XLSX_MIME_TYPE =
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+export const ANALYTICS_XLSX_EXTENSION = '.xlsx';
+
+type AnalyticsSheetCell = string | number | null;
+
+/**
+ * Matriz única da exportação (CSV e XLSX): bloco de KPIs, linha em branco,
+ * cabeçalho e linhas da tabela, na ordem de `payload.columns`.
+ */
+export function analyticsPayloadToMatrix(
+  payload: AnalyticsExportPayload,
+): AnalyticsSheetCell[][] {
+  const matrix: AnalyticsSheetCell[][] = [];
+
+  if (payload.kpis?.length) {
+    matrix.push(['KPI', 'Valor']);
+    for (const kpi of payload.kpis) {
+      matrix.push([kpi.label, kpi.value]);
+    }
+    matrix.push([]);
+  }
+
+  matrix.push(payload.columns.map((col) => col.header));
+  for (const row of payload.rows) {
+    matrix.push(payload.columns.map((col) => row[col.id] ?? null));
+  }
+
+  return matrix;
+}
+
+function escapeCsvCell(value: AnalyticsSheetCell): string {
   const raw = value == null ? '' : String(value);
   if (/[",\n\r]/.test(raw)) {
     return `"${raw.replace(/"/g, '""')}"`;
@@ -10,26 +41,31 @@ function escapeCsvCell(value: string | number | null | undefined): string {
 
 /** Gera CSV com BOM UTF-8 (abre corretamente no Excel). */
 export function analyticsPayloadToCsv(payload: AnalyticsExportPayload): string {
-  const lines: string[] = [];
-
-  if (payload.kpis?.length) {
-    lines.push('KPI;Valor');
-    for (const kpi of payload.kpis) {
-      lines.push(`${escapeCsvCell(kpi.label)};${escapeCsvCell(kpi.value)}`);
-    }
-    lines.push('');
-  }
-
-  lines.push(payload.columns.map((col) => escapeCsvCell(col.header)).join(';'));
-  for (const row of payload.rows) {
-    lines.push(
-      payload.columns
-        .map((col) => escapeCsvCell(row[col.id]))
-        .join(';'),
-    );
-  }
-
+  const lines = analyticsPayloadToMatrix(payload).map((cells) =>
+    cells.map(escapeCsvCell).join(';'),
+  );
   return `\uFEFF${lines.join('\r\n')}`;
+}
+
+/** Nome de aba válido no Excel: até 31 caracteres, sem `[]:*?/\`. */
+export function toAnalyticsSheetName(title: string): string {
+  const cleaned = title.replace(/[[\]:*?/\\]/g, ' ').replace(/\s+/g, ' ').trim();
+  return cleaned.slice(0, 31).trim() || 'Dados';
+}
+
+/** Gera planilha XLSX (OOXML) com o mesmo conteúdo do CSV. */
+export async function analyticsPayloadToXlsx(
+  payload: AnalyticsExportPayload,
+): Promise<ArrayBuffer> {
+  const XLSX = await import('xlsx');
+  const sheet = XLSX.utils.aoa_to_sheet(analyticsPayloadToMatrix(payload));
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, sheet, toAnalyticsSheetName(payload.title));
+  return XLSX.write(workbook, {bookType: 'xlsx', type: 'array'}) as ArrayBuffer;
+}
+
+export function analyticsXlsxFilename(filenameBase: string): string {
+  return `${filenameBase}${ANALYTICS_XLSX_EXTENSION}`;
 }
 
 function downloadBlob(filename: string, blob: Blob) {
@@ -41,14 +77,14 @@ function downloadBlob(filename: string, blob: Blob) {
   URL.revokeObjectURL(url);
 }
 
-export function exportAnalyticsExcel(
+export async function exportAnalyticsExcel(
   payload: AnalyticsExportPayload,
   filenameBase: string,
-) {
-  const csv = analyticsPayloadToCsv(payload);
+): Promise<void> {
+  const buffer = await analyticsPayloadToXlsx(payload);
   downloadBlob(
-    `${filenameBase}.csv`,
-    new Blob([csv], {type: 'text/csv;charset=utf-8'}),
+    analyticsXlsxFilename(filenameBase),
+    new Blob([buffer], {type: ANALYTICS_XLSX_MIME_TYPE}),
   );
 }
 

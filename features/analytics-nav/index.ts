@@ -17,7 +17,11 @@ export {AnalyticsShell} from './components/analytics-shell';
 
 export {buildContextualAnalyticsBreadcrumbs} from './utils/contextual-breadcrumb';
 export {
+  ANALYTICS_XLSX_EXTENSION,
+  ANALYTICS_XLSX_MIME_TYPE,
   analyticsPayloadToCsv,
+  analyticsPayloadToXlsx,
+  analyticsXlsxFilename,
   copyShareableAnalyticsUrl,
   exportAnalyticsExcel,
   exportAnalyticsPdf,
