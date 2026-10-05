@@ -26,6 +26,7 @@ import type {
   OperationalDreByVehicleData,
   OperationalDreCustomerGroup,
   OperationalDreData,
+  OperationalDreDriverGroup,
   OperationalDreFilterOptions,
   OperationalDreFilters,
   OperationalDreRouteGroup,
@@ -65,6 +66,7 @@ export interface VehicleProfitabilityDashboardProps {
   byVehicle: OperationalDreByVehicleData;
   byCustomerGroups?: OperationalDreCustomerGroup[];
   byRouteGroups?: OperationalDreRouteGroup[];
+  byDriverGroups?: OperationalDreDriverGroup[];
   filterOptions: OperationalDreFilterOptions;
   initialFilters: OperationalDreFilters;
   chartPoints: PeriodChartPoint[];
@@ -100,6 +102,7 @@ function VehicleProfitabilityDashboard({
   byVehicle,
   byCustomerGroups = [],
   byRouteGroups = [],
+  byDriverGroups = [],
   filterOptions,
   initialFilters,
   chartPoints,
@@ -172,11 +175,13 @@ function VehicleProfitabilityDashboard({
         customers: byCustomerGroups,
         routes: byRouteGroups,
         vehicles: byVehicle.groups,
+        drivers: byDriverGroups,
         branchLabel,
       }),
     [
       branchLabel,
       byCustomerGroups,
+      byDriverGroups,
       byRouteGroups,
       byVehicle.groups,
       initialFilters,

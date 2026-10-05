@@ -216,11 +216,13 @@ function DriverProfitabilityDashboard({
         customers: byCustomerGroups,
         routes: byRouteGroups,
         vehicles: byVehicleGroups,
+        drivers: byDriver.groups,
         branchLabel,
       }),
     [
       branchLabel,
       byCustomerGroups,
+      byDriver.groups,
       byRouteGroups,
       byVehicleGroups,
       initialFilters,

@@ -13,6 +13,7 @@ import type {
   OperationalDreByRouteData,
   OperationalDreCustomerGroup,
   OperationalDreData,
+  OperationalDreDriverGroup,
   OperationalDreFilterOptions,
   OperationalDreFilters,
   OperationalDreVehicleGroup,
@@ -29,6 +30,7 @@ export interface RouteProfitabilityPageViewProps {
   byRoute: OperationalDreByRouteData;
   byCustomerGroups?: OperationalDreCustomerGroup[];
   byVehicleGroups?: OperationalDreVehicleGroup[];
+  byDriverGroups?: OperationalDreDriverGroup[];
   filterOptions: OperationalDreFilterOptions;
   initialFilters: OperationalDreFilters;
   chartPoints: PeriodChartPoint[];
@@ -42,6 +44,7 @@ function RouteProfitabilityPageView({
   byRoute,
   byCustomerGroups = [],
   byVehicleGroups = [],
+  byDriverGroups = [],
   filterOptions,
   initialFilters,
   chartPoints,
@@ -68,6 +71,7 @@ function RouteProfitabilityPageView({
         byRoute={byRoute}
         byCustomerGroups={byCustomerGroups}
         byVehicleGroups={byVehicleGroups}
+        byDriverGroups={byDriverGroups}
         filterOptions={filterOptions}
         initialFilters={initialFilters}
         chartPoints={chartPoints}

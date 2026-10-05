@@ -11,6 +11,7 @@ import type {
   OperationalDreByRouteData,
   OperationalDreByVehicleData,
   OperationalDreData,
+  OperationalDreDriverGroup,
   OperationalDreFilterOptions,
   OperationalDreFilters,
 } from '@/features/dre/types';
@@ -48,6 +49,7 @@ export interface CustomerProfitabilityDashboardData {
   byCustomer: OperationalDreByCustomerData;
   byRouteGroups: OperationalDreByRouteData['groups'];
   byVehicleGroups: OperationalDreByVehicleData['groups'];
+  byDriverGroups: OperationalDreDriverGroup[];
   filterOptions: OperationalDreFilterOptions;
   chartPoints: PeriodChartPoint[];
   profitByCustomerPoints: CustomerBarChartPoint[];
@@ -126,6 +128,7 @@ export async function getCustomerProfitabilityDashboardData(
     byCustomer,
     byRouteGroups: bundle.byRoute.groups,
     byVehicleGroups: bundle.byVehicle,
+    byDriverGroups: bundle.byDriver,
     filterOptions: filterOptionsResult ?? EMPTY_OPERATIONAL_DRE_FILTER_OPTIONS,
     chartPoints: chartSeries,
     profitByCustomerPoints,

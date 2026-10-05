@@ -73,6 +73,8 @@ export default async function CustomerProfitabilityPage({
     [];
   let byVehicleGroups: import('@/features/dre/types').OperationalDreVehicleGroup[] =
     [];
+  let byDriverGroups: import('@/features/dre/types').OperationalDreDriverGroup[] =
+    [];
   let filterOptions: OperationalDreFilterOptions =
     EMPTY_OPERATIONAL_DRE_FILTER_OPTIONS;
   let chartPoints: PeriodChartPoint[] = [];
@@ -101,6 +103,7 @@ export default async function CustomerProfitabilityPage({
     byCustomer = data.byCustomer;
     byRouteGroups = data.byRouteGroups;
     byVehicleGroups = data.byVehicleGroups;
+    byDriverGroups = data.byDriverGroups;
     filterOptions = data.filterOptions;
     chartPoints = data.chartPoints;
     profitByCustomerPoints = data.profitByCustomerPoints;
@@ -124,6 +127,7 @@ export default async function CustomerProfitabilityPage({
       byCustomer={byCustomer}
       byRouteGroups={byRouteGroups}
       byVehicleGroups={byVehicleGroups}
+      byDriverGroups={byDriverGroups}
       filterOptions={filterOptions}
       initialFilters={period}
       chartPoints={chartPoints}

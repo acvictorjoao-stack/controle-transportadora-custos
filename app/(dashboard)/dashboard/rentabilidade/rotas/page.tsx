@@ -6,6 +6,7 @@ import type {
   OperationalDreByRouteData,
   OperationalDreCustomerGroup,
   OperationalDreData,
+  OperationalDreDriverGroup,
   OperationalDreFilterOptions,
   OperationalDreVehicleGroup,
 } from '@/features/dre/types';
@@ -70,6 +71,7 @@ export default async function RouteProfitabilityPage({
   };
   let byCustomerGroups: OperationalDreCustomerGroup[] = [];
   let byVehicleGroups: OperationalDreVehicleGroup[] = [];
+  let byDriverGroups: OperationalDreDriverGroup[] = [];
   let filterOptions: OperationalDreFilterOptions =
     EMPTY_OPERATIONAL_DRE_FILTER_OPTIONS;
   let chartPoints: PeriodChartPoint[] = [];
@@ -88,6 +90,7 @@ export default async function RouteProfitabilityPage({
     byRoute = data.byRoute;
     byCustomerGroups = data.byCustomerGroups;
     byVehicleGroups = data.byVehicleGroups;
+    byDriverGroups = data.byDriverGroups;
     filterOptions = data.filterOptions;
     chartPoints = data.chartPoints;
     rankingRows = data.rankingRows;
@@ -106,6 +109,7 @@ export default async function RouteProfitabilityPage({
       byRoute={byRoute}
       byCustomerGroups={byCustomerGroups}
       byVehicleGroups={byVehicleGroups}
+      byDriverGroups={byDriverGroups}
       filterOptions={filterOptions}
       initialFilters={period}
       chartPoints={chartPoints}

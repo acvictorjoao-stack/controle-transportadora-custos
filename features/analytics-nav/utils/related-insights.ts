@@ -1,6 +1,7 @@
 import {formatCurrencyBr, formatPercent} from '@/features/financial/utils/financial-format';
 import type {
   OperationalDreCustomerGroup,
+  OperationalDreDriverGroup,
   OperationalDreRouteGroup,
   OperationalDreVehicleGroup,
 } from '@/features/dre/types';
@@ -63,10 +64,17 @@ export function buildRelatedInsights(input: {
   customers?: OperationalDreCustomerGroup[];
   routes?: OperationalDreRouteGroup[];
   vehicles?: OperationalDreVehicleGroup[];
+  drivers?: OperationalDreDriverGroup[];
   branchLabel?: string | null;
 }): AnalyticsRelatedInsight[] {
-  const {filters, customers = [], routes = [], vehicles = [], branchLabel} =
-    input;
+  const {
+    filters,
+    customers = [],
+    routes = [],
+    vehicles = [],
+    drivers = [],
+    branchLabel,
+  } = input;
   const insights: AnalyticsRelatedInsight[] = [];
 
   const topCustomer = topByProfit(customers);
@@ -112,13 +120,18 @@ export function buildRelatedInsights(input: {
     });
   }
 
-  insights.push({
-    id: 'top-driver',
-    title: 'Motorista com maior lucro',
-    label: 'Ver motoristas',
-    subtitle: 'Análise por motorista',
-    href: buildCrossNavHref('rentabilidade-motoristas', filters),
-  });
+  const topDriver = topByProfit(drivers);
+  if (topDriver?.dimensionKey && topDriver.dimensionKey !== '__none__') {
+    insights.push({
+      id: 'top-driver',
+      title: 'Motorista com maior lucro',
+      label: topDriver.label,
+      subtitle: formatOptionalProfit(topDriver.totalProfit),
+      href: buildCrossNavHref('rentabilidade-motoristas', filters, {
+        driverId: topDriver.dimensionKey,
+      }),
+    });
+  }
 
   const topRoute = topByProfit(routes);
   if (topRoute?.dimensionKey && topRoute.dimensionKey !== '__none__') {

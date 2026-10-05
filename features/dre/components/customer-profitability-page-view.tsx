@@ -18,6 +18,7 @@ import type {PeriodChartPoint} from './revenue-cost-profit-chart';
 import type {
   OperationalDreByCustomerData,
   OperationalDreData,
+  OperationalDreDriverGroup,
   OperationalDreFilterOptions,
   OperationalDreFilters,
   OperationalDreRouteGroup,
@@ -35,6 +36,7 @@ export interface CustomerProfitabilityPageViewProps {
   byCustomer: OperationalDreByCustomerData;
   byRouteGroups?: OperationalDreRouteGroup[];
   byVehicleGroups?: OperationalDreVehicleGroup[];
+  byDriverGroups?: OperationalDreDriverGroup[];
   filterOptions: OperationalDreFilterOptions;
   initialFilters: OperationalDreFilters;
   chartPoints: PeriodChartPoint[];
@@ -53,6 +55,7 @@ function CustomerProfitabilityPageView({
   byCustomer,
   byRouteGroups = [],
   byVehicleGroups = [],
+  byDriverGroups = [],
   filterOptions,
   initialFilters,
   chartPoints,
@@ -84,6 +87,7 @@ function CustomerProfitabilityPageView({
         byCustomer={byCustomer}
         byRouteGroups={byRouteGroups}
         byVehicleGroups={byVehicleGroups}
+        byDriverGroups={byDriverGroups}
         filterOptions={filterOptions}
         initialFilters={initialFilters}
         chartPoints={chartPoints}
