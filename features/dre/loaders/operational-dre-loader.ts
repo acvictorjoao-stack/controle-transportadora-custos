@@ -530,7 +530,7 @@ export async function getOperationalDreFilterOptions(
   const {formatPlate} = await import('@/features/vehicles/utils/vehicle-format');
 
   const settled = await Promise.allSettled([
-    listBranchesForSelect(supabase, companyId),
+    listBranchesForSelect(supabase, companyId, 100, {includeInactive: true}),
     listCustomersForSelect(supabase, companyId),
     listRoutesForSelect(supabase, companyId),
     listCostCentersForSelect(supabase, companyId),

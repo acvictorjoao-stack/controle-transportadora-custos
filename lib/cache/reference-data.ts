@@ -1,6 +1,7 @@
 import {unstable_cache, revalidateTag} from 'next/cache';
 import {cache} from 'react';
 
+import {ACTIVE_BRANCH_STATUS} from '@/features/organization/branches/constants';
 import {createAdminClient} from '@/supabase/server/admin';
 
 const REVALIDATE_SECONDS = 120;
@@ -55,17 +56,24 @@ export const getCachedBranchesForSelect = cache(
   async (
     companyId: string,
     limit = 100,
+    includeInactive = false,
   ): Promise<CachedBranchSelect[] | null> => {
     const admin = getAdminOrNull();
     if (!admin) return null;
 
     return unstable_cache(
       async () => {
-        const {data, error} = await admin
+        let query = admin
           .from('branches')
           .select('id, name, code')
           .eq('company_id', companyId)
-          .is('deleted_at', null)
+          .is('deleted_at', null);
+
+        if (!includeInactive) {
+          query = query.eq('status', ACTIVE_BRANCH_STATUS);
+        }
+
+        const {data, error} = await query
           .order('is_headquarters', {ascending: false})
           .order('name', {ascending: true})
           .limit(limit);
@@ -77,7 +85,12 @@ export const getCachedBranchesForSelect = cache(
           code: (row.code as string | null) ?? null,
         }));
       },
-      ['branches-for-select', companyId, String(limit)],
+      [
+        'branches-for-select',
+        companyId,
+        String(limit),
+        includeInactive ? 'all' : 'active',
+      ],
       {
         revalidate: REVALIDATE_SECONDS,
         tags: [referenceCacheTags.branches(companyId)],

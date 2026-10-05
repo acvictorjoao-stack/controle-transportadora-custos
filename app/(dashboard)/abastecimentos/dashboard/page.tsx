@@ -108,7 +108,7 @@ export default async function AbastecimentosDashboardPage({
         fromMonth: params.from,
         toMonth: params.to,
       }),
-      listBranchesForSelect(supabase, companyId),
+      listBranchesForSelect(supabase, companyId, 100, {includeInactive: true}),
       listVehiclesForSelect(supabase, companyId),
     ]);
   } catch (err) {

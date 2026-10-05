@@ -2,7 +2,11 @@ import type {SupabaseClient} from '@supabase/supabase-js';
 
 import {mapDatabaseError} from '@/features/master/companies/utils/database-error';
 
-import {BRANCH_LIST_COLUMNS, BRANCHES_PAGE_SIZE} from '../constants';
+import {
+  ACTIVE_BRANCH_STATUS,
+  BRANCH_LIST_COLUMNS,
+  BRANCHES_PAGE_SIZE,
+} from '../constants';
 import {mapBranchRow} from '../services/mappers';
 import type {Branch, BranchRow, BranchSelectOption, PaginatedBranches} from '../types';
 import type {CreateBranchInput, UpdateBranchInput} from '../validation';
@@ -65,11 +69,17 @@ export async function listBranchesForSelect(
   supabase: SupabaseClient,
   companyId: string,
   limit = 100,
+  options?: {includeInactive?: boolean},
 ): Promise<BranchSelectOption[]> {
+  const includeInactive = options?.includeInactive ?? false;
   const {getCachedBranchesForSelect} = await import(
     '@/lib/cache/reference-data'
   );
-  const cached = await getCachedBranchesForSelect(companyId, limit);
+  const cached = await getCachedBranchesForSelect(
+    companyId,
+    limit,
+    includeInactive,
+  );
   if (cached) {
     return cached.map((row) => ({
       id: row.id,
@@ -78,11 +88,17 @@ export async function listBranchesForSelect(
     }));
   }
 
-  const {data, error} = await supabase
+  let query = supabase
     .from('branches')
     .select('id, name, code')
     .eq('company_id', companyId)
-    .is('deleted_at', null)
+    .is('deleted_at', null);
+
+  if (!includeInactive) {
+    query = query.eq('status', ACTIVE_BRANCH_STATUS);
+  }
+
+  const {data, error} = await query
     .order('is_headquarters', {ascending: false})
     .order('name', {ascending: true})
     .limit(limit);
@@ -271,7 +287,8 @@ export async function countActiveBranches(
     .from('branches')
     .select('id', {count: 'exact', head: true})
     .eq('company_id', companyId)
-    .is('deleted_at', null);
+    .is('deleted_at', null)
+    .eq('status', ACTIVE_BRANCH_STATUS);
 
   if (error) {
     throw new Error(mapDatabaseError(error));
