@@ -26,6 +26,7 @@ import {
   getLastSuperAdminBlockMessage,
   isBusinessRoleName,
   isSuperAdminRoleName,
+  SUPER_ADMIN_MANAGEMENT_DENIED,
 } from '../business-roles';
 import {
   findActiveMembershipByEmail,
@@ -43,11 +44,13 @@ export interface MemberCredentials {
 
 type MemberPermission = 'members:read' | 'members:write' | 'members:invite';
 
-/** Create / edit / toggle / reset — invite or write. */
+/** Create / edit / toggle / reset of ordinary members — invite or write. */
 const MANAGE_MEMBER_PERMISSIONS: MemberPermission[] = [
   'members:invite',
   'members:write',
 ];
+
+type MemberAccess = {companyId: string; profileId: string; isMasterActing: boolean};
 
 function revalidateMembersPath() {
   revalidatePath(ROUTES.usuarios);
@@ -60,7 +63,7 @@ function revalidateMembersPath() {
  */
 async function resolveMemberAccess(
   permission: MemberPermission | MemberPermission[],
-): Promise<ActionResult<{companyId: string; profileId: string}>> {
+): Promise<ActionResult<MemberAccess>> {
   const supabase = await getServerSupabaseClient();
   const companyId = await getCurrentCompanyId(supabase);
 
@@ -77,7 +80,10 @@ async function resolveMemberAccess(
     if (!(await isPortalOwner(supabase))) {
       return {success: false, error: COMPANY_ACCESS_DENIED};
     }
-    return {success: true, data: {companyId, profileId: access.profileId}};
+    return {
+      success: true,
+      data: {companyId, profileId: access.profileId, isMasterActing: true},
+    };
   }
 
   const permissions = Array.isArray(permission) ? permission : [permission];
@@ -93,7 +99,38 @@ async function resolveMemberAccess(
     return {success: false, error: COMPANY_ACCESS_DENIED};
   }
 
-  return {success: true, data: {companyId, profileId: access.profileId}};
+  return {
+    success: true,
+    data: {companyId, profileId: access.profileId, isMasterActing: false},
+  };
+}
+
+/**
+ * members:invite / members:write administram membros comuns.
+ * Super Admin só é criado ou alterado por outro Super Admin ou pelo Portal Master.
+ */
+async function assertCanManageSuperAdmin(
+  access: MemberAccess,
+  roleNames: string[],
+): Promise<ActionResult<null>> {
+  if (!roleNames.some((name) => isSuperAdminRoleName(name))) {
+    return {success: true, data: null};
+  }
+
+  if (access.isMasterActing) {
+    return {success: true, data: null};
+  }
+
+  const supabase = await getServerSupabaseClient();
+  const {data, error} = await supabase.rpc('is_company_super_admin', {
+    p_company_id: access.companyId,
+  });
+
+  if (!error && data) {
+    return {success: true, data: null};
+  }
+
+  return {success: false, error: SUPER_ADMIN_MANAGEMENT_DENIED};
 }
 
 function mapAuthCreateError(message: string): string {
@@ -219,7 +256,8 @@ export async function createCompanyMemberAction(
   }
 
   const {fullName, email, phone, roleId, status} = parsed.data;
-  const {companyId, profileId: actorProfileId} = resolved.data;
+  const access = resolved.data;
+  const {companyId, profileId: actorProfileId} = access;
 
   try {
     const supabase = await getServerSupabaseClient();
@@ -227,6 +265,9 @@ export async function createCompanyMemberAction(
       await getCompanyRoleById(supabase, companyId, roleId),
     );
     if (!roleResult.success) return roleResult;
+
+    const superAdminGuard = await assertCanManageSuperAdmin(access, [roleResult.data.name]);
+    if (!superAdminGuard.success) return superAdminGuard;
 
     const existingMember = await findActiveMembershipByEmail(companyId, email);
     if (existingMember) {
@@ -318,7 +359,8 @@ export async function updateCompanyMemberAction(
     };
   }
 
-  const {companyId, profileId: actorProfileId} = resolved.data;
+  const access = resolved.data;
+  const {companyId, profileId: actorProfileId} = access;
 
   try {
     const existing = await getCompanyMemberById(companyId, memberId);
@@ -338,6 +380,12 @@ export async function updateCompanyMemberAction(
       await getCompanyRoleById(supabase, companyId, parsed.data.roleId),
     );
     if (!roleResult.success) return roleResult;
+
+    const superAdminGuard = await assertCanManageSuperAdmin(access, [
+      existing.roleName,
+      roleResult.data.name,
+    ]);
+    if (!superAdminGuard.success) return superAdminGuard;
 
     const lastSuperAdminGuard = await assertLastSuperAdminSafe({
       companyId,
@@ -420,7 +468,8 @@ export async function toggleCompanyMemberStatusAction(
   const resolved = await resolveMemberAccess(MANAGE_MEMBER_PERMISSIONS);
   if (!resolved.success) return resolved;
 
-  const {companyId, profileId: actorProfileId} = resolved.data;
+  const access = resolved.data;
+  const {companyId, profileId: actorProfileId} = access;
 
   try {
     const existing = await getCompanyMemberById(companyId, memberId);
@@ -434,6 +483,9 @@ export async function toggleCompanyMemberStatusAction(
         error: 'Você não pode desativar o próprio usuário.',
       };
     }
+
+    const superAdminGuard = await assertCanManageSuperAdmin(access, [existing.roleName]);
+    if (!superAdminGuard.success) return superAdminGuard;
 
     const lastSuperAdminGuard = await assertLastSuperAdminSafe({
       companyId,
@@ -480,7 +532,8 @@ export async function resetCompanyMemberPasswordAction(
   const resolved = await resolveMemberAccess(MANAGE_MEMBER_PERMISSIONS);
   if (!resolved.success) return resolved;
 
-  const {companyId, profileId: actorProfileId} = resolved.data;
+  const access = resolved.data;
+  const {companyId, profileId: actorProfileId} = access;
 
   try {
     const existing = await getCompanyMemberById(companyId, memberId);
@@ -495,6 +548,9 @@ export async function resetCompanyMemberPasswordAction(
           'Use a recuperação de senha do login para alterar a sua própria senha.',
       };
     }
+
+    const superAdminGuard = await assertCanManageSuperAdmin(access, [existing.roleName]);
+    if (!superAdminGuard.success) return superAdminGuard;
 
     // Never reset Portal Master credentials through the company members UI.
     if (await isPortalMasterProfile(existing.profileId)) {

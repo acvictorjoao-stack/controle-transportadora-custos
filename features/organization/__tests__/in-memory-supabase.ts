@@ -18,6 +18,17 @@ const NOT_SINGLE_ROW = {
   message: 'JSON object requested, multiple (or no) rows returned',
 };
 
+function cell(row: Row, column: string): unknown {
+  if (Object.prototype.hasOwnProperty.call(row, column)) return row[column];
+  if (!column.includes('.')) return undefined;
+  let current: unknown = row;
+  for (const part of column.split('.')) {
+    if (current == null || typeof current !== 'object') return undefined;
+    current = (current as Row)[part];
+  }
+  return current;
+}
+
 /**
  * Builder com a semântica de filtros do PostgREST usada pelas queries.
  * Não aplica RLS: o que ele prova é o isolamento feito pela própria aplicação.
@@ -57,12 +68,22 @@ class InMemoryQuery implements PromiseLike<QueryResult> {
   }
 
   eq(column: string, value: unknown) {
-    this.filters.push((row) => row[column] === value);
+    this.filters.push((row) => cell(row, column) === value);
+    return this;
+  }
+
+  ilike(column: string, pattern: string) {
+    const needle = pattern.replaceAll('%', '').toLowerCase();
+    this.filters.push((row) =>
+      String(row[column] ?? '')
+        .toLowerCase()
+        .includes(needle),
+    );
     return this;
   }
 
   is(column: string, value: null) {
-    this.filters.push((row) => (row[column] ?? null) === value);
+    this.filters.push((row) => (cell(row, column) ?? null) === value);
     return this;
   }
 
@@ -189,6 +210,18 @@ export function createInMemorySupabase<TStorage = undefined>(
             ),
             error: null,
           };
+        case 'is_company_super_admin': {
+          const member = isActiveMember(db, userId, args.p_company_id);
+          const role = member
+            ? (db.tables.roles ?? []).find((row) => row.id === member.role_id)
+            : undefined;
+          const isSuperAdmin =
+            role?.name === 'Super Admin' &&
+            role?.is_system === true &&
+            (role?.status ?? 'active') === 'active' &&
+            (role?.deleted_at ?? null) === null;
+          return {data: isSuperAdmin, error: null};
+        }
         default:
           return {data: null, error: {code: '42883', message: `rpc ${fn} não emulada`}};
       }

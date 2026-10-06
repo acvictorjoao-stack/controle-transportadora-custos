@@ -18,6 +18,15 @@ export const DEFAULT_MEMBER_ROLE_NAME: BusinessRoleName = 'Consulta';
 export const LAST_SUPER_ADMIN_MESSAGE =
   'Não é possível remover ou rebaixar o último Super Admin ativo da empresa.';
 
+/**
+ * Super Admin é o maior nível do tenant (is_company_super_admin), distinto do
+ * Administrador mesmo quando este tem o catálogo inteiro, inclusive members:write.
+ * Só outro Super Admin ou o Portal Master atuando na empresa pode criar,
+ * promover ou alterar essa conta (role, status, e-mail ou senha).
+ */
+export const SUPER_ADMIN_MANAGEMENT_DENIED =
+  'Somente um Super Admin pode atribuir o perfil Super Admin ou alterar uma conta Super Admin.';
+
 const BUSINESS_ROLE_ORDER = new Map<string, number>(
   BUSINESS_ROLE_NAMES.map((name, index) => [name, index]),
 );
