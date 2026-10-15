@@ -6,7 +6,9 @@
 
 drop index if exists public.idx_companies_slug;
 
-create unique index idx_companies_slug_active
+-- 004 already creates this index on fresh databases; only databases built with the
+-- original 004 (idx_companies_slug, dropped above) still need it here.
+create unique index if not exists idx_companies_slug_active
   on public.companies (slug)
   where deleted_at is null;
 
