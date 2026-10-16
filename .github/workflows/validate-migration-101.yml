@@ -1,0 +1,1266 @@
+name: validate-migration-101
+
+on:
+  push:
+    branches:
+      - ci/validate-migration-101
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-migration-101
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  DO_NOT_TRACK: '1'
+  SUPABASE_TELEMETRY_DISABLED: '1'
+
+jobs:
+  contract:
+    name: Contrato estático da 101 (vitest)
+    # Só roda em repositório privado: logs e artefatos de repositório público são públicos.
+    if: github.event.repository.private
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npx vitest run features/organization/__tests__/trigger-parent-company-isolation-migration-contract.test.ts
+
+  postgres:
+    name: PostgreSQL ${{ matrix.pg }} — migrations 001–101
+    if: github.event.repository.private
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    continue-on-error: ${{ matrix.pg == '15' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - pg: '17'
+            pin: '17.6.1.127'
+            server_prefix: '17.6'
+          - pg: '15'
+            pin: ''
+            server_prefix: '15.'
+    env:
+      SUPABASE_DB_MAJOR_VERSION: ${{ matrix.pg }}
+      EXPECTED_PIN: ${{ matrix.pin }}
+      EXPECTED_SERVER_PREFIX: ${{ matrix.server_prefix }}
+      DB_CONTAINER: supabase_db_fleetcontrol
+      MIGRATION_101: 101_trigger_parent_company_isolation.sql
+      BEHAVIORAL_TEST: database/tests/trigger-parent-company-isolation.sql
+      EXPECTED_CASES: '68'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Isolar o runner do projeto vinculado
+        run: |
+          for v in SUPABASE_ACCESS_TOKEN SUPABASE_DB_PASSWORD SUPABASE_SERVICE_ROLE_KEY SUPABASE_PROJECT_ID DATABASE_URL; do
+            if [ -n "${!v:-}" ]; then echo "::error::$v não pode estar definido"; exit 1; fi
+          done
+          if [ -n "$EXPECTED_PIN" ]; then
+            tracked_pin=$(tr -d '[:space:]' < supabase/.temp/postgres-version)
+            if [ "$tracked_pin" != "$EXPECTED_PIN" ]; then
+              echo "::error::pin rastreado ($tracked_pin) difere do esperado ($EXPECTED_PIN)"; exit 1
+            fi
+          fi
+          # Só o pin do Postgres sobrevive: Auth, Storage e REST usam os padrões da CLI 2.121.0.
+          rm -rf supabase/.temp
+          if [ -n "$EXPECTED_PIN" ]; then
+            mkdir -p supabase/.temp
+            printf '%s' "$EXPECTED_PIN" > supabase/.temp/postgres-version
+          fi
+          temp_files=$(if [ -d supabase/.temp ]; then find supabase/.temp -mindepth 1 -printf '%P\n' | LC_ALL=C sort | paste -sd, -; fi)
+          if [ "$temp_files" != "${EXPECTED_PIN:+postgres-version}" ]; then
+            echo "::error::supabase/.temp inesperado no runner: '$temp_files'"; exit 1
+          fi
+          echo "supabase/.temp no runner: ${temp_files:-<ausente>}"
+          git diff --exit-code -- supabase/config.toml
+          {
+            echo "LOG_DIR=$RUNNER_TEMP/logs"
+            echo "PRIVATE_DIR=$RUNNER_TEMP/private"
+            echo "SQL_DIR=$RUNNER_TEMP/sql"
+            echo "HELD_DIR=$RUNNER_TEMP/held"
+          } >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/logs" "$RUNNER_TEMP/private" "$RUNNER_TEMP/sql" "$RUNNER_TEMP/held" "$RUNNER_TEMP/bin"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.121.0
+
+      - name: Gerar scripts auxiliares
+        run: |
+          BIN="$RUNNER_TEMP/bin"
+
+          cat > "$BIN/psql-admin" <<'SH'
+          #!/usr/bin/env bash
+          exec docker exec -i "$DB_CONTAINER" psql -h /var/run/postgresql -U supabase_admin -d postgres -X -v ON_ERROR_STOP=1 "$@"
+          SH
+
+          # Filtro best-effort: reduz exposição, não prova ausência de segredos.
+          # Por isso o start.log bruto nunca entra no artefato.
+          cat > "$BIN/redact" <<'SH'
+          #!/usr/bin/env bash
+          exec sed -E \
+            -e 's#(postgres(ql)?://)[^@/[:space:]]+@#\1[REDACTED]@#g' \
+            -e 's#eyJ[A-Za-z0-9_-]{8,}(\.[A-Za-z0-9_-]*){0,2}#[REDACTED_JWT]#g' \
+            -e 's#sb_(publishable|secret)_[A-Za-z0-9_-]+#[REDACTED_KEY]#g' \
+            -e 's#sbp_[A-Za-z0-9]+#[REDACTED_TOKEN]#g' \
+            -e 's#super-secret-jwt-token[A-Za-z0-9_-]*#[REDACTED_SECRET]#g' \
+            -e '/sha256:/!s#[0-9A-Fa-f]{32,}#[REDACTED_HEX]#g' \
+            -e 's#((secret|key|token|password|passwd|pwd)"?[[:space:]]*[:=][[:space:]]*"?)[^[:space:]",]+#\1[REDACTED]#Ig'
+          SH
+
+          cat > "$BIN/check-version" <<'SH'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          image=$(docker inspect -f '{{.Config.Image}}' "$DB_CONTAINER")
+          image_id=$(docker inspect -f '{{.Image}}' "$DB_CONTAINER")
+          server=$(psql-admin -At -c 'show server_version')
+          echo "imagem: $image ($image_id) | server_version: $server" | tee -a "$LOG_DIR/env.txt"
+          if [ -n "$EXPECTED_PIN" ] && [[ "$image" != *":$EXPECTED_PIN" ]]; then
+            echo "::error::imagem $image não usa o pin $EXPECTED_PIN"; exit 1
+          fi
+          if [[ "$server" != "$EXPECTED_SERVER_PREFIX"* ]]; then
+            echo "::error::servidor $server fora de $EXPECTED_SERVER_PREFIX"; exit 1
+          fi
+          SH
+
+          cat > "$BIN/check-chain" <<'SH'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          files=$(find supabase/migrations -maxdepth 1 -type f -name '*.sql' -printf '%f\n' | LC_ALL=C sort)
+          bad=$(printf '%s\n' "$files" | grep -vE '^[0-9]+_.*\.sql$' || true)
+          if [ -n "$bad" ]; then
+            echo "::error::migrations fora do padrão <versão>_<nome>.sql (a CLI as ignoraria): $bad"; exit 1
+          fi
+          expected=$(printf '%s\n' "$files" | sed -E 's/^([0-9]+)_.*\.sql$/\1/' | LC_ALL=C sort)
+          if ! diff <(printf '%s\n' "$expected") <(seq -f '%03g' 1 "$1"); then
+            echo "::error::arquivos de migration com lacuna, duplicata ou excesso (esperado 001–$1)"; exit 1
+          fi
+          applied=$(psql-admin -At -c 'select version from supabase_migrations.schema_migrations order by version collate "C"')
+          if ! diff <(printf '%s\n' "$expected") <(printf '%s\n' "$applied"); then
+            echo "::error::migrations aplicadas divergem dos arquivos"; exit 1
+          fi
+          test "$(printf '%s\n' "$applied" | tail -n1)" = "$1"
+          echo "cadeia OK: $(printf '%s\n' "$applied" | wc -l) migrations, última $1" | tee -a "$LOG_DIR/env.txt"
+          SH
+
+          cat > "$BIN/check-catalog" <<'SH'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          out="$LOG_DIR/catalog-$1.txt"
+          if ! psql-admin -f - < "$SQL_DIR/catalog.sql" > "$out" 2>&1; then
+            cat "$out"; echo "::error::catálogo da 101 inválido ($1)"; exit 1
+          fi
+          if ! psql-admin -f - < "$SQL_DIR/key-columns-notnull.sql" >> "$out" 2>&1; then
+            cat "$out"; echo "::error::coluna de chave anulável ($1)"; exit 1
+          fi
+          cat "$out"
+          count=$(psql-admin -At -f - < "$SQL_DIR/count-101-constraints.sql")
+          if [ "$count" != "9" ]; then
+            echo "::error::esperadas 9 constraints da 101 ($1), encontradas $count"; exit 1
+          fi
+          SH
+
+          cat > "$BIN/snap-schema" <<'SH'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          label=$1; base=${2:-}
+          file="$LOG_DIR/schema-$label.txt"
+          psql-admin -At -f - < "$SQL_DIR/schema-fingerprint.sql" > "$file"
+          for kind in rel col con idx trg fn; do
+            if ! grep -q "^$kind|" "$file"; then
+              echo "::error::fingerprint de schema sem linhas '$kind' ($label)"; exit 1
+            fi
+          done
+          echo "schema $label: $(wc -l < "$file") linhas, sha256 $(sha256sum "$file" | cut -d' ' -f1)"
+          if [ -n "$base" ] && ! diff -u "$LOG_DIR/schema-$base.txt" "$file"; then
+            echo "::error::schema monitorado mudou: $label difere de $base"; exit 1
+          fi
+          SH
+
+          cat > "$BIN/snap-data" <<'SH'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          label=$1; base=${2:-}
+          file="$LOG_DIR/fp-$label.txt"
+          psql-admin -At -f - < "$SQL_DIR/fingerprint.sql" > "$file"
+          if [ -n "$base" ] && ! diff -u "$LOG_DIR/fp-$base.txt" "$file"; then
+            echo "::error::dados mudaram: $label difere de $base"; exit 1
+          fi
+          SH
+
+          cat > "$BIN/precheck-negative" <<'SH'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          name=$1; inserts=$2; expected=$3
+          out="$LOG_DIR/precheck-$name.txt"
+          set +e
+          {
+            echo 'begin;'
+            echo 'set local session_replication_role = replica;'
+            cat "$SQL_DIR/ids.sql" "$inserts"
+            echo 'set local session_replication_role = origin;'
+            cat "$HELD_DIR/$MIGRATION_101"
+            echo 'rollback;'
+          } | psql-admin -f - > "$out" 2>&1
+          rc=$?
+          set -e
+          cat "$out"
+          if [ "$rc" -ne 3 ]; then
+            echo "::error::a 101 deveria abortar com erro de script (psql rc=3) em $name; rc=$rc"; exit 1
+          fi
+          if ! grep -qF 'migration 101: registros filhos com vínculo inválido ao pai' "$out"; then
+            echo "::error::o aborto de $name não veio da pré-checagem da 101"; exit 1
+          fi
+          for rel in customer_contract_items maintenance_parts maintenance_services tire_recaps tire_inspections tire_movements; do
+            grep -qF "$rel ($expected)" "$out" || { echo "::error::$rel não reportado como ($expected)"; exit 1; }
+          done
+          count=$(psql-admin -At -f - < "$SQL_DIR/count-101-constraints.sql")
+          if [ "$count" != "0" ]; then
+            echo "::error::constraints da 101 remanescentes após $name: $count"; exit 1
+          fi
+          snap-schema "after-precheck-$name" before
+          snap-data "after-precheck-$name" before
+          SH
+
+          # A CLI abre a própria conexão: as linhas inválidas precisam estar commitadas,
+          # e a limpeza é verificada contra o fingerprint "before".
+          # O trap trata erros e SIGINT/SIGTERM/SIGHUP: devolve a 101 e remove as linhas gravadas.
+          # Durante essa limpeza os três sinais são ignorados, e psql/docker exec/snap-* não têm timeout:
+          # a limpeza pode demorar ou travar até o SIGKILL do runner. SIGKILL, timeout forçado do job ou
+          # perda do runner interrompem o trap no meio da restauração; ele não garante limpeza em
+          # cancelamentos forçados. Resta então o passo "Destruir o ambiente" (supabase stop --no-backup),
+          # que só roda se o runner sobreviver.
+          cat > "$BIN/cli-negative" <<'SH'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          raw="$PRIVATE_DIR/migration-up-negative.log"
+          held="$HELD_DIR/$MIGRATION_101"
+          active="supabase/migrations/$MIGRATION_101"
+          migration_sha=''
+          moved=0
+          inserted=0
+          final_check_failed=0
+
+          verify_migration_held() {
+            local status=0 sha
+            if [ -e "$active" ] || [ -L "$active" ]; then
+              echo "::error::$MIGRATION_101 continua em supabase/migrations"; status=1
+            fi
+            if [ ! -f "$held" ]; then
+              echo "::error::$MIGRATION_101 ausente de $HELD_DIR"; status=1
+            else
+              sha=$(sha256sum "$held" | cut -d' ' -f1) || sha=''
+              if [ "$sha" != "$migration_sha" ]; then
+                echo "::error::sha256 de $MIGRATION_101 em $HELD_DIR não confere: ${sha:-<ilegível>} != $migration_sha"; status=1
+              fi
+            fi
+            return "$status"
+          }
+
+          restore_migration() {
+            local status=0
+            if [ -e "$active" ] && ! mv "$active" "$HELD_DIR/"; then
+              echo "::error::não foi possível devolver $MIGRATION_101 de supabase/migrations a $HELD_DIR"; status=1
+            fi
+            verify_migration_held || status=1
+            if [ "$status" -ne 0 ]; then return 1; fi
+            moved=0
+          }
+
+          cleanup_rows() {
+            local mode=$1 status=0
+            psql-admin -v mode="$mode" -f - < "$SQL_DIR/cli-negative-cleanup.sql" \
+              > "$PRIVATE_DIR/cli-negative-cleanup-$mode.log" 2>&1 || status=$?
+            redact < "$PRIVATE_DIR/cli-negative-cleanup-$mode.log" | tee "$LOG_DIR/cli-negative-cleanup-$mode.txt" || true
+            if [ "$status" -ne 0 ]; then
+              echo "::error::limpeza ($mode) das 6 linhas do cli-negative falhou (psql rc=$status)"; return 1
+            fi
+            inserted=0
+          }
+
+          verify_final_state() {
+            if ! { snap-schema "$1" before && snap-data "$1" before; }; then
+              echo "::error::estado final do cli-negative não comprovado contra o fingerprint before ($1)"; return 1
+            fi
+          }
+
+          on_exit() {
+            local rc=$? cleanup_rc=0
+            trap '' INT TERM HUP
+            set +e
+            if [ "$rc" -eq 0 ] && { [ "$moved" = 1 ] || [ "$inserted" = 1 ]; }; then
+              echo "::error::cli-negative terminou com limpeza pendente"; rc=1
+            fi
+            if [ "$rc" -ne 0 ]; then
+              if [ "$moved" = 1 ] || [ "$inserted" = 1 ]; then
+                echo "::error::cli-negative falhou (código $rc) com pendências (moved=$moved, inserted=$inserted); iniciando limpeza de emergência"
+                if [ "$moved" = 1 ]; then restore_migration || cleanup_rc=1; fi
+                if [ "$inserted" = 1 ]; then
+                  cleanup_rows emergency || cleanup_rc=1
+                  verify_final_state after-cli-emergency || cleanup_rc=1
+                fi
+                if [ "$cleanup_rc" -ne 0 ]; then
+                  echo "::error::a limpeza de emergência do cli-negative também falhou; estado do banco ou da migration não comprovado"
+                else
+                  echo "limpeza de emergência concluída e comprovada; o job continua em falha (código $rc)"
+                fi
+              elif [ "$final_check_failed" = 1 ]; then
+                echo "::error::cli-negative falhou (código $rc): a verificação final divergiu do fingerprint before após a limpeza; sem pendências, nenhuma limpeza foi iniciada"
+              else
+                echo "::error::cli-negative falhou (código $rc) sem pendências de limpeza; nenhuma limpeza foi iniciada"
+              fi
+            fi
+            exit "$rc"
+          }
+          trap on_exit EXIT
+          trap 'exit 130' INT
+          trap 'exit 143' TERM
+          trap 'exit 129' HUP
+
+          if [ ! -f "$held" ]; then
+            echo "::error::$MIGRATION_101 ausente de $HELD_DIR"; exit 1
+          fi
+          migration_sha=$(sha256sum "$held" | cut -d' ' -f1)
+          echo "sha256 de $MIGRATION_101 antes do cli-negative: $migration_sha" | tee -a "$LOG_DIR/env.txt"
+          # Marcado antes do commit: se a falha vier depois dele, a limpeza de emergência aceita 0 ou 1 linha.
+          inserted=1
+          {
+            cat "$SQL_DIR/ids.sql"
+            echo 'begin;'
+            echo 'set local session_replication_role = replica;'
+            cat "$SQL_DIR/cross.sql"
+            echo 'commit;'
+          } | psql-admin -f -
+          snap-data cli-dirty
+          moved=1
+          if ! mv "$held" supabase/migrations/; then
+            echo "::error::não foi possível mover $MIGRATION_101 de $HELD_DIR para supabase/migrations"; exit 1
+          fi
+          set +e
+          supabase migration up --local > "$raw" 2>&1
+          up_rc=$?
+          set -e
+          echo "supabase migration up --local saiu com código $up_rc (esperado 1)"
+          redact < "$raw" | tee "$LOG_DIR/migration-up-negative.txt"
+          echo "código de saída do supabase migration up --local: $up_rc" >> "$LOG_DIR/migration-up-negative.txt"
+          if ! restore_migration; then
+            echo "::error::código original do supabase migration up --local: $up_rc (esperado 1); diagnóstico filtrado preservado em migration-up-negative.txt"
+            exit 1
+          fi
+          if [ "$up_rc" -ne 1 ]; then
+            echo "::error::migration up deveria sair com 1 (erro de SQL); rc=$up_rc"; exit 1
+          fi
+          if ! grep -qF "Applying migration $MIGRATION_101" "$raw"; then
+            echo "::error::a CLI não chegou a aplicar a 101"; exit 1
+          fi
+          if grep -qF 'Local database is up to date' "$raw"; then
+            echo "::error::a CLI relatou sucesso"; exit 1
+          fi
+          # A CLI repete o texto da instrução que falhou, que contém o prefixo da mensagem;
+          # só as contagens calculadas provam que o RAISE da pré-checagem disparou.
+          for rel in customer_contract_items maintenance_parts maintenance_services tire_recaps tire_inspections tire_movements; do
+            grep -qF "$rel (outra empresa: 1, pai inexistente: 0, chave nula: 0)" "$raw" \
+              || { echo "::error::aborto pela CLI sem a contagem calculada de $rel"; exit 1; }
+          done
+          hist=$(psql-admin -At -c "select count(*) from supabase_migrations.schema_migrations where version = '101'")
+          if [ "$hist" != "0" ]; then
+            echo "::error::a CLI registrou a 101 no histórico apesar da falha"; exit 1
+          fi
+          check-chain 100
+          count=$(psql-admin -At -f - < "$SQL_DIR/count-101-constraints.sql")
+          if [ "$count" != "0" ]; then
+            echo "::error::constraints da 101 remanescentes após falha pela CLI: $count"; exit 1
+          fi
+          snap-schema after-cli-negative before
+          snap-data after-cli-negative cli-dirty
+          cleanup_rows strict || exit 1
+          verify_final_state after-cli-cleanup || { final_check_failed=1; exit 1; }
+          SH
+
+          cat > "$BIN/behavioral" <<'SH'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          out="$LOG_DIR/behavioral-$1.txt"
+          if ! psql-admin -q -A -t -F '|' -f - < "$BEHAVIORAL_TEST" > "$out" 2>&1; then
+            cat "$out"; echo "::error::teste comportamental falhou ($1)"; exit 1
+          fi
+          cat "$out"
+          passed=$(grep -cE '^[0-9]+\|t\|' "$out" || true)
+          failed=$(grep -cE '^[0-9]+\|f\|' "$out" || true)
+          echo "aprovados: $passed | reprovados: $failed | esperados: $EXPECTED_CASES"
+          test "$failed" -eq 0
+          test "$passed" -eq "$EXPECTED_CASES"
+          SH
+
+          chmod +x "$BIN"/*
+
+      - name: Autoteste do filtro de logs
+        run: |
+          sample="$RUNNER_TEMP/redact-sample.txt"
+          cat > "$sample" <<'TXT'
+          DB URL: postgresql://postgres:senha-ficticia@127.0.0.1:54322/postgres
+          anon key: eyJhbGciOiJub25lIn0.eyJ0ZXN0Ijp0cnVlfQ.ZmljdGljaW8
+          │ Secret │ sb_secret_FICTICIO0000000000 │
+          │ S3 Secret Key │ fedcba9876543210fedcba9876543210fedcba9876543210 │
+          JWT secret: super-secret-jwt-token-ficticio
+          {"password":"senha-ficticia-2"}
+          PGPASSWORD=senha-ficticia-3
+          Applying migration 101_trigger_parent_company_isolation.sql...
+          ERROR: duplicate key value violates unique constraint "tires_company_id_id_key"
+          DETAIL:  Key (company_id, id)=(e1000000-0000-4000-8000-000000000001, x) already exists.
+          Digest: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+          Skipping migration README.md...
+          TXT
+          filtered=$(redact < "$sample")
+          for leak in 'senha-ficticia' 'eyJ' 'sb_secret_' 'fedcba9876543210' 'super-secret-jwt-token'; do
+            if grep -qF -- "$leak" <<< "$filtered"; then
+              echo "::error::redact deixou passar: $leak"; exit 1
+            fi
+          done
+          for keep in '@127.0.0.1:54322/postgres' 'Applying migration 101_trigger_parent_company_isolation.sql' \
+                      'duplicate key value violates unique constraint "tires_company_id_id_key"' \
+                      'Key (company_id, id)=(e1000000-0000-4000-8000-000000000001, x) already exists' \
+                      'sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef' 'Skipping migration'; do
+            if ! grep -qF -- "$keep" <<< "$filtered"; then
+              echo "::error::redact destruiu diagnóstico: $keep"; exit 1
+            fi
+          done
+          echo "filtro de logs OK"
+
+      - name: Gerar scripts SQL de verificação
+        run: |
+          cat > "$SQL_DIR/ids.sql" <<'SQL'
+          \set e1 'e1000000-0000-4000-8000-000000000001'
+          \set e2 'e2000000-0000-4000-8000-000000000001'
+          \set cu1 'e1000000-0000-4000-8000-000000000002'
+          \set cu2 'e2000000-0000-4000-8000-000000000002'
+          \set c1 'e1000000-0000-4000-8000-000000000003'
+          \set c2 'e2000000-0000-4000-8000-000000000003'
+          \set v1 'e1000000-0000-4000-8000-000000000004'
+          \set v2 'e2000000-0000-4000-8000-000000000004'
+          \set m1 'e1000000-0000-4000-8000-000000000005'
+          \set m2 'e2000000-0000-4000-8000-000000000005'
+          \set t1 'e1000000-0000-4000-8000-000000000006'
+          \set t2 'e2000000-0000-4000-8000-000000000006'
+          \set dead_contract 'dead0000-0000-4000-8000-0000000000c1'
+          \set dead_record 'dead0000-0000-4000-8000-0000000000d1'
+          \set dead_tire 'dead0000-0000-4000-8000-0000000000e1'
+          SQL
+
+          cat > "$SQL_DIR/supabase-objects.sql" <<'SQL'
+          do $$
+          declare
+            v_bad text;
+          begin
+            select string_agg(o, ', ') into v_bad
+            from unnest(array['auth.users', 'storage.buckets', 'storage.objects']) as o
+            where to_regclass(o) is null;
+            if v_bad is not null then raise exception 'tabelas do Supabase ausentes: %', v_bad; end if;
+
+            select string_agg(f, ', ') into v_bad
+            from unnest(array['auth.uid()', 'storage.foldername(text)']) as f
+            where to_regprocedure(f) is null;
+            if v_bad is not null then raise exception 'funções do Supabase ausentes: %', v_bad; end if;
+
+            select string_agg(r, ', ') into v_bad
+            from unnest(array['anon', 'authenticated', 'service_role']) as r
+            where not exists (select 1 from pg_roles where rolname = r);
+            if v_bad is not null then raise exception 'roles ausentes: %', v_bad; end if;
+
+            if not (select rolbypassrls from pg_roles where rolname = 'service_role') then
+              raise exception 'service_role sem BYPASSRLS';
+            end if;
+            if not exists (select 1 from pg_extension where extname = 'pgcrypto') then
+              raise exception 'pgcrypto ausente';
+            end if;
+            if not exists (select 1 from pg_trigger where tgrelid = 'auth.users'::regclass and tgname = 'on_auth_user_created') then
+              raise exception 'trigger on_auth_user_created (005) ausente';
+            end if;
+            if not (select rolsuper from pg_roles where rolname = current_user) then
+              raise exception 'o teste comportamental exige superusuário; conectado como %', current_user;
+            end if;
+            raise notice 'objetos do Supabase OK (%)', version();
+          end
+          $$;
+          SQL
+
+          cat > "$SQL_DIR/seed.sql" <<'SQL'
+          begin;
+          insert into public.companies (id, legal_name, tax_id, slug, email) values
+            (:'e1', 'CI101 Empresa 1', 'CI101-TAX-1', 'ci101-empresa-1', 'e1@ci101.test'),
+            (:'e2', 'CI101 Empresa 2', 'CI101-TAX-2', 'ci101-empresa-2', 'e2@ci101.test');
+          insert into public.customers (id, company_id, legal_name) values
+            (:'cu1', :'e1', 'Cliente CI101 1'),
+            (:'cu2', :'e2', 'Cliente CI101 2');
+          insert into public.customer_contracts (id, company_id, customer_id, contract_number) values
+            (:'c1', :'e1', :'cu1', 'CI101-1'),
+            (:'c2', :'e2', :'cu2', 'CI101-2');
+          insert into public.customer_contract_items (company_id, contract_id, freight_value) values
+            (:'e1', :'c1', 700), (:'e1', :'c1', 300), (:'e2', :'c2', 1500);
+          insert into public.vehicles (id, company_id, plate, vehicle_type) values
+            (:'v1', :'e1', 'CIA1A01', 'truck'),
+            (:'v2', :'e2', 'CIB2B02', 'truck');
+          insert into public.maintenance_records (id, company_id, vehicle_id, maintenance_type, odometer_km) values
+            (:'m1', :'e1', :'v1', 'preventive', 2000),
+            (:'m2', :'e2', :'v2', 'preventive', 4000);
+          insert into public.maintenance_parts (company_id, maintenance_record_id, name, quantity, unit_price, total_price) values
+            (:'e1', :'m1', 'Filtro CI101 1', 2, 150, 300),
+            (:'e2', :'m2', 'Filtro CI101 2', 1, 800, 800);
+          insert into public.maintenance_services (company_id, maintenance_record_id, description, amount) values
+            (:'e1', :'m1', 'Mão de obra CI101 1', 100),
+            (:'e2', :'m2', 'Mão de obra CI101 2', 200);
+          insert into public.tires (id, company_id, purchase_value, accumulated_km, expected_life_km) values
+            (:'t1', :'e1', 1200, 12000, 100000),
+            (:'t2', :'e2', 1800, 18000, 100000);
+          insert into public.tire_recaps (company_id, tire_id, amount) values
+            (:'e1', :'t1', 60), (:'e2', :'t2', 90);
+          insert into public.tire_inspections (company_id, tire_id, tread_depth_mm) values
+            (:'e1', :'t1', 8), (:'e2', :'t2', 6.5);
+          insert into public.tire_movements (company_id, tire_id, vehicle_id, movement_type, position) values
+            (:'e1', :'t1', :'v1', 'install', 'front_left'),
+            (:'e2', :'t2', :'v2', 'install', 'front_left');
+          commit;
+
+          do $$
+          begin
+            if (select contracted_revenue from public.customer_contracts where id = 'e1000000-0000-4000-8000-000000000003') is distinct from 1000.00 then
+              raise exception 'seed: receita do contrato 1 deveria ser 1000';
+            end if;
+            if (select total_cost from public.maintenance_records where id = 'e2000000-0000-4000-8000-000000000005') is distinct from 1000.00 then
+              raise exception 'seed: custo da manutenção 2 deveria ser 1000';
+            end if;
+            if (select recap_count from public.tires where id = 'e1000000-0000-4000-8000-000000000006') is distinct from 1 then
+              raise exception 'seed: pneu 1 deveria ter 1 recapagem';
+            end if;
+          end
+          $$;
+          SQL
+
+          cat > "$SQL_DIR/cross.sql" <<'SQL'
+          insert into public.customer_contract_items (company_id, contract_id, freight_value) values (:'e1', :'c2', 1);
+          insert into public.maintenance_parts (company_id, maintenance_record_id, name, quantity, unit_price, total_price) values (:'e1', :'m2', 'X', 1, 1, 1);
+          insert into public.maintenance_services (company_id, maintenance_record_id, description, amount) values (:'e1', :'m2', 'X', 1);
+          insert into public.tire_recaps (company_id, tire_id, amount) values (:'e1', :'t2', 1);
+          insert into public.tire_inspections (company_id, tire_id, tread_depth_mm) values (:'e1', :'t2', 1);
+          insert into public.tire_movements (company_id, tire_id, movement_type) values (:'e1', :'t2', 'remove');
+          SQL
+
+          cat > "$SQL_DIR/orphan.sql" <<'SQL'
+          insert into public.customer_contract_items (company_id, contract_id, freight_value) values (:'e1', :'dead_contract', 1);
+          insert into public.maintenance_parts (company_id, maintenance_record_id, name, quantity, unit_price, total_price) values (:'e1', :'dead_record', 'X', 1, 1, 1);
+          insert into public.maintenance_services (company_id, maintenance_record_id, description, amount) values (:'e1', :'dead_record', 'X', 1);
+          insert into public.tire_recaps (company_id, tire_id, amount) values (:'e1', :'dead_tire', 1);
+          insert into public.tire_inspections (company_id, tire_id, tread_depth_mm) values (:'e1', :'dead_tire', 1);
+          insert into public.tire_movements (company_id, tire_id, movement_type) values (:'e1', :'dead_tire', 'remove');
+          SQL
+
+          cat > "$SQL_DIR/fingerprint.sql" <<'SQL'
+          with ci(company_id) as (
+            values ('e1000000-0000-4000-8000-000000000001'::uuid), ('e2000000-0000-4000-8000-000000000001'::uuid)
+          )
+          select jsonb_pretty(jsonb_build_object(
+            'contracts', (select jsonb_agg(jsonb_build_array(c.id, c.contracted_revenue) order by c.id)
+                          from public.customer_contracts c join ci using (company_id)),
+            'maintenance', (select jsonb_agg(jsonb_build_array(m.id, m.parts_total, m.services_total, m.total_cost, m.cost_per_km, m.final_amount) order by m.id)
+                            from public.maintenance_records m join ci using (company_id)),
+            'tires', (select jsonb_agg(jsonb_build_array(t.id, t.recap_count, t.total_recap_cost, t.cost_per_km, t.last_tread_depth_mm, t.tire_status, t.vehicle_id, t.current_position) order by t.id)
+                      from public.tires t join ci using (company_id)),
+            -- ctid muda em qualquer UPDATE persistido; a linha completa cobre colunas fora das métricas.
+            'parent_rows', jsonb_build_object(
+              'customer_contracts', (select jsonb_agg(jsonb_build_object('ctid', x.ctid::text, 'row', to_jsonb(x)) order by x.id)
+                                     from public.customer_contracts x join ci using (company_id)),
+              'maintenance_records', (select jsonb_agg(jsonb_build_object('ctid', x.ctid::text, 'row', to_jsonb(x)) order by x.id)
+                                      from public.maintenance_records x join ci using (company_id)),
+              'tires', (select jsonb_agg(jsonb_build_object('ctid', x.ctid::text, 'row', to_jsonb(x)) order by x.id)
+                        from public.tires x join ci using (company_id))),
+            'child_rows', jsonb_build_object(
+              'customer_contract_items', (select jsonb_agg(to_jsonb(x) order by x.id) from public.customer_contract_items x join ci using (company_id)),
+              'maintenance_parts', (select jsonb_agg(to_jsonb(x) order by x.id) from public.maintenance_parts x join ci using (company_id)),
+              'maintenance_services', (select jsonb_agg(to_jsonb(x) order by x.id) from public.maintenance_services x join ci using (company_id)),
+              'tire_recaps', (select jsonb_agg(to_jsonb(x) order by x.id) from public.tire_recaps x join ci using (company_id)),
+              'tire_inspections', (select jsonb_agg(to_jsonb(x) order by x.id) from public.tire_inspections x join ci using (company_id)),
+              'tire_movements', (select jsonb_agg(to_jsonb(x) order by x.id) from public.tire_movements x join ci using (company_id))),
+            'rows', jsonb_build_object(
+              'customer_contract_items', (select count(*) from public.customer_contract_items join ci using (company_id)),
+              'maintenance_parts', (select count(*) from public.maintenance_parts join ci using (company_id)),
+              'maintenance_services', (select count(*) from public.maintenance_services join ci using (company_id)),
+              'tire_recaps', (select count(*) from public.tire_recaps join ci using (company_id)),
+              'tire_inspections', (select count(*) from public.tire_inspections join ci using (company_id)),
+              'tire_movements', (select count(*) from public.tire_movements join ci using (company_id)),
+              'maintenance_history', (select count(*) from public.maintenance_history join ci using (company_id)),
+              'tire_history', (select count(*) from public.tire_history join ci using (company_id)),
+              'customer_history', (select count(*) from public.customer_history join ci using (company_id))),
+            'global_rows', jsonb_build_object(
+              'auth.users', (select count(*) from auth.users),
+              'profiles', (select count(*) from public.profiles),
+              'companies', (select count(*) from public.companies),
+              'branches', (select count(*) from public.branches),
+              'roles', (select count(*) from public.roles),
+              'role_permissions', (select count(*) from public.role_permissions),
+              'company_members', (select count(*) from public.company_members),
+              'customers', (select count(*) from public.customers),
+              'customer_contracts', (select count(*) from public.customer_contracts),
+              'customer_contract_items', (select count(*) from public.customer_contract_items),
+              'customer_history', (select count(*) from public.customer_history),
+              'vehicles', (select count(*) from public.vehicles),
+              'vehicle_history', (select count(*) from public.vehicle_history),
+              'maintenance_records', (select count(*) from public.maintenance_records),
+              'maintenance_parts', (select count(*) from public.maintenance_parts),
+              'maintenance_services', (select count(*) from public.maintenance_services),
+              'maintenance_history', (select count(*) from public.maintenance_history),
+              'tires', (select count(*) from public.tires),
+              'tire_recaps', (select count(*) from public.tire_recaps),
+              'tire_inspections', (select count(*) from public.tire_inspections),
+              'tire_movements', (select count(*) from public.tire_movements),
+              'tire_history', (select count(*) from public.tire_history))
+          ));
+          SQL
+
+          cat > "$SQL_DIR/schema-fingerprint.sql" <<'SQL'
+          with rels(r) as (
+            select unnest(array[
+              'public.customer_contracts', 'public.maintenance_records', 'public.tires',
+              'public.customer_contract_items', 'public.maintenance_parts', 'public.maintenance_services',
+              'public.tire_recaps', 'public.tire_inspections', 'public.tire_movements']::regclass[])
+          ),
+          fns(fn_oid) as (
+            select p.oid
+            from pg_proc p
+            where p.pronamespace = 'public'::regnamespace
+              and p.proname = any (array[
+                'sync_customer_contract_revenue', 'recalculate_maintenance_costs',
+                'log_maintenance_parts_history', 'log_maintenance_services_history',
+                'refresh_tire_metrics', 'log_tire_recap_history', 'log_tire_inspection_history',
+                'tire_recaps_refresh_metrics', 'log_tire_movement_history'])
+            union
+            select t.tgfoid
+            from pg_trigger t
+            join rels on t.tgrelid = rels.r
+            where not t.tgisinternal
+          )
+          select x
+          from (
+            select concat_ws('|', 'rel', c.oid::regclass::text, c.relrowsecurity::text, c.relforcerowsecurity::text,
+                             coalesce(c.relacl::text, '-'))
+            from pg_class c
+            join rels on c.oid = rels.r
+
+            union all
+            select concat_ws('|', 'col', a.attrelid::regclass::text, a.attnum::text, a.attname::text,
+                             format_type(a.atttypid, a.atttypmod), a.attnotnull::text,
+                             coalesce(pg_get_expr(d.adbin, d.adrelid), '-'))
+            from pg_attribute a
+            join rels on a.attrelid = rels.r
+            left join pg_attrdef d on d.adrelid = a.attrelid and d.adnum = a.attnum
+            where a.attnum > 0 and not a.attisdropped
+
+            union all
+            select concat_ws('|', 'con', c.conrelid::regclass::text, c.conname::text,
+                             pg_get_constraintdef(c.oid), c.convalidated::text)
+            from pg_constraint c
+            join rels on c.conrelid = rels.r
+
+            union all
+            select concat_ws('|', 'ref', c.conrelid::regclass::text, c.conname::text,
+                             pg_get_constraintdef(c.oid), c.convalidated::text)
+            from pg_constraint c
+            join rels on c.confrelid = rels.r
+            where c.contype = 'f'
+              and not exists (select 1 from rels o where o.r = c.conrelid)
+
+            union all
+            select concat_ws('|', 'idx', i.indrelid::regclass::text, i.indexrelid::regclass::text,
+                             pg_get_indexdef(i.indexrelid), i.indisvalid::text, i.indisready::text)
+            from pg_index i
+            join rels on i.indrelid = rels.r
+
+            union all
+            select concat_ws('|', 'trg', t.tgrelid::regclass::text, t.tgname::text,
+                             pg_get_triggerdef(t.oid), t.tgenabled::text)
+            from pg_trigger t
+            join rels on t.tgrelid = rels.r
+            where not t.tgisinternal
+
+            union all
+            select concat_ws('|', 'ri', t.tgrelid::regclass::text, k.conname::text, k.conrelid::regclass::text,
+                             f.proname::text, t.tgtype::text, t.tgenabled::text)
+            from pg_trigger t
+            join rels on t.tgrelid = rels.r
+            join pg_constraint k on k.oid = t.tgconstraint
+            join pg_proc f on f.oid = t.tgfoid
+            where t.tgisinternal
+
+            union all
+            select concat_ws('|', 'pol', p.polrelid::regclass::text, p.polname::text, p.polcmd::text, p.polpermissive::text,
+                             array_to_string(array(
+                               select u.r::regrole::text from unnest(p.polroles) as u(r)
+                               order by u.r::regrole::text collate "C"), ','),
+                             coalesce(pg_get_expr(p.polqual, p.polrelid), '-'),
+                             coalesce(pg_get_expr(p.polwithcheck, p.polrelid), '-'))
+            from pg_policy p
+            join rels on p.polrelid = rels.r
+
+            union all
+            select concat_ws('|', 'fn', fns.fn_oid::regprocedure::text, pg_get_userbyid(p.proowner)::text,
+                             coalesce(p.proacl::text, '-'), md5(pg_get_functiondef(fns.fn_oid)))
+            from fns
+            join pg_proc p on p.oid = fns.fn_oid
+          ) s(x)
+          order by x collate "C";
+          SQL
+
+          cat > "$SQL_DIR/count-101-constraints.sql" <<'SQL'
+          select count(*) from pg_constraint
+          where conname in (
+            'customer_contracts_company_id_id_key', 'maintenance_records_company_id_id_key', 'tires_company_id_id_key',
+            'customer_contract_items_contract_company_fkey', 'maintenance_parts_record_company_fkey',
+            'maintenance_services_record_company_fkey', 'tire_recaps_tire_company_fkey',
+            'tire_inspections_tire_company_fkey', 'tire_movements_tire_company_fkey');
+          SQL
+
+          cat > "$SQL_DIR/catalog.sql" <<'SQL'
+          create temp table ci_rel (child text, col text, parent text, fk text);
+          insert into ci_rel values
+            ('customer_contract_items', 'contract_id', 'customer_contracts', 'customer_contract_items_contract_company_fkey'),
+            ('maintenance_parts', 'maintenance_record_id', 'maintenance_records', 'maintenance_parts_record_company_fkey'),
+            ('maintenance_services', 'maintenance_record_id', 'maintenance_records', 'maintenance_services_record_company_fkey'),
+            ('tire_recaps', 'tire_id', 'tires', 'tire_recaps_tire_company_fkey'),
+            ('tire_inspections', 'tire_id', 'tires', 'tire_inspections_tire_company_fkey'),
+            ('tire_movements', 'tire_id', 'tires', 'tire_movements_tire_company_fkey');
+
+          create function pg_temp.cols(p_rel oid, p_keys int2[])
+          returns text[]
+          language sql
+          as $$
+            select array_agg(a.attname::text order by k.ord)
+            from unnest(p_keys) with ordinality as k(attnum, ord)
+            join pg_attribute a on a.attrelid = p_rel and a.attnum = k.attnum
+          $$;
+
+          do $$
+          declare
+            v_bad text;
+          begin
+            select string_agg(p, ', ') into v_bad
+            from unnest(array['customer_contracts', 'maintenance_records', 'tires']) as p
+            where not exists (
+              select 1 from pg_constraint c
+              where c.conname = p || '_company_id_id_key'
+                and c.contype = 'u'
+                and c.conrelid = ('public.' || p)::regclass
+                and pg_temp.cols(c.conrelid, c.conkey) = array['company_id', 'id']);
+            if v_bad is not null then raise exception 'chave única (company_id, id) ausente: %', v_bad; end if;
+
+            select string_agg(r.fk, ', ') into v_bad
+            from pg_temp.ci_rel r
+            where not exists (
+              select 1 from pg_constraint c
+              where c.conname = r.fk
+                and c.contype = 'f'
+                and c.convalidated
+                and c.confdeltype = 'c'
+                and c.conrelid = ('public.' || r.child)::regclass
+                and c.confrelid = ('public.' || r.parent)::regclass
+                and pg_temp.cols(c.conrelid, c.conkey) = array['company_id', r.col]
+                and pg_temp.cols(c.confrelid, c.confkey) = array['company_id', 'id']);
+            if v_bad is not null then raise exception 'FK composta ausente ou divergente: %', v_bad; end if;
+
+            select string_agg(c.conname, ', ') into v_bad
+            from pg_temp.ci_rel r
+            join pg_constraint c
+              on c.contype = 'f'
+             and c.conrelid = ('public.' || r.child)::regclass
+             and c.confrelid = ('public.' || r.parent)::regclass
+            where cardinality(c.conkey) = 1;
+            if v_bad is not null then raise exception 'FK simples filho -> pai remanescente: %', v_bad; end if;
+
+            select string_agg(f, ', ') into v_bad
+            from unnest(array[
+              'sync_customer_contract_revenue', 'recalculate_maintenance_costs',
+              'log_maintenance_parts_history', 'log_maintenance_services_history',
+              'refresh_tire_metrics', 'log_tire_recap_history', 'log_tire_inspection_history',
+              'tire_recaps_refresh_metrics', 'log_tire_movement_history']) as f
+            where not exists (
+              select 1 from pg_proc p
+              where p.pronamespace = 'public'::regnamespace
+                and p.proname = f
+                and p.prosecdef
+                and p.proconfig = array['search_path=public']);
+            if v_bad is not null then raise exception 'função sem SECURITY DEFINER/search_path fixo: %', v_bad; end if;
+
+            select string_agg(t.trg, ', ') into v_bad
+            from (values
+              ('customer_contract_items', 'customer_contract_items_sync_revenue'),
+              ('maintenance_parts', 'maintenance_parts_recalculate_costs'),
+              ('maintenance_services', 'maintenance_services_recalculate_costs'),
+              ('maintenance_parts', 'maintenance_parts_log_history'),
+              ('maintenance_services', 'maintenance_services_log_history'),
+              ('tire_recaps', 'tire_recaps_log_history'),
+              ('tire_recaps', 'tire_recaps_refresh_metrics_trigger'),
+              ('tire_inspections', 'tire_inspections_log_history'),
+              ('tire_movements', 'tire_movements_log_history')) as t(rel, trg)
+            where not exists (
+              select 1 from pg_trigger g
+              where g.tgrelid = ('public.' || t.rel)::regclass
+                and g.tgname = t.trg
+                and g.tgenabled = 'O');
+            if v_bad is not null then raise exception 'trigger ausente ou desabilitada: %', v_bad; end if;
+
+            if has_function_privilege('anon', 'public.refresh_tire_metrics(uuid)', 'execute')
+               or has_function_privilege('authenticated', 'public.refresh_tire_metrics(uuid)', 'execute') then
+              raise exception 'refresh_tire_metrics voltou a ser executável por anon/authenticated';
+            end if;
+
+            raise notice 'catálogo da 101 OK';
+          end
+          $$;
+          SQL
+
+          # Com as 12 colunas NOT NULL, o ramo "chave nula" da pré-checagem é inalcançável;
+          # se alguma deixar de ser, este script falha e o caso precisa de teste negativo próprio.
+          cat > "$SQL_DIR/key-columns-notnull.sql" <<'SQL'
+          do $$
+          declare
+            v_bad text;
+          begin
+            select string_agg(k.rel || '.' || k.col, ', ' order by k.rel, k.col) into v_bad
+            from (values
+              ('customer_contract_items', 'company_id'), ('customer_contract_items', 'contract_id'),
+              ('maintenance_parts', 'company_id'), ('maintenance_parts', 'maintenance_record_id'),
+              ('maintenance_services', 'company_id'), ('maintenance_services', 'maintenance_record_id'),
+              ('tire_recaps', 'company_id'), ('tire_recaps', 'tire_id'),
+              ('tire_inspections', 'company_id'), ('tire_inspections', 'tire_id'),
+              ('tire_movements', 'company_id'), ('tire_movements', 'tire_id')) as k(rel, col)
+            where not exists (
+              select 1 from pg_attribute a
+              where a.attrelid = ('public.' || k.rel)::regclass
+                and a.attname = k.col
+                and a.attnotnull
+                and not a.attisdropped);
+            if v_bad is not null then
+              raise exception 'colunas de chave anuláveis: %', v_bad;
+            end if;
+            raise notice 'colunas de chave das 6 relações filhas: todas NOT NULL';
+          end
+          $$;
+          SQL
+
+          # NOT NULL vale mesmo com session_replication_role = replica (que só desliga triggers e FKs).
+          # column_name garante que o 23502 veio da coluna de chave, e não de outra obrigatória.
+          cat > "$SQL_DIR/null-keys.sql" <<'SQL'
+          begin;
+          set local session_replication_role = replica;
+          do $$
+          declare
+            v_case record;
+            v_state text;
+            v_col text;
+            v_n int := 0;
+            v_bad text := '';
+          begin
+            for v_case in
+              select * from (values
+                ('customer_contract_items', 'company_id',
+                 $q$insert into public.customer_contract_items (company_id, contract_id, freight_value)
+                    values (null, 'e1000000-0000-4000-8000-000000000003', 1)$q$),
+                ('customer_contract_items', 'contract_id',
+                 $q$insert into public.customer_contract_items (company_id, contract_id, freight_value)
+                    values ('e1000000-0000-4000-8000-000000000001', null, 1)$q$),
+                ('maintenance_parts', 'company_id',
+                 $q$insert into public.maintenance_parts (company_id, maintenance_record_id, name, quantity, unit_price, total_price)
+                    values (null, 'e1000000-0000-4000-8000-000000000005', 'X', 1, 1, 1)$q$),
+                ('maintenance_parts', 'maintenance_record_id',
+                 $q$insert into public.maintenance_parts (company_id, maintenance_record_id, name, quantity, unit_price, total_price)
+                    values ('e1000000-0000-4000-8000-000000000001', null, 'X', 1, 1, 1)$q$),
+                ('maintenance_services', 'company_id',
+                 $q$insert into public.maintenance_services (company_id, maintenance_record_id, description, amount)
+                    values (null, 'e1000000-0000-4000-8000-000000000005', 'X', 1)$q$),
+                ('maintenance_services', 'maintenance_record_id',
+                 $q$insert into public.maintenance_services (company_id, maintenance_record_id, description, amount)
+                    values ('e1000000-0000-4000-8000-000000000001', null, 'X', 1)$q$),
+                ('tire_recaps', 'company_id',
+                 $q$insert into public.tire_recaps (company_id, tire_id, amount)
+                    values (null, 'e1000000-0000-4000-8000-000000000006', 1)$q$),
+                ('tire_recaps', 'tire_id',
+                 $q$insert into public.tire_recaps (company_id, tire_id, amount)
+                    values ('e1000000-0000-4000-8000-000000000001', null, 1)$q$),
+                ('tire_inspections', 'company_id',
+                 $q$insert into public.tire_inspections (company_id, tire_id, tread_depth_mm)
+                    values (null, 'e1000000-0000-4000-8000-000000000006', 1)$q$),
+                ('tire_inspections', 'tire_id',
+                 $q$insert into public.tire_inspections (company_id, tire_id, tread_depth_mm)
+                    values ('e1000000-0000-4000-8000-000000000001', null, 1)$q$),
+                ('tire_movements', 'company_id',
+                 $q$insert into public.tire_movements (company_id, tire_id, movement_type)
+                    values (null, 'e1000000-0000-4000-8000-000000000006', 'remove')$q$),
+                ('tire_movements', 'tire_id',
+                 $q$insert into public.tire_movements (company_id, tire_id, movement_type)
+                    values ('e1000000-0000-4000-8000-000000000001', null, 'remove')$q$)
+              ) as t(rel, col, stmt)
+            loop
+              v_n := v_n + 1;
+              begin
+                execute v_case.stmt;
+                v_state := '00000';
+                v_col := null;
+              exception when others then
+                get stacked diagnostics v_state = returned_sqlstate, v_col = column_name;
+              end;
+              if v_state is distinct from '23502' or v_col is distinct from v_case.col then
+                v_bad := v_bad || format('%s.%s -> %s (%s); ', v_case.rel, v_case.col, v_state, coalesce(v_col, '-'));
+              end if;
+            end loop;
+            if v_n <> 12 then
+              raise exception 'chave nula: esperados 12 casos (6 tabelas x 2 colunas), executados %', v_n;
+            end if;
+            if v_bad <> '' then
+              raise exception 'chave nula não rejeitada pelo NOT NULL da própria coluna: %', v_bad;
+            end if;
+            raise notice 'chave nula rejeitada (23502) nas 12 colunas, mesmo com session_replication_role = replica';
+          end
+          $$;
+          rollback;
+          SQL
+
+          # Filtros = par cruzado (e1, pai da e2) + valores exatos de cross.sql.
+          # strict (caminho normal): exatamente 1 linha por tabela.
+          # emergency (trap do cli-negative): 0 ou 1, pois a falha pode ter ocorrido antes do commit.
+          # Nos dois modos, mais de 1 linha ou par cruzado remanescente aborta e desfaz a transação.
+          cat > "$SQL_DIR/cli-negative-cleanup.sql" <<'SQL'
+          begin;
+          set local session_replication_role = replica;
+          set local ci101.cleanup_mode = :'mode';
+          do $$
+          declare
+            v_mode text := current_setting('ci101.cleanup_mode');
+            v_company uuid := 'e1000000-0000-4000-8000-000000000001';
+            v_case record;
+            v_rows bigint;
+            v_left bigint;
+            v_n int := 0;
+            v_bad text := '';
+            v_report text := '';
+          begin
+            if v_mode not in ('strict', 'emergency') then
+              raise exception 'modo de limpeza inválido: %', v_mode;
+            end if;
+            for v_case in
+              select * from (values
+                ('customer_contract_items', 'contract_id', 'e2000000-0000-4000-8000-000000000003',
+                 $q$freight_value = 1$q$),
+                ('maintenance_parts', 'maintenance_record_id', 'e2000000-0000-4000-8000-000000000005',
+                 $q$name = 'X' and quantity = 1 and unit_price = 1 and total_price = 1$q$),
+                ('maintenance_services', 'maintenance_record_id', 'e2000000-0000-4000-8000-000000000005',
+                 $q$description = 'X' and amount = 1$q$),
+                ('tire_recaps', 'tire_id', 'e2000000-0000-4000-8000-000000000006',
+                 $q$amount = 1$q$),
+                ('tire_inspections', 'tire_id', 'e2000000-0000-4000-8000-000000000006',
+                 $q$tread_depth_mm = 1$q$),
+                ('tire_movements', 'tire_id', 'e2000000-0000-4000-8000-000000000006',
+                 $q$movement_type = 'remove' and vehicle_id is null and position is null$q$)
+              ) as t(rel, col, parent_id, payload)
+            loop
+              v_n := v_n + 1;
+              execute format('delete from public.%I where company_id = $1 and %I = $2 and %s',
+                             v_case.rel, v_case.col, v_case.payload)
+                using v_company, v_case.parent_id::uuid;
+              get diagnostics v_rows = row_count;
+              execute format('select count(*) from public.%I where company_id = $1 and %I = $2', v_case.rel, v_case.col)
+                into v_left using v_company, v_case.parent_id::uuid;
+              v_report := v_report || format('%s: removidas %s, restantes %s; ', v_case.rel, v_rows, v_left);
+              if v_rows > 1 or v_left <> 0 or (v_mode = 'strict' and v_rows <> 1) then
+                v_bad := v_bad || format('%s (removidas %s, restantes %s); ', v_case.rel, v_rows, v_left);
+              end if;
+            end loop;
+            if v_n <> 6 then
+              raise exception 'limpeza do cli-negative: esperadas 6 tabelas, processadas %', v_n;
+            end if;
+            if v_bad <> '' then
+              raise exception 'limpeza (%) do cli-negative fora do esperado: %', v_mode, v_bad;
+            end if;
+            raise notice 'limpeza (%) do cli-negative: %', v_mode, v_report;
+          end
+          $$;
+          commit;
+          SQL
+
+          cat > "$SQL_DIR/legacy-after-101.sql" <<'SQL'
+          begin;
+          insert into public.customer_contract_items (company_id, contract_id, freight_value) values (:'e1', :'c1', 100);
+          insert into public.tire_recaps (company_id, tire_id, amount) values (:'e1', :'t1', 40);
+          delete from public.customer_contracts where id = :'c2';
+
+          do $$
+          begin
+            if (select contracted_revenue from public.customer_contracts where id = 'e1000000-0000-4000-8000-000000000003') is distinct from 1100.00 then
+              raise exception 'legado: receita do contrato 1 deveria ir a 1100';
+            end if;
+            if (select recap_count from public.tires where id = 'e1000000-0000-4000-8000-000000000006') is distinct from 2 then
+              raise exception 'legado: pneu 1 deveria ter 2 recapagens';
+            end if;
+            if exists (select 1 from public.customer_contract_items where contract_id = 'e2000000-0000-4000-8000-000000000003') then
+              raise exception 'legado: exclusão do contrato 2 não cascateou os itens';
+            end if;
+            if (select total_cost from public.maintenance_records where id = 'e2000000-0000-4000-8000-000000000005') is distinct from 1000.00 then
+              raise exception 'legado: manutenção da empresa 2 foi alterada';
+            end if;
+          end
+          $$;
+          rollback;
+          SQL
+
+          cat > "$SQL_DIR/defense-supplement.sql" <<'SQL'
+          begin;
+          alter table public.customer_contract_items drop constraint customer_contract_items_contract_company_fkey;
+          alter table public.maintenance_parts drop constraint maintenance_parts_record_company_fkey;
+          alter table public.maintenance_services drop constraint maintenance_services_record_company_fkey;
+          alter table public.tire_recaps drop constraint tire_recaps_tire_company_fkey;
+
+          create temp table ci_e2_before as
+          select
+            (select jsonb_build_object('ctid', c.ctid::text, 'row', to_jsonb(c)) from public.customer_contracts c where c.id = :'c2') as contract,
+            (select jsonb_build_object('ctid', m.ctid::text, 'row', to_jsonb(m)) from public.maintenance_records m where m.id = :'m2') as record,
+            (select jsonb_build_object('ctid', t.ctid::text, 'row', to_jsonb(t)) from public.tires t where t.id = :'t2') as tire,
+            (select count(*) from public.maintenance_history where company_id = :'e2') as maintenance_history,
+            (select count(*) from public.tire_history where company_id = :'e2') as tire_history,
+            (select count(*) from public.customer_history where company_id = :'e2') as customer_history;
+
+          -- Histórico desligado só aqui: com ele ativo o 23502 aborta antes de o recálculo ser observável.
+          alter table public.maintenance_parts disable trigger maintenance_parts_log_history;
+          alter table public.maintenance_services disable trigger maintenance_services_log_history;
+          insert into public.maintenance_parts (company_id, maintenance_record_id, name, quantity, unit_price, total_price)
+          values (:'e1', :'m2', 'X', 1, 99999, 99999);
+          insert into public.maintenance_services (company_id, maintenance_record_id, description, amount)
+          values (:'e1', :'m2', 'X', 99999);
+          -- Cada UPDATE/DELETE precisa afetar exatamente 1 linha; com 0 o caso passaria sem exercitar o trigger.
+          do $$
+          declare
+            v_rows int;
+          begin
+            update public.maintenance_parts set total_price = 88888
+            where company_id = 'e1000000-0000-4000-8000-000000000001' and maintenance_record_id = 'e2000000-0000-4000-8000-000000000005';
+            get diagnostics v_rows = row_count;
+            if v_rows <> 1 then raise exception 'update de peça cruzada afetou % linhas', v_rows; end if;
+            update public.maintenance_services set amount = 88888
+            where company_id = 'e1000000-0000-4000-8000-000000000001' and maintenance_record_id = 'e2000000-0000-4000-8000-000000000005';
+            get diagnostics v_rows = row_count;
+            if v_rows <> 1 then raise exception 'update de serviço cruzado afetou % linhas', v_rows; end if;
+            delete from public.maintenance_parts
+            where company_id = 'e1000000-0000-4000-8000-000000000001' and maintenance_record_id = 'e2000000-0000-4000-8000-000000000005';
+            get diagnostics v_rows = row_count;
+            if v_rows <> 1 then raise exception 'delete de peça cruzada afetou % linhas', v_rows; end if;
+            delete from public.maintenance_services
+            where company_id = 'e1000000-0000-4000-8000-000000000001' and maintenance_record_id = 'e2000000-0000-4000-8000-000000000005';
+            get diagnostics v_rows = row_count;
+            if v_rows <> 1 then raise exception 'delete de serviço cruzado afetou % linhas', v_rows; end if;
+          end
+          $$;
+          alter table public.maintenance_parts enable trigger maintenance_parts_log_history;
+          alter table public.maintenance_services enable trigger maintenance_services_log_history;
+
+          do $$
+          declare
+            v_rows int;
+          begin
+            update public.customer_contract_items set contract_id = 'e2000000-0000-4000-8000-000000000003'
+            where company_id = 'e1000000-0000-4000-8000-000000000001' and contract_id = 'e1000000-0000-4000-8000-000000000003'
+              and freight_value = 700;
+            get diagnostics v_rows = row_count;
+            if v_rows <> 1 then raise exception 'update de item para contrato cruzado afetou % linhas', v_rows; end if;
+            update public.tire_recaps set tire_id = 'e2000000-0000-4000-8000-000000000006'
+            where company_id = 'e1000000-0000-4000-8000-000000000001' and tire_id = 'e1000000-0000-4000-8000-000000000006';
+            get diagnostics v_rows = row_count;
+            if v_rows <> 1 then raise exception 'update de recapagem para pneu cruzado afetou % linhas', v_rows; end if;
+            delete from public.customer_contract_items
+            where company_id = 'e1000000-0000-4000-8000-000000000001' and contract_id = 'e2000000-0000-4000-8000-000000000003';
+            get diagnostics v_rows = row_count;
+            if v_rows <> 1 then raise exception 'delete de item cruzado afetou % linhas', v_rows; end if;
+            delete from public.tire_recaps
+            where company_id = 'e1000000-0000-4000-8000-000000000001' and tire_id = 'e2000000-0000-4000-8000-000000000006';
+            get diagnostics v_rows = row_count;
+            if v_rows <> 1 then raise exception 'delete de recapagem cruzada afetou % linhas', v_rows; end if;
+          end
+          $$;
+
+          do $$
+          declare
+            v_state text;
+          begin
+            begin
+              insert into public.maintenance_services (company_id, maintenance_record_id, description, amount)
+              values ('e1000000-0000-4000-8000-000000000001', 'e2000000-0000-4000-8000-000000000005', 'Y', 1);
+              v_state := '00000';
+            exception when others then
+              v_state := sqlstate;
+            end;
+            if v_state is distinct from '23502' then
+              raise exception 'serviço cruzado deveria abortar no histórico (23502), retornou %', v_state;
+            end if;
+          end
+          $$;
+
+          create temp table ci_e2_after as
+          select
+            (select jsonb_build_object('ctid', c.ctid::text, 'row', to_jsonb(c)) from public.customer_contracts c where c.id = :'c2') as contract,
+            (select jsonb_build_object('ctid', m.ctid::text, 'row', to_jsonb(m)) from public.maintenance_records m where m.id = :'m2') as record,
+            (select jsonb_build_object('ctid', t.ctid::text, 'row', to_jsonb(t)) from public.tires t where t.id = :'t2') as tire,
+            (select count(*) from public.maintenance_history where company_id = :'e2') as maintenance_history,
+            (select count(*) from public.tire_history where company_id = :'e2') as tire_history,
+            (select count(*) from public.customer_history where company_id = :'e2') as customer_history;
+
+          do $$
+          begin
+            if (select to_jsonb(b) from ci_e2_before b) is distinct from (select to_jsonb(a) from ci_e2_after a) then
+              raise exception 'empresa 2 alterada sem as FKs compostas: antes % | depois %',
+                (select to_jsonb(b) from ci_e2_before b), (select to_jsonb(a) from ci_e2_after a);
+            end if;
+            raise notice 'defesa em profundidade complementar OK';
+          end
+          $$;
+          rollback;
+          SQL
+
+      - name: Subir Supabase local só com 001–100
+        run: |
+          supabase --version | tee "$LOG_DIR/env.txt"
+          mv "supabase/migrations/$MIGRATION_101" "$HELD_DIR/"
+          if ! supabase start -x studio,imgproxy,realtime,edge-runtime,logflare,vector,supavisor > "$PRIVATE_DIR/start.log" 2>&1; then
+            redact < "$PRIVATE_DIR/start.log" | tail -n 200
+            echo "::error::supabase start falhou (saída bruta só no runner)"; exit 1
+          fi
+          if grep -qF 'not valid to exclude' "$PRIVATE_DIR/start.log"; then
+            grep -F 'not valid to exclude' "$PRIVATE_DIR/start.log" | redact
+            echo "::error::nome inválido em --exclude"; exit 1
+          fi
+          if grep -qF 'Skipping migration' "$PRIVATE_DIR/start.log"; then
+            grep -F 'Skipping migration' "$PRIVATE_DIR/start.log" | redact
+            echo "::error::a CLI ignorou arquivos de migration"; exit 1
+          fi
+          docker inspect "$DB_CONTAINER" > /dev/null
+          docker ps --format '{{.Names}} {{.Image}}' | LC_ALL=C sort | tee -a "$LOG_DIR/env.txt"
+          running_excluded=$(docker ps --format '{{.Image}}' | grep -E '/(studio|imgproxy|realtime|edge-runtime|logflare|vector|supavisor):' || true)
+          if [ -n "$running_excluded" ]; then
+            echo "::error::serviço excluído por -x está em execução: $running_excluded"; exit 1
+          fi
+          check-version
+          check-chain 100
+          psql-admin -f - < "$SQL_DIR/supabase-objects.sql" 2>&1 | tee -a "$LOG_DIR/env.txt"
+
+      - name: Popular dados legados (estado pré-101)
+        run: |
+          cat "$SQL_DIR/ids.sql" "$SQL_DIR/seed.sql" | psql-admin -f -
+          snap-data before
+          snap-schema before
+          cat "$LOG_DIR/fp-before.txt"
+
+      - name: Pré-checagem real da 101 aborta (6 cruzados, 6 órfãos) sem resíduo
+        run: |
+          precheck-negative cross "$SQL_DIR/cross.sql" 'outra empresa: 1, pai inexistente: 0, chave nula: 0'
+          precheck-negative orphan "$SQL_DIR/orphan.sql" 'outra empresa: 0, pai inexistente: 1, chave nula: 0'
+
+      - name: Chave nula inalcançável no schema 001–100 (desfeito no fim)
+        run: |
+          psql-admin -f - < "$SQL_DIR/key-columns-notnull.sql" 2>&1 | tee "$LOG_DIR/key-columns-before-101.txt"
+          psql-admin -f - < "$SQL_DIR/null-keys.sql" 2>&1 | tee "$LOG_DIR/null-keys.txt"
+          snap-schema after-null-keys before
+          snap-data after-null-keys before
+
+      - name: Aborto da 101 pela CLI com dados inválidos gravados (limpo no fim)
+        run: cli-negative
+
+      - name: Aplicar a 101 pela CLI (mesmo mecanismo do db push)
+        run: |
+          mv "$HELD_DIR/$MIGRATION_101" supabase/migrations/
+          supabase migration up --local 2>&1 | redact | tee "$LOG_DIR/migration-up.txt"
+          if grep -F 'Skipping migration' "$LOG_DIR/migration-up.txt"; then exit 1; fi
+          check-chain 101
+          check-catalog after-101
+          snap-data after-101 before
+          snap-schema after-101
+          if cmp -s "$LOG_DIR/schema-before.txt" "$LOG_DIR/schema-after-101.txt"; then
+            echo "::error::a 101 não alterou o schema monitorado"; exit 1
+          fi
+          diff -u "$LOG_DIR/schema-before.txt" "$LOG_DIR/schema-after-101.txt" > "$LOG_DIR/schema-101.diff" || true
+          # A 101 só pode mudar constraints, índices, triggers internas de FK e o corpo das funções.
+          for kind in rel col pol trg ref; do
+            if ! diff <(grep "^$kind|" "$LOG_DIR/schema-before.txt") <(grep "^$kind|" "$LOG_DIR/schema-after-101.txt"); then
+              echo "::error::a 101 alterou linhas '$kind' fora do escopo"; exit 1
+            fi
+          done
+          if ! diff <(grep '^fn|' "$LOG_DIR/schema-before.txt" | cut -d'|' -f1-4) \
+                    <(grep '^fn|' "$LOG_DIR/schema-after-101.txt" | cut -d'|' -f1-4); then
+            echo "::error::a 101 alterou o conjunto, owner ou ACL das funções monitoradas"; exit 1
+          fi
+
+      - name: Triggers e cascatas sobre dados legados (desfeito no fim)
+        run: |
+          cat "$SQL_DIR/ids.sql" "$SQL_DIR/legacy-after-101.sql" | psql-admin -f -
+          check-catalog after-legacy
+          snap-schema after-legacy after-101
+          snap-data after-legacy before
+
+      - name: Defesa em profundidade complementar (desfeito no fim)
+        run: |
+          cat "$SQL_DIR/ids.sql" "$SQL_DIR/defense-supplement.sql" | psql-admin -f - 2>&1 | tee "$LOG_DIR/defense-supplement.txt"
+          check-catalog after-supplement
+          snap-schema after-supplement after-101
+          snap-data after-supplement before
+
+      - name: Teste comportamental com dados legados presentes
+        run: |
+          behavioral with-legacy-data
+          check-catalog after-behavioral
+          snap-schema after-behavioral after-101
+          snap-data after-behavioral before
+
+      - name: Recriar do zero (001–101) e repetir as verificações
+        run: |
+          supabase db reset --local --no-seed 2>&1 | redact | tee "$LOG_DIR/db-reset.txt"
+          if grep -F 'Skipping migration' "$LOG_DIR/db-reset.txt"; then exit 1; fi
+          check-version
+          check-chain 101
+          test "$(psql-admin -At -c "select count(*) from public.companies where slug like 'ci101-%'")" = "0"
+          psql-admin -f - < "$SQL_DIR/supabase-objects.sql"
+          check-catalog after-reset
+          snap-schema after-reset after-101
+          snap-data after-reset
+          behavioral clean-chain
+          check-catalog after-clean-chain
+          snap-schema after-clean-chain after-reset
+          snap-data after-clean-chain after-reset
+
+      - name: Guardar logs (sem a saída do supabase start)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validate-101-pg${{ matrix.pg }}
+          path: ${{ runner.temp }}/logs
+          retention-days: 3
+
+      - name: Destruir o ambiente
+        if: always()
+        continue-on-error: true
+        run: |
+          if command -v redact > /dev/null; then
+            supabase stop --no-backup 2>&1 | redact
+          else
+            supabase stop --no-backup > /dev/null 2>&1
+          fi
