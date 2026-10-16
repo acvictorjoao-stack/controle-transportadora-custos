@@ -211,6 +211,7 @@ export function createInMemorySupabase<TStorage = undefined>(
             error: null,
           };
         case 'is_company_super_admin': {
+          if (!userId) return {data: false, error: null};
           const member = isActiveMember(db, userId, args.p_company_id);
           const role = member
             ? (db.tables.roles ?? []).find((row) => row.id === member.role_id)

@@ -136,6 +136,7 @@ describe('position actions', () => {
     const result = await deletePositionAction(POSITION_ID);
 
     expect(result.success).toBe(false);
+    if (result.success) return;
     expect(result.error).toContain('Cargos do sistema');
   });
 
@@ -145,6 +146,7 @@ describe('position actions', () => {
     const result = await createPositionAction(validPositionInput());
 
     expect(result.success).toBe(false);
+    if (result.success) return;
     expect(result.error).toBe(COMPANY_ACCESS_DENIED);
     expect(createPosition).not.toHaveBeenCalled();
   });

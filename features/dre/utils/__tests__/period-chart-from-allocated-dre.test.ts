@@ -209,70 +209,83 @@ describe('Audit #14 — period chart uses allocated ranking base', () => {
     expect(pointA.costs).not.toBe(pointB.costs);
   });
 
-  it.each([
-    {
-      name: 'customer',
-      calculate: calculateOperationalDreByCustomer,
-      buildRanking: buildCustomerRankingRows,
-      labels: new Map([['customer-1', 'Cliente 1']]),
-    },
-    {
-      name: 'route',
-      calculate: calculateOperationalDreByRoute,
-      buildRanking: buildRouteRankingRows,
-      labels: new Map([['route-1', 'Rota 1']]),
-    },
-    {
-      name: 'vehicle',
-      calculate: calculateOperationalDreByVehicle,
-      buildRanking: buildVehicleRankingRows,
-      labels: new Map([['vehicle-1', 'Veículo 1']]),
-    },
-    {
-      name: 'driver',
-      calculate: calculateOperationalDreByDriver,
-      buildRanking: buildDriverRankingRows,
-      labels: new Map([['driver-1', 'Motorista 1']]),
-    },
-  ] as const)(
-    'chart series matches $name ranking allocated cost base',
-    ({calculate, buildRanking, labels}) => {
-      const trips = [
-        trip({id: 't1', distanceKm: 40}),
-        trip({id: 't2', distanceKm: 60}),
-      ];
-      const expenses = [
-        expense({id: 'direct', amount: 100, tripId: 't1', vehicleId: 'vehicle-1'}),
-        expense({
-          id: 'shared',
-          amount: 200,
-          tripId: null,
-          vehicleId: 'vehicle-1',
-        }),
-        expense({id: 'orphan', amount: 50, tripId: null, vehicleId: null}),
-      ];
+  function expectChartSeriesMatchesRankingAllocatedBase<TGroup>(
+    calculate: (
+      trips: OperationalDreTripRow[],
+      expenses: OperationalDreExpenseRow[],
+      filters: {},
+      labels: Map<string, string>,
+    ) => TGroup[],
+    buildRanking: (groups: TGroup[]) => Array<{costs: number}>,
+    labels: Map<string, string>,
+  ) {
+    const trips = [
+      trip({id: 't1', distanceKm: 40}),
+      trip({id: 't2', distanceKm: 60}),
+    ];
+    const expenses = [
+      expense({id: 'direct', amount: 100, tripId: 't1', vehicleId: 'vehicle-1'}),
+      expense({
+        id: 'shared',
+        amount: 200,
+        tripId: null,
+        vehicleId: 'vehicle-1',
+      }),
+      expense({id: 'orphan', amount: 50, tripId: null, vehicleId: null}),
+    ];
 
-      const dre = calculateOperationalDre(trips, expenses);
-      const groups = calculate(trips, expenses, {}, labels);
-      const rankingCostSum = buildRanking(groups).reduce(
-        (sum, row) => sum + row.costs,
-        0,
-      );
-      const point = buildAllocatedPeriodChartPoint(
-        {key: 'bucket', label: 'Bucket'},
-        dre,
-      );
+    const dre = calculateOperationalDre(trips, expenses);
+    const groups = calculate(trips, expenses, {}, labels);
+    const rankingCostSum = buildRanking(groups).reduce(
+      (sum, row) => sum + row.costs,
+      0,
+    );
+    const point = buildAllocatedPeriodChartPoint(
+      {key: 'bucket', label: 'Bucket'},
+      dre,
+    );
 
-      expect(point.costs).toBeCloseTo(dre.costs.allocatedOperatingCosts, 8);
-      expect(point.costs).toBeCloseTo(rankingCostSum, 8);
-      expect(point.revenue).toBe(dre.revenues.totalRevenue);
-      expect(point.profit).toBeCloseTo(point.revenue - point.costs, 8);
-      expect(dre.costs.unattributableOperatingCosts).toBe(50);
-      expect(
-        dre.costs.allocatedOperatingCosts + dre.costs.unattributableOperatingCosts,
-      ).toBe(dre.costs.totalOperatingCosts);
-    },
-  );
+    expect(point.costs).toBeCloseTo(dre.costs.allocatedOperatingCosts, 8);
+    expect(point.costs).toBeCloseTo(rankingCostSum, 8);
+    expect(point.revenue).toBe(dre.revenues.totalRevenue);
+    expect(point.profit).toBeCloseTo(point.revenue - point.costs, 8);
+    expect(dre.costs.unattributableOperatingCosts).toBe(50);
+    expect(
+      dre.costs.allocatedOperatingCosts + dre.costs.unattributableOperatingCosts,
+    ).toBe(dre.costs.totalOperatingCosts);
+  }
+
+  it('chart series matches customer ranking allocated cost base', () => {
+    expectChartSeriesMatchesRankingAllocatedBase(
+      calculateOperationalDreByCustomer,
+      buildCustomerRankingRows,
+      new Map([['customer-1', 'Cliente 1']]),
+    );
+  });
+
+  it('chart series matches route ranking allocated cost base', () => {
+    expectChartSeriesMatchesRankingAllocatedBase(
+      calculateOperationalDreByRoute,
+      buildRouteRankingRows,
+      new Map([['route-1', 'Rota 1']]),
+    );
+  });
+
+  it('chart series matches vehicle ranking allocated cost base', () => {
+    expectChartSeriesMatchesRankingAllocatedBase(
+      calculateOperationalDreByVehicle,
+      buildVehicleRankingRows,
+      new Map([['vehicle-1', 'Veículo 1']]),
+    );
+  });
+
+  it('chart series matches driver ranking allocated cost base', () => {
+    expectChartSeriesMatchesRankingAllocatedBase(
+      calculateOperationalDreByDriver,
+      buildDriverRankingRows,
+      new Map([['driver-1', 'Motorista 1']]),
+    );
+  });
 
   it('costs-only mode keeps profit null on chart point', () => {
     const trips = [trip({id: 't1'})];

@@ -275,7 +275,7 @@ export function demoBucketedDaysAgo(
 /** Alias estável para viagens — mesma regra 20/20/60. */
 export function demoTripDaysAgo(
   index: number,
-  count = DEMO_COUNTS.trips,
+  count: number = DEMO_COUNTS.trips,
   now: Date = new Date(),
 ): number {
   return demoBucketedDaysAgo(index, count, now);
@@ -290,7 +290,7 @@ export function demoTripDaysAgo(
  * Trips completed podem reutilizar a frota livremente (round-robin).
  */
 export function buildDemoTripDefinitions(
-  count = DEMO_COUNTS.trips,
+  count: number = DEMO_COUNTS.trips,
   now: Date = new Date(),
 ) {
   const completedCount = Math.round(count * 0.6);
@@ -506,7 +506,7 @@ export function buildDemoMaintenanceDefinitions(
   return records.sort((a, b) => a.key.localeCompare(b.key));
 }
 
-export function buildDemoPayrollDefinitions(months = DEMO_COUNTS.payrollMonths) {
+export function buildDemoPayrollDefinitions(months: number = DEMO_COUNTS.payrollMonths) {
   const items = [
     {personKind: 'driver' as const, personKey: 'd01', expenseType: 'salario' as const, amount: 3500, costCenterCode: 'OPERACIONAL'},
     {personKind: 'driver' as const, personKey: 'd01', expenseType: 'hora_extra' as const, amount: 400, costCenterCode: 'OPERACIONAL'},

@@ -67,6 +67,7 @@ function makeTrip(
     plannedCompletionAt: null,
     initialOdometerKm: null,
     finalOdometerKm: null,
+    distanceKm: null,
     initialHourMeter: null,
     finalHourMeter: null,
     departedAt: null,

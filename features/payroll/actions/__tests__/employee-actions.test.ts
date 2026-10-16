@@ -144,6 +144,7 @@ describe('employee actions', () => {
     const result = await createEmployeeAction(validEmployeeInput());
 
     expect(result.success).toBe(false);
+    if (result.success) return;
     expect(createEmployee).not.toHaveBeenCalled();
     expect(result.fieldErrors?.positionId).toBeTruthy();
   });
@@ -161,6 +162,7 @@ describe('employee actions', () => {
     );
 
     expect(result.success).toBe(false);
+    if (result.success) return;
     expect(createEmployee).not.toHaveBeenCalled();
     expect(result.fieldErrors?.positionId).toBe('Selecione um cargo ativo.');
   });
@@ -213,6 +215,7 @@ describe('employee actions', () => {
     );
 
     expect(result.success).toBe(false);
+    if (result.success) return;
     expect(updateEmployee).not.toHaveBeenCalled();
     expect(result.fieldErrors?.positionId).toBe('Selecione um cargo ativo.');
   });
@@ -223,6 +226,7 @@ describe('employee actions', () => {
     const result = await createEmployeeAction(validEmployeeInput());
 
     expect(result.success).toBe(false);
+    if (result.success) return;
     expect(createEmployee).not.toHaveBeenCalled();
     expect(result.fieldErrors?.costCenterId).toBeTruthy();
   });
@@ -233,6 +237,7 @@ describe('employee actions', () => {
     const result = await createEmployeeAction(validEmployeeInput());
 
     expect(result.success).toBe(false);
+    if (result.success) return;
     expect(createEmployee).not.toHaveBeenCalled();
     expect(result.fieldErrors?.branchId).toBeTruthy();
   });
@@ -243,6 +248,7 @@ describe('employee actions', () => {
     const result = await createEmployeeAction(validEmployeeInput());
 
     expect(result.success).toBe(false);
+    if (result.success) return;
     expect(result.error).toBe(COMPANY_ACCESS_DENIED);
     expect(createEmployee).not.toHaveBeenCalled();
   });
@@ -267,6 +273,7 @@ describe('employee actions', () => {
     const result = await createEmployeeAction(validEmployeeInput());
 
     expect(result.success).toBe(false);
+    if (result.success) return;
     expect(result.error).toBe(COMPANY_ACCESS_DENIED);
   });
 

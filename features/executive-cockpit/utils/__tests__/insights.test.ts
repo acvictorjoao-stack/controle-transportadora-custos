@@ -49,9 +49,7 @@ function route(
   overrides: Partial<OperationalDreRouteGroup> & {label: string; key: string},
 ): OperationalDreRouteGroup {
   return {
-    dimensionKey: overrides.key,
     dimensionType: 'route',
-    label: overrides.label,
     tripCount: 5,
     totalRevenue: 1000,
     totalCost: 800,
@@ -63,6 +61,8 @@ function route(
     trips: [],
     route: {id: overrides.key, label: overrides.label},
     ...overrides,
+    dimensionKey: overrides.key,
+    label: overrides.label,
   };
 }
 
