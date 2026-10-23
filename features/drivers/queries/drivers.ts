@@ -1,8 +1,12 @@
 import type {SupabaseClient} from '@supabase/supabase-js';
 
-import {mapDatabaseError} from '@/features/master/companies/utils/database-error';
+import {
+  mapDatabaseError,
+  toMappedDatabaseError,
+} from '@/features/master/companies/utils/database-error';
 
 import {
+  DRIVER_BRANCH_EMBED,
   DRIVER_DETAIL_COLUMNS,
   DRIVER_LIST_COLUMNS,
   DRIVER_STORAGE_BUCKET,
@@ -171,7 +175,7 @@ export async function listDriversForSelect(
   const {data, error} = await supabase
     .from('drivers')
     .select(
-      'id, name, phone, cnh_number, license_category, operational_status, branches:branch_id (id, name)',
+      `id, name, phone, cnh_number, license_category, operational_status, ${DRIVER_BRANCH_EMBED}`,
     )
     .eq('company_id', companyId)
     .is('deleted_at', null)
@@ -232,7 +236,8 @@ export async function createDriver(
     .single();
 
   if (error) {
-    throw new Error(mapDatabaseError(error));
+    // Preserva code/category sanitizados em MappedDatabaseError; message de UX inalterada.
+    throw toMappedDatabaseError(error);
   }
 
   return mapDriverRow(data as unknown as DriverRow);

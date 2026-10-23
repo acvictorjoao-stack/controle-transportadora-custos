@@ -6,6 +6,7 @@ export * from './types';
 export * from './validation';
 
 export {
+  DRIVER_BRANCH_EMBED,
   DRIVER_DETAIL_COLUMNS,
   DRIVER_LIST_COLUMNS,
   DRIVER_STORAGE_BUCKET,
