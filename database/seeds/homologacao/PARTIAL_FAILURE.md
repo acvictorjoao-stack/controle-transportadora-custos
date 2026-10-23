@@ -35,7 +35,7 @@ Script: `scripts/recover-hml-partial-soft-delete.ts` (módulos em `database/seed
 
 - Dry-run por padrão (somente leitura).
 - EXECUTE exige `--execute` + `--i-authorize-soft-delete-of-manifest-43` + `HML_RECOVERY_CONFIRM=SOFT_DELETE_MANIFEST_43`.
-- **Super Admin** obrigatório em dry-run e EXECUTE (`assertHmlCompanySuperAdmin` / RPC `is_company_super_admin`). Falha de consulta ou não-autorizado → abort (fail-closed).
+- **Membership Super Admin** obrigatória em dry-run e EXECUTE (`assertHmlDestructiveMembershipSuperAdmin`; paridade migrations 102/103). Portal Master acting é recusado. Não usa `is_company_super_admin`. Falha de consulta, acting ou membership ausente → abort (fail-closed).
 - Estados: `ACTIVE` (elegível), `SOFT_DELETED` (skip seguro), `INVALID` (abort).
 - Pré-checks de vínculo **antes** da 1ª escrita. Contagens usam `deleted_at IS NULL` (ativos). Refs já arquivadas (`deleted_at NOT NULL`) **não** bloqueiam — paridade com soft-delete da app; FKs fantasma em linhas soft-deletadas são aceitas (`HML_RECOVERY_LINK_COVERAGE_NOTES.archivedRefsPolicy`).
 - Filiais (`BRANCH_REF_TABLES` + `company_members.default_branch_id`):

@@ -10,6 +10,20 @@ export const HML_AUTHORIZED_COMPANY_ID =
  * Slug/UUID da empresa NÃO substituem esta checagem.
  */
 export const HML_AUTHORIZED_PROJECT_REF = 'aobfjjaucdrwybebosxm' as const;
+
+/**
+ * Chave compartilhada do advisory lock das operações destrutivas HML (102 + 103).
+ * Mesma empresa → mesmo `hashtextextended(company_id::text, salt)` nas duas RPCs.
+ * Impede concorrência entre hard-delete e company-reset; NÃO serializa demais
+ * writers da aplicação.
+ */
+export const HML_DESTRUCTIVE_ADVISORY_LOCK_SALT = 0 as const;
+export const HML_DESTRUCTIVE_ADVISORY_LOCK_SQL =
+  'pg_advisory_xact_lock(hashtextextended(c_expected_company::text, 0))' as const;
+
+/** GUC operacional de project-ref (defesa em profundidade; não prova criptográfica). */
+export const HML_EXPECTED_PROJECT_REF_GUC = 'app.hml_expected_project_ref' as const;
+
 export const HML_REQUIRED_PLAN_SLUG = 'professional';
 export const HML_MARKER = 'HML-SEED';
 export const HML_NOTES_PREFIX = '[HML]';
