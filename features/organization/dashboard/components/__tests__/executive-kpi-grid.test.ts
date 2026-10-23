@@ -13,8 +13,11 @@ const componentSource = [
 
 describe('ExecutiveKpiGrid copy contract', () => {
   it('separa P&L do período da posição financeira company-wide', () => {
-    expect(componentSource).toContain('Receita Total');
+    expect(componentSource).toContain('Faturamento Total');
     expect(componentSource).toContain('Custos Totais');
+    expect(componentSource).toContain('Custo por KM');
+    expect(componentSource).toContain('Faturamento por KM');
+    expect(componentSource).toContain('Média por Viagem');
     expect(componentSource).toContain('Posição financeira da empresa');
     expect(componentSource).toContain(
       'Saldo em aberto • empresa inteira • independente dos filtros',

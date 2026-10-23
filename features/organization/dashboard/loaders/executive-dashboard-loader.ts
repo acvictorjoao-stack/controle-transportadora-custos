@@ -51,6 +51,10 @@ export interface ExecutiveDashboardKpis {
   operatingMarginPercent: number | null;
   totalKm: number;
   completedTrips: number;
+  /** Espelhados de `dre.indicators` — só apresentação; fórmulas permanecem na DRE. */
+  costPerKm: number | null;
+  revenuePerKm: number | null;
+  revenuePerTrip: number | null;
   accountsPayable: number;
   accountsReceivable: number;
   /** Metadados dos saldos AP/AR (não afetam os valores numéricos). */
@@ -91,6 +95,9 @@ export function buildExecutiveDashboardKpis(
     operatingMarginPercent: dre.result.operatingMarginPercent,
     totalKm: dre.indicators.totalKm,
     completedTrips: dre.indicators.tripCount,
+    costPerKm: dre.indicators.costPerKm,
+    revenuePerKm: dre.indicators.revenuePerKm,
+    revenuePerTrip: dre.indicators.revenuePerTrip,
     accountsPayable: financial.contasAPagar.total,
     accountsReceivable: financial.contasAReceber.total,
     openBalances: EXECUTIVE_OPEN_BALANCE_META,

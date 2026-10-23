@@ -15,6 +15,8 @@ import {
 import type {OperationalDreFilterOptions} from '@/features/dre/types';
 import {EMPTY_OPERATIONAL_DRE_FILTER_OPTIONS} from '@/features/dre/utils/empty-state';
 import {ExecutiveKpiGrid} from '@/features/organization/dashboard/components/executive-kpi-grid';
+import {ExecutivePeriodSnapshot} from '@/features/organization/dashboard/components/executive-period-snapshot';
+import {ExecutiveTopHighlight} from '@/features/organization/dashboard/components/executive-top-highlight';
 import {OperationalAlertsCard} from '@/features/organization/dashboard/components/operational-alerts-card';
 import {QuickAccessCards} from '@/features/organization/dashboard/components/quick-access-cards';
 import {TopCustomersCard} from '@/features/organization/dashboard/components/top-customers-card';
@@ -34,6 +36,7 @@ import {
   resolveExecutiveDashboardFilters,
   type ExecutiveDashboardSearchParams,
 } from '@/features/organization/dashboard/utils/period';
+import {hasExecutiveOperationalData} from '@/features/organization/dashboard/utils/executive-kpi-display';
 import {getCurrentCompanyProfile, needsOnboarding} from '@/features/organization/companies/queries';
 import {listBranches} from '@/features/organization/branches/queries';
 import {OnboardingWizard} from '@/features/organization/onboarding/components';
@@ -108,6 +111,7 @@ export default async function DashboardPage({searchParams}: DashboardPageProps) 
     ? await listBranches(supabase, {companyId})
     : null;
   const entitySummary = formatEntityFilterSummary(core.period, filterOptions);
+  const hasOperationalData = hasExecutiveOperationalData(core.kpis);
 
   return (
     <>
@@ -118,21 +122,23 @@ export default async function DashboardPage({searchParams}: DashboardPageProps) 
         title="Dashboard Executivo"
         description={
           periodLabel
-            ? `Indicadores, rankings e alertas para tomada de decisão. ${periodLabel}`
+            ? `Indicadores, rankings e alertas · ${periodLabel}`
             : 'Indicadores, rankings e alertas para tomada de decisão.'
         }
         breadcrumbItems={[
           {label: 'Dashboard', href: ROUTES.dashboard},
           {label: 'Visão Geral'},
         ]}
+        className="gap-4"
       >
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <OperationalDreFiltersBar
               options={filterOptions}
               initialFilters={core.period}
               basePath={ROUTES.dashboard}
               showNamedPeriodPresets
+              variant="executive"
             />
             {entitySummary ? (
               <p className="text-xs text-muted-foreground">{entitySummary}</p>
@@ -140,21 +146,41 @@ export default async function DashboardPage({searchParams}: DashboardPageProps) 
             <OperationalDreCostsOnlyBanner active={core.kpis.costsOnlyMode} />
           </div>
 
-          <AnalyticsExportToolbar
-            filters={core.period}
-            basePath={ROUTES.dashboard}
-            filenameBase={executiveDashboardExportFilenameBase(core.period)}
-            payload={buildExecutiveDashboardExportPayload({core, filterOptions})}
-          />
+          <div className="flex justify-end">
+            <AnalyticsExportToolbar
+              filters={core.period}
+              basePath={ROUTES.dashboard}
+              filenameBase={executiveDashboardExportFilenameBase(core.period)}
+              payload={buildExecutiveDashboardExportPayload({core, filterOptions})}
+            />
+          </div>
 
           <Section
             title="Indicadores executivos"
             description="Visão consolidada para tomada de decisão."
+            className="gap-3"
           >
             <ExecutiveKpiGrid kpis={core.kpis} />
           </Section>
 
-          <Section title="Top Rankings" description="Melhores resultados do período.">
+          <ExecutivePeriodSnapshot
+            revenue={core.kpis.totalRevenue}
+            costs={core.kpis.totalCosts}
+            profit={core.kpis.operatingProfit}
+            costsOnlyMode={core.kpis.costsOnlyMode}
+            hasOperationalData={hasOperationalData}
+          />
+
+          <ExecutiveTopHighlight
+            route={core.topRoutes[0] ?? null}
+            filters={core.period}
+          />
+
+          <Section
+            title="Top Rankings"
+            description="Melhores resultados do período."
+            className="gap-3"
+          >
             <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
               <TopRoutesCard routes={core.topRoutes} filters={core.period} />
               <TopCustomersCard

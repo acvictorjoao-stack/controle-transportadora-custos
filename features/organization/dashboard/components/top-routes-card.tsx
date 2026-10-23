@@ -20,9 +20,9 @@ export interface TopRoutesCardProps {
 
 function TopRoutesCard({routes, filters = {}}: TopRoutesCardProps) {
   return (
-    <Card className="h-full">
-      <CardHeader>
-        <CardTitle>Top 5 Rotas</CardTitle>
+    <Card className="h-full shadow-card">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Top 5 Rotas</CardTitle>
         <CardDescription>Maiores lucros no período</CardDescription>
       </CardHeader>
       <CardContent>
