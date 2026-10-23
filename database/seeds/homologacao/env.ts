@@ -84,6 +84,31 @@ export function assertHmlProjectRefFromEnv(): string {
   return assertHmlAuthorizedProjectRef(url);
 }
 
+export type HmlEnvUrlProjectRefInspection =
+  | {status: 'absent'; projectRefFromUrl: null}
+  | {status: 'match'; projectRefFromUrl: string}
+  | {status: 'mismatch'; projectRefFromUrl: string | null};
+
+/**
+ * Inspeção fail-closed do project-ref a partir de NEXT_PUBLIC_SUPABASE_URL
+ * para CLIs locais (prepare-*). URL ausente → plano local offline permitido.
+ * URL presente com host inválido ou ref divergente → mismatch (abort no CLI).
+ * Nunca ecoa a URL completa.
+ */
+export function inspectHmlEnvUrlProjectRef(
+  expectedRef: string = HML_AUTHORIZED_PROJECT_REF,
+): HmlEnvUrlProjectRefInspection {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? '';
+  if (!url) {
+    return {status: 'absent', projectRefFromUrl: null};
+  }
+  const projectRefFromUrl = projectRefFromSupabaseUrl(url);
+  if (projectRefFromUrl === expectedRef) {
+    return {status: 'match', projectRefFromUrl};
+  }
+  return {status: 'mismatch', projectRefFromUrl};
+}
+
 export interface HmlAuthEnv {
   url: string;
   anonKey: string;

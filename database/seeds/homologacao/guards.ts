@@ -111,7 +111,9 @@ export function assertUniqueHmlMembership(
 
 /**
  * Fail-closed: exige Super Admin na empresa-alvo via RPC `is_company_super_admin`.
- * Usado pelo seed e pelo recovery HML — não duplicar esta regra em outros módulos.
+ * Usado pelo seed HML. Aceita Portal Master acting (comportamento da RPC 090).
+ * Operações destrutivas (recovery / reset / hard-delete) NÃO devem usar esta
+ * função — ver `assertHmlDestructiveMembershipSuperAdmin`.
  */
 export async function assertHmlCompanySuperAdmin(
   supabase: SupabaseClient,
@@ -130,6 +132,106 @@ export async function assertHmlCompanySuperAdmin(
   if (!isSuperAdmin) {
     throw new Error(
       `Abortado: o usuário autenticado não é Super Admin de "${HML_COMPANY_SLUG}".`,
+    );
+  }
+}
+
+type HmlRoleEmbed = {
+  company_id?: string | null;
+  name?: string | null;
+  is_system?: boolean | null;
+  status?: string | null;
+  deleted_at?: string | null;
+};
+
+function roleEmbedsMatchCompanySuperAdmin(
+  roles: unknown,
+  companyId: string,
+): boolean {
+  const list: HmlRoleEmbed[] = Array.isArray(roles)
+    ? (roles as HmlRoleEmbed[])
+    : roles && typeof roles === 'object'
+      ? [roles as HmlRoleEmbed]
+      : [];
+
+  return list.some(
+    (role) =>
+      role.company_id === companyId &&
+      role.name === 'Super Admin' &&
+      role.is_system === true &&
+      role.status === 'active' &&
+      role.deleted_at == null,
+  );
+}
+
+/**
+ * Autorização destrutiva HML — paridade com migrations 102/103.
+ * Recusa Portal Master acting (`is_portal_owner_acting_for`) e exige membership
+ * Super Admin com `r.company_id = cm.company_id`. Não usa `is_company_super_admin`
+ * (essa RPC inclui acting). Fail-closed se o contexto não puder ser determinado.
+ */
+export async function assertHmlDestructiveMembershipSuperAdmin(
+  supabase: SupabaseClient,
+  companyId: string,
+  profileId: string,
+): Promise<void> {
+  if (!companyId.trim() || !profileId.trim()) {
+    throw new Error(
+      'Abortado: contexto de autorização HML incompleto (companyId/profileId).',
+    );
+  }
+
+  const {data: isActing, error: actingError} = await supabase.rpc(
+    'is_portal_owner_acting_for',
+    {p_company_id: companyId},
+  );
+
+  if (actingError) {
+    throw new Error(
+      `Falha ao validar contexto Portal Master: ${actingError.message}`,
+    );
+  }
+  if (isActing === true) {
+    throw new Error(
+      `Abortado: Portal Master acting não autorizado para operações destrutivas HML em "${HML_COMPANY_SLUG}". Exige membership Super Admin.`,
+    );
+  }
+  if (isActing !== false) {
+    throw new Error(
+      'Abortado: contexto Portal Master indeterminado; autorização fail-closed.',
+    );
+  }
+
+  const {data: rows, error: membershipError} = await supabase
+    .from('company_members')
+    .select(
+      'company_id, profile_id, status, deleted_at, roles!inner(company_id, name, is_system, status, deleted_at)',
+    )
+    .eq('company_id', companyId)
+    .eq('profile_id', profileId)
+    .eq('status', 'active')
+    .is('deleted_at', null)
+    .eq('roles.name', 'Super Admin')
+    .eq('roles.is_system', true)
+    .eq('roles.status', 'active')
+    .is('roles.deleted_at', null);
+
+  if (membershipError) {
+    throw new Error(
+      `Falha ao validar membership Super Admin: ${membershipError.message}`,
+    );
+  }
+
+  const matched = (rows ?? []).some((row) =>
+    roleEmbedsMatchCompanySuperAdmin(
+      (row as {roles?: unknown}).roles,
+      companyId,
+    ),
+  );
+
+  if (!matched) {
+    throw new Error(
+      `Abortado: o usuário autenticado não possui membership Super Admin de "${HML_COMPANY_SLUG}" (Portal Master acting não conta).`,
     );
   }
 }

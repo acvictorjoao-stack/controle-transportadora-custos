@@ -3,13 +3,17 @@ export {
   HML_AUTHORIZED_PROJECT_REF,
   HML_COMPANY_SLUG,
   HML_COUNTS,
+  HML_DESTRUCTIVE_ADVISORY_LOCK_SQL,
+  HML_EXPECTED_PROJECT_REF_GUC,
   HML_REQUIRED_PLAN_SLUG,
 } from './constants';
 export {
   assertHmlAuthorizedProjectRef,
   assertHmlProjectRefFromEnv,
+  inspectHmlEnvUrlProjectRef,
   projectRefFromSupabaseUrl,
 } from './env';
+export type {HmlEnvUrlProjectRefInspection} from './env';
 export {getHmlCatalogCounts} from './catalog';
 export {
   buildHmlExpectedPlan,
