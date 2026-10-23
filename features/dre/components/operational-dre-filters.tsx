@@ -1,8 +1,10 @@
 'use client';
 
+import {ChevronDown, ListFilter} from 'lucide-react';
 import {useRouter} from 'next/navigation';
 import * as React from 'react';
 
+import {Button} from '@/components/ui/button';
 import {ROUTES} from '@/constants/routes/paths';
 import {VEHICLE_NATIVE_SELECT_CLASS} from '@/features/vehicles/utils/form-styles';
 import {cn} from '@/lib/utils';
@@ -28,6 +30,17 @@ export interface OperationalDreFiltersProps {
    * `default`: grade simples (DRE / Rentabilidade).
    */
   variant?: 'default' | 'executive';
+}
+
+function hasActiveDetailedFilters(filters: OperationalDreFilters): boolean {
+  return Boolean(
+    filters.branchId ||
+      filters.customerId ||
+      filters.routeId ||
+      filters.vehicleId ||
+      filters.driverId ||
+      filters.costCenterId,
+  );
 }
 
 function FilterField({
@@ -60,6 +73,11 @@ function OperationalDreFiltersBar({
   const [filters, setFilters] = React.useState(initialFilters);
   const namedPreset = matchNamedPeriodPreset(filters);
   const isExecutive = variant === 'executive';
+  const [detailsOpen, setDetailsOpen] = React.useState(
+    () =>
+      hasActiveDetailedFilters(initialFilters) ||
+      matchNamedPeriodPreset(initialFilters) === 'personalizado',
+  );
 
   React.useEffect(() => {
     return scheduleQueryUrlSync(router, () =>
@@ -68,7 +86,10 @@ function OperationalDreFiltersBar({
   }, [basePath, filters, router]);
 
   const applyNamedPreset = (value: string) => {
-    if (value === 'personalizado') return;
+    if (value === 'personalizado') {
+      setDetailsOpen(true);
+      return;
+    }
     const range = resolveNamedPeriodRange(value);
     if (!range) return;
     setFilters((prev) => ({
@@ -80,7 +101,7 @@ function OperationalDreFiltersBar({
 
   const periodSelect = showNamedPeriodPresets ? (
     isExecutive ? (
-      <div className="flex flex-col gap-2">
+      <div className="flex min-w-0 flex-1 flex-col gap-2">
         <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
           Período
         </p>
@@ -113,9 +134,7 @@ function OperationalDreFiltersBar({
                 : 'border-border bg-background text-foreground hover:bg-muted',
             )}
             aria-pressed={namedPreset === 'personalizado'}
-            onClick={() => {
-              /* Mantém datas atuais; usuário ajusta de/até abaixo. */
-            }}
+            onClick={() => applyNamedPreset('personalizado')}
           >
             Personalizado
           </button>
@@ -291,22 +310,47 @@ function OperationalDreFiltersBar({
   if (isExecutive) {
     return (
       <div className="rounded-xl border border-border bg-card p-4 shadow-card">
-        <div className="flex flex-col gap-4">
-          {periodSelect}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-            <FilterField label="Filial">{branchSelect}</FilterField>
-            <FilterField label="Placa do veículo">{vehicleSelect}</FilterField>
-            <FilterField label="Motorista">{driverSelect}</FilterField>
-            <FilterField label="Cliente">{customerSelect}</FilterField>
-            <FilterField label="Rota">{routeSelect}</FilterField>
-            <FilterField label="Centro de custo">{costCenterSelect}</FilterField>
-            <FilterField label="De" className="sm:col-span-1">
-              {dateFromInput}
-            </FilterField>
-            <FilterField label="Até" className="sm:col-span-1">
-              {dateToInput}
-            </FilterField>
+        <div className="flex flex-col gap-0">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            {periodSelect}
+            <Button
+              type="button"
+              variant={detailsOpen ? 'secondary' : 'outline'}
+              size="sm"
+              className="shrink-0 self-start sm:mt-5"
+              aria-expanded={detailsOpen}
+              aria-controls="executive-detailed-filters"
+              onClick={() => setDetailsOpen((open) => !open)}
+            >
+              <ListFilter className="size-4" aria-hidden />
+              Filtros Detalhados
+              <ChevronDown
+                className={cn(
+                  'size-4 transition-transform',
+                  detailsOpen && 'rotate-180',
+                )}
+                aria-hidden
+              />
+            </Button>
           </div>
+
+          {detailsOpen ? (
+            <div
+              id="executive-detailed-filters"
+              className="mt-4 border-t border-border pt-4"
+            >
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <FilterField label="Filial">{branchSelect}</FilterField>
+                <FilterField label="Cliente">{customerSelect}</FilterField>
+                <FilterField label="Rota">{routeSelect}</FilterField>
+                <FilterField label="Veículo">{vehicleSelect}</FilterField>
+                <FilterField label="Motorista">{driverSelect}</FilterField>
+                <FilterField label="Centro de Custo">{costCenterSelect}</FilterField>
+                <FilterField label="Período inicial">{dateFromInput}</FilterField>
+                <FilterField label="Período final">{dateToInput}</FilterField>
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
     );
