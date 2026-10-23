@@ -17,6 +17,7 @@ import {
   HML_EMPTY_MODULE_TABLES,
   HML_REQUIRED_PLAN_SLUG,
 } from './constants';
+import {assertHmlProjectRefFromEnv} from './env';
 import type {HmlModuleCount, HmlSeedContext} from './types';
 
 type HmlCompanyCandidate = {
@@ -424,6 +425,10 @@ export async function runLiveGuards(
   supabase: SupabaseClient,
   profileId: string,
 ): Promise<{context: HmlSeedContext; moduleCounts: HmlModuleCount[]}> {
+  // Defesa em profundidade: project-ref antes de qualquer leitura/escrita de negócio.
+  // requireHmlAuthEnv já valida no cliente; aqui revalida o ambiente atual.
+  assertHmlProjectRefFromEnv();
+
   const context = await resolveHmlSeedContext(supabase, profileId);
   // resolveHmlSeedContext já exige: slug primeira-empresa, professional, Super Admin.
   const moduleCounts = await assertCompanyEmptyForHomologacao(supabase, context.companyId);

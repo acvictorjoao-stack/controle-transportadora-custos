@@ -4,6 +4,12 @@ export const HML_COMPANY_SLUG = 'primeira-empresa';
 /** UUID fixo da empresa-alvo — slug sozinho não autoriza escrita. */
 export const HML_AUTHORIZED_COMPANY_ID =
   '451a7940-a56b-425f-ae5f-e493d536591f' as const;
+/**
+ * Project-ref Supabase autorizado para a carga HML.
+ * Validado a partir do host de `NEXT_PUBLIC_SUPABASE_URL` (fail-closed).
+ * Slug/UUID da empresa NÃO substituem esta checagem.
+ */
+export const HML_AUTHORIZED_PROJECT_REF = 'aobfjjaucdrwybebosxm' as const;
 export const HML_REQUIRED_PLAN_SLUG = 'professional';
 export const HML_MARKER = 'HML-SEED';
 export const HML_NOTES_PREFIX = '[HML]';

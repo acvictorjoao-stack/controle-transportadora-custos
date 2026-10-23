@@ -1,6 +1,8 @@
 import {existsSync, readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 
+import {HML_AUTHORIZED_PROJECT_REF} from './constants';
+
 /** Carrega variáveis de .env.local para o script CLI (sem dependência extra). */
 export function loadLocalEnv(): void {
   const envPath = resolve(process.cwd(), '.env.local');
@@ -33,16 +35,68 @@ export function loadLocalEnv(): void {
   }
 }
 
+/**
+ * Extrai o project-ref do host `*.supabase.co`.
+ * Retorna null para URL inválida, host inesperado ou ref ausente.
+ * Nunca ecoa a URL completa.
+ */
+export function projectRefFromSupabaseUrl(url: string): string | null {
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+
+  try {
+    const host = new URL(trimmed).hostname.toLowerCase();
+    const match = /^([a-z0-9]+)\.supabase\.co$/.exec(host);
+    return match?.[1] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Fail-closed: só aceita exatamente `HML_AUTHORIZED_PROJECT_REF`.
+ * Mensagens sem URL completa, keys ou senhas.
+ */
+export function assertHmlAuthorizedProjectRef(url: string): string {
+  const projectRef = projectRefFromSupabaseUrl(url);
+  if (!projectRef) {
+    throw new Error(
+      'Abortado: NEXT_PUBLIC_SUPABASE_URL inválida ou host não reconhecido como projeto Supabase autorizado para homologação.',
+    );
+  }
+  if (projectRef !== HML_AUTHORIZED_PROJECT_REF) {
+    throw new Error(
+      `Abortado: project-ref do Supabase diverge do autorizado para homologação (esperado=${HML_AUTHORIZED_PROJECT_REF}).`,
+    );
+  }
+  return projectRef;
+}
+
+/** Revalida o project-ref a partir do ambiente (defesa em profundidade nos guards). */
+export function assertHmlProjectRefFromEnv(): string {
+  loadLocalEnv();
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  if (!url) {
+    throw new Error(
+      'Abortado: NEXT_PUBLIC_SUPABASE_URL ausente; project-ref de homologação não pode ser validado.',
+    );
+  }
+  return assertHmlAuthorizedProjectRef(url);
+}
+
 export interface HmlAuthEnv {
   url: string;
   anonKey: string;
   adminEmail: string;
   adminPassword: string;
+  /** Project-ref já validado contra `HML_AUTHORIZED_PROJECT_REF`. */
+  projectRef: string;
 }
 
 /**
  * Credenciais do administrador da empresa — nunca service_role.
  * Senha e chaves não devem ser impressas.
+ * Exige project-ref exato antes de qualquer cliente/auth.
  */
 export function requireHmlAuthEnv(): HmlAuthEnv {
   loadLocalEnv();
@@ -72,7 +126,10 @@ export function requireHmlAuthEnv(): HmlAuthEnv {
     );
   }
 
-  return {url, anonKey, adminEmail, adminPassword};
+  // Fail-closed de projeto: antes de devolver credenciais / criar cliente.
+  const projectRef = assertHmlAuthorizedProjectRef(url);
+
+  return {url, anonKey, adminEmail, adminPassword, projectRef};
 }
 
 export function hasHmlAuthEnv(): boolean {

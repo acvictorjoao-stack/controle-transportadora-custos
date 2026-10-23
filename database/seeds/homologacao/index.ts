@@ -1,9 +1,15 @@
 export {
   HML_AUTHORIZED_COMPANY_ID,
+  HML_AUTHORIZED_PROJECT_REF,
   HML_COMPANY_SLUG,
   HML_COUNTS,
   HML_REQUIRED_PLAN_SLUG,
 } from './constants';
+export {
+  assertHmlAuthorizedProjectRef,
+  assertHmlProjectRefFromEnv,
+  projectRefFromSupabaseUrl,
+} from './env';
 export {getHmlCatalogCounts} from './catalog';
 export {
   buildHmlExpectedPlan,

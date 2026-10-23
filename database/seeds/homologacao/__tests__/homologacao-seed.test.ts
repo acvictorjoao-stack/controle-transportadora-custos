@@ -1,4 +1,4 @@
-import {describe, expect, it} from 'vitest';
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import {isValidPlate} from '@/features/vehicles/utils/vehicle-format';
 
@@ -29,6 +29,7 @@ import {
 } from '../expected-plan';
 import {
   HML_AUTHORIZED_COMPANY_ID,
+  HML_AUTHORIZED_PROJECT_REF,
   HML_COMPANY_SLUG,
   HML_COUNTS,
   HML_REQUIRED_PLAN_SLUG,
@@ -36,9 +37,16 @@ import {
 } from '../constants';
 import {assertFictitiousDocuments, isValidCnpj, isValidCpf, makeInvalidCnpj, makeInvalidCpf} from '../documents';
 import {
+  assertHmlAuthorizedProjectRef,
+  assertHmlProjectRefFromEnv,
+  projectRefFromSupabaseUrl,
+  requireHmlAuthEnv,
+} from '../env';
+import {
   assertHmlWriteContext,
   assertUniqueHmlMembership,
   assertUniqueHmlTargetCompany,
+  runLiveGuards,
 } from '../guards';
 import {
   assertHmlCatalogInvariants,
@@ -96,6 +104,7 @@ describe('homologacao seed — catalog', () => {
     expect(plan.requiredPlan).toBe(HML_REQUIRED_PLAN_SLUG);
     expect(HML_COMPANY_SLUG).toBe('primeira-empresa');
     expect(HML_REQUIRED_PLAN_SLUG).toBe('professional');
+    expect(HML_AUTHORIZED_PROJECT_REF).toBe('aobfjjaucdrwybebosxm');
   });
 
   it('respeita volumes do plano Professional', () => {
@@ -623,5 +632,168 @@ describe('homologacao seed — company membership resolution', () => {
     await expect(resolveHmlSeedContext(supabase as never, 'profile-1')).rejects.toThrow(
       /não é Super Admin/,
     );
+  });
+});
+
+describe('homologacao seed — project-ref fail-closed', () => {
+  const ENV_KEYS = [
+    'NEXT_PUBLIC_SUPABASE_URL',
+    'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+    'HML_ADMIN_EMAIL',
+    'HML_ADMIN_PASSWORD',
+    'SUPABASE_SERVICE_ROLE_KEY',
+  ] as const;
+
+  const snapshot: Partial<Record<(typeof ENV_KEYS)[number], string | undefined>> = {};
+
+  beforeEach(() => {
+    for (const key of ENV_KEYS) {
+      snapshot[key] = process.env[key];
+    }
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key';
+    process.env.HML_ADMIN_EMAIL = 'hml.admin@example.com';
+    process.env.HML_ADMIN_PASSWORD = 'test-password-value';
+  });
+
+  afterEach(() => {
+    for (const key of ENV_KEYS) {
+      const value = snapshot[key];
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  });
+
+  it('extrai project-ref de URL supabase.co válida', () => {
+    expect(
+      projectRefFromSupabaseUrl(
+        `https://${HML_AUTHORIZED_PROJECT_REF}.supabase.co`,
+      ),
+    ).toBe(HML_AUTHORIZED_PROJECT_REF);
+    expect(
+      projectRefFromSupabaseUrl(
+        `https://${HML_AUTHORIZED_PROJECT_REF}.supabase.co/`,
+      ),
+    ).toBe(HML_AUTHORIZED_PROJECT_REF);
+  });
+
+  it('aceita exatamente o project-ref autorizado', () => {
+    const url = `https://${HML_AUTHORIZED_PROJECT_REF}.supabase.co`;
+    expect(assertHmlAuthorizedProjectRef(url)).toBe(HML_AUTHORIZED_PROJECT_REF);
+
+    process.env.NEXT_PUBLIC_SUPABASE_URL = url;
+    const env = requireHmlAuthEnv();
+    expect(env.projectRef).toBe(HML_AUTHORIZED_PROJECT_REF);
+    expect(env.url).toBe(url);
+  });
+
+  it('rejeita project-ref diferente sem expor a URL', () => {
+    const wrongUrl = 'https://zzzzzzzzzzzzzzzzzzzz.supabase.co';
+    expect(() => assertHmlAuthorizedProjectRef(wrongUrl)).toThrow(
+      /project-ref do Supabase diverge/,
+    );
+    expect(() => assertHmlAuthorizedProjectRef(wrongUrl)).toThrow(
+      new RegExp(`esperado=${HML_AUTHORIZED_PROJECT_REF}`),
+    );
+
+    process.env.NEXT_PUBLIC_SUPABASE_URL = wrongUrl;
+    expect(() => requireHmlAuthEnv()).toThrow(/project-ref do Supabase diverge/);
+
+    try {
+      requireHmlAuthEnv();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      expect(message).not.toMatch(/zzzzzzzzzzzzzzzzzzzz\.supabase\.co/i);
+      expect(message).not.toMatch(/https?:\/\//i);
+      expect(message).not.toMatch(/test-anon-key|test-password-value/i);
+      expect(message).not.toMatch(/hml\.admin@example\.com/i);
+    }
+  });
+
+  it('rejeita URL inválida ou host inesperado sem ecoar o valor', () => {
+    for (const invalid of [
+      '',
+      '   ',
+      'not-a-url',
+      'https://example.com',
+      'https://aobfjjaucdrwybebosxm.example.com',
+      'https://user:secret@evil.example/path',
+    ]) {
+      expect(projectRefFromSupabaseUrl(invalid)).toBeNull();
+      expect(() => assertHmlAuthorizedProjectRef(invalid)).toThrow(
+        /URL inválida ou host não reconhecido/,
+      );
+      try {
+        assertHmlAuthorizedProjectRef(invalid);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        const leaked = invalid.trim();
+        if (leaked.length > 0) {
+          expect(message).not.toContain(leaked);
+        }
+        expect(message).not.toMatch(/user:secret|evil\.example/i);
+        expect(message).not.toMatch(/https?:\/\//i);
+      }
+    }
+  });
+
+  it('assertHmlProjectRefFromEnv aborta com URL vazia (não reidrata como válida)', () => {
+    // String vazia permanece definida: loadLocalEnv não sobrescreve chaves já setadas.
+    process.env.NEXT_PUBLIC_SUPABASE_URL = '';
+    expect(() => assertHmlProjectRefFromEnv()).toThrow(
+      /NEXT_PUBLIC_SUPABASE_URL ausente/,
+    );
+  });
+
+  it('runLiveGuards aborta no project-ref antes de tocar o banco', async () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL =
+      'https://otherprojectref123.supabase.co';
+
+    const from = vi.fn(() => {
+      throw new Error('banco não deveria ser consultado');
+    });
+    const rpc = vi.fn(() => {
+      throw new Error('RPC não deveria ser chamada');
+    });
+
+    await expect(
+      runLiveGuards({from, rpc} as never, 'profile-1'),
+    ).rejects.toThrow(/project-ref do Supabase diverge/);
+
+    expect(from).not.toHaveBeenCalled();
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it('createHmlAuthenticatedClient aborta no project-ref antes de autenticar', async () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL =
+      'https://otherprojectref123.supabase.co';
+
+    const {createHmlAuthenticatedClient} = await import('../client');
+    // requireHmlAuthEnv roda antes de createClient/signInWithPassword.
+    await expect(createHmlAuthenticatedClient()).rejects.toThrow(
+      /project-ref do Supabase diverge/,
+    );
+  });
+
+  it('runHomologacaoSeed execute aborta sem phases quando project-ref diverge', async () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL =
+      'https://otherprojectref123.supabase.co';
+
+    const {runHomologacaoSeed} = await import('../run');
+    // createHmlAuthenticatedClient → requireHmlAuthEnv falha antes de guards/phases.
+    await expect(runHomologacaoSeed({mode: 'execute'})).rejects.toThrow(
+      /project-ref do Supabase diverge/,
+    );
+  });
+
+  it('dry-run offline permanece disponível sem validar project-ref remoto', async () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL =
+      'https://otherprojectref123.supabase.co';
+
+    const {runHomologacaoSeed} = await import('../run');
+    const result = await runHomologacaoSeed({mode: 'dry-run', liveChecks: false});
+    expect(result.mode).toBe('dry-run');
+    expect(result.aborted).toBe(false);
+    expect(result.liveChecksPerformed).toBe(false);
   });
 });
