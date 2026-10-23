@@ -71,10 +71,15 @@ function SidebarNav() {
       data-slot="sidebar-nav"
       aria-label="Navegação principal"
       className={cn(
-        'flex-1 overflow-y-auto px-2 py-3',
+        'min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-2 py-3',
         collapsed ? 'space-y-1' : 'space-y-3',
       )}
     >
+      {!collapsed && (
+        <p className="px-2.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-[#94A3B8]">
+          Navegação principal
+        </p>
+      )}
       {visibleGroups.map((group) => {
         const active = activeGroupIds.includes(group.id);
         return (

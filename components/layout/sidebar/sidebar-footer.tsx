@@ -46,7 +46,7 @@ function TenantAvatar({
   return (
     <div
       className={cn(
-        'flex items-center justify-center rounded-md bg-sidebar-accent text-sidebar-accent-foreground',
+        'flex items-center justify-center rounded-md bg-[#1E293B] text-slate-300',
         className,
       )}
     >
@@ -198,7 +198,7 @@ function SidebarFooter() {
     <div
       ref={ref}
       data-slot="sidebar-workspace"
-      className="relative shrink-0 border-t border-sidebar-border p-2"
+      className="relative shrink-0 border-t border-white/10 p-2"
     >
       {collapsed ? (
         <button
@@ -224,9 +224,9 @@ function SidebarFooter() {
           aria-haspopup="menu"
           aria-label="Seletor de Workspace"
           className={cn(
-            'flex w-full items-center gap-2.5 rounded-lg border border-sidebar-border/70 bg-sidebar-accent/70 px-2.5 py-2 text-left transition-colors',
-            'hover:bg-sidebar-accent',
-            open && 'ring-1 ring-sidebar-border',
+            'flex w-full items-center gap-2.5 rounded-lg border border-white/10 bg-[#1E293B] px-2.5 py-2 text-left transition-colors',
+            'hover:bg-[#243247]',
+            open && 'ring-1 ring-white/15',
           )}
         >
           <TenantAvatar
@@ -235,26 +235,26 @@ function SidebarFooter() {
             className="size-8 shrink-0"
           />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-semibold text-sidebar-accent-foreground">
+            <p className="truncate text-xs font-semibold text-white">
               {companyName}
             </p>
             <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1">
               <Badge
                 variant="secondary"
-                className="h-4 max-w-[7rem] truncate px-1.5 text-[9px] font-medium"
+                className="h-4 max-w-[7rem] truncate border-transparent bg-white/10 px-1.5 text-[9px] font-medium text-slate-200"
               >
                 {planName}
               </Badge>
               <Badge
                 variant="outline"
-                className="h-4 px-1.5 text-[9px] font-medium text-muted-foreground"
+                className="h-4 border-white/15 px-1.5 text-[9px] font-medium text-slate-400"
               >
                 {environment}
               </Badge>
             </div>
           </div>
           <ChevronsUpDown
-            className="size-3.5 shrink-0 text-muted-foreground"
+            className="size-3.5 shrink-0 text-slate-400"
             aria-hidden="true"
           />
         </button>

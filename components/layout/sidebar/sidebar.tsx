@@ -14,6 +14,7 @@ import {cn} from '@/lib/utils';
 import {SidebarFooter} from './sidebar-footer';
 import {SidebarHeader} from './sidebar-header';
 import {SidebarNav} from './sidebar-nav';
+import {SidebarQuickActions} from './sidebar-quick-actions';
 
 function Sidebar() {
   const {collapsed, mobileOpen, setMobileOpen} = useSidebar();
@@ -30,16 +31,18 @@ function Sidebar() {
             : SIDEBAR_WIDTH_EXPANDED,
       }}
       className={cn(
-        'flex h-full flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-300',
+        'flex h-full flex-col overflow-hidden border-r border-white/10 bg-[#0F172A] text-slate-100 transition-[width] duration-300',
       )}
     >
-      <div className="flex items-center justify-between lg:block">
-        <SidebarHeader />
+      <div className="relative flex shrink-0 items-start">
+        <div className="min-w-0 flex-1">
+          <SidebarHeader />
+        </div>
         {isMobile && (
           <Button
             variant="ghost"
             size="icon-sm"
-            className="mr-2 lg:hidden"
+            className="absolute right-2 top-3 text-slate-400 hover:bg-white/10 hover:text-white lg:hidden"
             onClick={() => setMobileOpen(false)}
             aria-label="Fechar menu"
           >
@@ -47,6 +50,7 @@ function Sidebar() {
           </Button>
         )}
       </div>
+      <SidebarQuickActions />
       <SidebarNav />
       <SidebarFooter />
     </aside>

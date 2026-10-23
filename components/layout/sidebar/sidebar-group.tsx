@@ -81,17 +81,17 @@ function SidebarGroup({
         aria-expanded={open}
         aria-controls={panelId}
         className={cn(
-          'flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-left transition-colors duration-200',
+          'flex h-8 w-full items-center gap-2.5 rounded-lg px-2.5 text-left transition-colors duration-200',
           active
-            ? 'text-sidebar-accent-foreground'
-            : 'text-sidebar-foreground/75 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground',
+            ? 'text-white'
+            : 'text-slate-400 hover:bg-white/5 hover:text-slate-200',
         )}
       >
         {GroupIcon ? (
           <GroupIcon
             className={cn(
               'size-4 shrink-0',
-              active ? 'text-primary' : 'opacity-70',
+              active ? 'text-[#1D5EFF]' : 'text-slate-500',
             )}
             aria-hidden="true"
           />
@@ -102,7 +102,7 @@ function SidebarGroup({
         <ChevronDown
           aria-hidden="true"
           className={cn(
-            'size-3.5 shrink-0 opacity-50 transition-transform ease-out',
+            'size-3.5 shrink-0 text-slate-500 transition-transform ease-out',
             open && 'rotate-180',
           )}
           style={{transitionDuration: `${SIDEBAR_ACCORDION_DURATION_MS}ms`}}
