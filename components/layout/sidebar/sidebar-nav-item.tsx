@@ -47,9 +47,9 @@ function SidebarNavItem({item, depth = 0}: SidebarNavItemProps) {
         <div
           className={cn(
             'flex w-full items-center rounded-lg transition-colors',
-            (isActive || isChildActive)
-              ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-              : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+            isActive || isChildActive
+              ? 'bg-[#1D5EFF] text-white'
+              : 'text-slate-300 hover:bg-white/5 hover:text-white',
           )}
         >
           <Link
@@ -61,12 +61,20 @@ function SidebarNavItem({item, depth = 0}: SidebarNavItemProps) {
               collapsed && 'justify-center px-2',
             )}
           >
-            <Icon className="size-4 shrink-0" />
+            <Icon
+              className={cn(
+                'size-4 shrink-0',
+                isActive || isChildActive ? 'text-white' : 'text-slate-400',
+              )}
+            />
             {!collapsed && (
               <span className="flex flex-1 items-center gap-2 truncate text-left">
                 <span className="truncate">{item.title}</span>
                 {item.badge && (
-                  <Badge variant="secondary" className="shrink-0 px-1.5 py-0 text-[10px]">
+                  <Badge
+                    variant="secondary"
+                    className="ml-auto shrink-0 border-transparent bg-white/10 px-1.5 py-0 text-[10px] text-slate-200"
+                  >
                     {item.badge}
                   </Badge>
                 )}
@@ -78,7 +86,7 @@ function SidebarNavItem({item, depth = 0}: SidebarNavItemProps) {
               type="button"
               onClick={() => setSubmenuOpen((prev) => !prev)}
               aria-label={submenuOpen ? 'Recolher submenu' : 'Expandir submenu'}
-              className="mr-1 rounded-md p-1.5 hover:bg-sidebar-accent/80"
+              className="mr-1 rounded-md p-1.5 hover:bg-white/10"
             >
               {submenuOpen ? (
                 <ChevronDown className="size-4 shrink-0 opacity-50" />
@@ -89,7 +97,7 @@ function SidebarNavItem({item, depth = 0}: SidebarNavItemProps) {
           )}
         </div>
         {submenuOpen && !collapsed && (
-          <div className="ml-4 mt-0.5 space-y-0.5 border-l border-sidebar-border pl-3">
+          <div className="ml-4 mt-0.5 space-y-0.5 border-l border-white/10 pl-3">
             {item.children!.map((child) => (
               <SidebarNavItem key={child.id} item={child} depth={depth + 1} />
             ))}
@@ -107,18 +115,26 @@ function SidebarNavItem({item, depth = 0}: SidebarNavItemProps) {
       className={cn(
         'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
         isActive
-          ? 'bg-primary/10 text-primary'
-          : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+          ? 'bg-[#1D5EFF] text-white'
+          : 'text-slate-300 hover:bg-white/5 hover:text-white',
         collapsed && 'justify-center px-2',
         depth > 0 && 'py-1.5',
       )}
     >
-      <Icon className="size-4 shrink-0" />
+      <Icon
+        className={cn(
+          'size-4 shrink-0',
+          isActive ? 'text-white' : 'text-slate-400',
+        )}
+      />
       {!collapsed && (
         <span className="flex flex-1 items-center gap-2 truncate">
           <span className="truncate">{item.title}</span>
           {item.badge && (
-            <Badge variant="secondary" className="shrink-0 px-1.5 py-0 text-[10px]">
+            <Badge
+              variant="secondary"
+              className="ml-auto shrink-0 border-transparent bg-white/10 px-1.5 py-0 text-[10px] text-slate-200"
+            >
               {item.badge}
             </Badge>
           )}

@@ -32,7 +32,7 @@ function SidebarItem({item, pathname, hash = '', depth = 0}: SidebarItemProps) {
       <Icon
         className={cn(
           'size-4 shrink-0 transition-colors duration-200',
-          isActive ? 'text-primary' : 'opacity-80',
+          isActive ? 'text-white' : 'text-slate-400',
         )}
         aria-hidden="true"
       />
@@ -41,21 +41,32 @@ function SidebarItem({item, pathname, hash = '', depth = 0}: SidebarItemProps) {
           <span className={cn('truncate', isActive && 'font-semibold')}>
             {item.title}
           </span>
-          <SidebarBadge value={item.badge} tone={badgeTone} />
+          <SidebarBadge
+            value={item.badge}
+            tone={badgeTone}
+            className={cn(
+              'ml-auto',
+              isActive &&
+                'border-transparent bg-white/20 text-white hover:bg-white/20',
+              !isActive &&
+                badgeTone === 'count' &&
+                'border-transparent bg-white/10 text-slate-300',
+            )}
+          />
         </span>
       )}
     </>
   );
 
   const className = cn(
-    'relative flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm transition-colors duration-200',
+    'relative flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors duration-200',
     isActive
-      ? 'bg-primary/10 text-primary'
-      : 'font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground',
+      ? 'bg-[#1D5EFF] font-medium text-white shadow-sm'
+      : 'font-medium text-slate-300 hover:bg-white/5 hover:text-white',
     collapsed && 'justify-center px-2',
     depth > 0 && 'py-1.5 text-[13px]',
     item.disabled &&
-      'cursor-not-allowed opacity-55 hover:bg-transparent hover:text-sidebar-foreground/70',
+      'cursor-not-allowed opacity-55 hover:bg-transparent hover:text-slate-300',
   );
 
   const handleClick = React.useCallback(
@@ -80,13 +91,6 @@ function SidebarItem({item, pathname, hash = '', depth = 0}: SidebarItemProps) {
     [item.href, pathname, setMobileOpen, startNavigation],
   );
 
-  const activeBar = isActive ? (
-    <span
-      aria-hidden="true"
-      className="absolute inset-y-1 left-0 w-0.5 rounded-full bg-primary"
-    />
-  ) : null;
-
   if (item.disabled) {
     return (
       <span
@@ -97,7 +101,6 @@ function SidebarItem({item, pathname, hash = '', depth = 0}: SidebarItemProps) {
         className={className}
         aria-disabled="true"
       >
-        {activeBar}
         {content}
       </span>
     );
@@ -116,7 +119,6 @@ function SidebarItem({item, pathname, hash = '', depth = 0}: SidebarItemProps) {
       className={className}
       onClick={handleClick}
     >
-      {activeBar}
       {content}
     </Link>
   );
