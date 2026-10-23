@@ -1,4 +1,14 @@
-import {StatCard} from '@/components/data-display/stat-card';
+import {
+  DollarSign,
+  Percent,
+  Receipt,
+  Route,
+  TrendingUp,
+  Truck,
+  Gauge,
+  ArrowUpRight,
+} from 'lucide-react';
+
 import {formatCurrencyBr, formatPercent} from '@/features/financial/utils/financial-format';
 import {cn} from '@/lib/utils';
 
@@ -8,6 +18,7 @@ import {
   formatExecutiveKm,
   hasExecutiveOperationalData,
 } from '../utils/executive-kpi-display';
+import {ExecutiveKpiCard} from './executive-kpi-card';
 
 export {EXECUTIVE_OPEN_BALANCE_LABELS};
 
@@ -16,15 +27,25 @@ export interface ExecutiveKpiGridProps {
   className?: string;
 }
 
+function formatPerKm(value: number | null, hasData: boolean): string {
+  if (!hasData || value == null) return '—';
+  return `${formatCurrencyBr(value)}/km`;
+}
+
+function formatPerTrip(value: number | null, hasData: boolean): string {
+  if (!hasData || value == null) return '—';
+  return formatCurrencyBr(value);
+}
+
 function ExecutiveKpiGrid({kpis, className}: ExecutiveKpiGridProps) {
   const costsOnlyMode = kpis.costsOnlyMode;
   const hasOperationalData = hasExecutiveOperationalData(kpis);
-  const profitClass =
+  const profitNegative =
     hasOperationalData &&
     kpis.operatingProfit != null &&
-    kpis.operatingProfit < 0
-      ? 'text-destructive'
-      : undefined;
+    kpis.operatingProfit < 0;
+  const profitClass = profitNegative ? 'text-destructive' : undefined;
+  const profitAccent = profitNegative ? 'danger' : 'success';
 
   const revenueValue =
     !hasOperationalData || costsOnlyMode
@@ -39,6 +60,8 @@ function ExecutiveKpiGrid({kpis, className}: ExecutiveKpiGridProps) {
       ? '—'
       : formatPercent(kpis.operatingMarginPercent);
 
+  const iconClass = 'size-4';
+
   return (
     <div className={cn('flex flex-col gap-5', className)}>
       {!hasOperationalData && (
@@ -47,36 +70,87 @@ function ExecutiveKpiGrid({kpis, className}: ExecutiveKpiGridProps) {
         </p>
       )}
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-4">
-        <StatCard title="Receita Total" value={revenueValue} />
-        <StatCard
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <ExecutiveKpiCard
+          title="Faturamento Total"
+          value={revenueValue}
+          subtitle="receita bruta de fretes"
+          accent="info"
+          icon={<DollarSign className={iconClass} aria-hidden />}
+        />
+        <ExecutiveKpiCard
           title="Custos Totais"
           value={hasOperationalData ? formatCurrencyBr(kpis.totalCosts) : '—'}
           subtitle={
             hasOperationalData
               ? EXECUTIVE_OPEN_BALANCE_LABELS.costsSubtitle
-              : undefined
+              : 'combustível, manutenção e demais custos'
           }
+          accent="warning"
+          icon={<Receipt className={iconClass} aria-hidden />}
         />
-        <StatCard
+        <ExecutiveKpiCard
           title="Lucro Operacional"
           value={<span className={profitClass}>{profitValue}</span>}
+          subtitle={
+            profitNegative
+              ? 'resultado líquido negativo'
+              : 'resultado líquido do período'
+          }
+          accent={profitAccent}
+          icon={<TrendingUp className={iconClass} aria-hidden />}
         />
-        <StatCard
+        <ExecutiveKpiCard
           title="Margem Operacional"
           value={<span className={profitClass}>{marginValue}</span>}
+          subtitle="lucro / faturamento"
+          accent="primary"
+          icon={<Percent className={iconClass} aria-hidden />}
         />
-        <StatCard
-          title="KM Rodados"
-          value={hasOperationalData ? formatExecutiveKm(kpis.totalKm) : '—'}
-        />
-        <StatCard
-          title="Viagens Concluídas"
+        <ExecutiveKpiCard
+          title="Total de Viagens"
           value={
             hasOperationalData
               ? kpis.completedTrips.toLocaleString('pt-BR')
               : '—'
           }
+          subtitle={
+            hasOperationalData
+              ? formatExecutiveKm(kpis.totalKm)
+              : 'viagens concluídas'
+          }
+          accent="info"
+          icon={<Route className={iconClass} aria-hidden />}
+        />
+        <ExecutiveKpiCard
+          title="Custo por KM"
+          value={formatPerKm(
+            costsOnlyMode ? null : kpis.costPerKm,
+            hasOperationalData,
+          )}
+          subtitle="gasto médio por quilômetro"
+          accent="muted"
+          icon={<Gauge className={iconClass} aria-hidden />}
+        />
+        <ExecutiveKpiCard
+          title="Faturamento por KM"
+          value={formatPerKm(
+            costsOnlyMode ? null : kpis.revenuePerKm,
+            hasOperationalData && !costsOnlyMode,
+          )}
+          subtitle="receita média por quilômetro"
+          accent="muted"
+          icon={<ArrowUpRight className={iconClass} aria-hidden />}
+        />
+        <ExecutiveKpiCard
+          title="Média por Viagem"
+          value={formatPerTrip(
+            costsOnlyMode ? null : kpis.revenuePerTrip,
+            hasOperationalData && !costsOnlyMode,
+          )}
+          subtitle="ticket médio de frete"
+          accent="muted"
+          icon={<Truck className={iconClass} aria-hidden />}
         />
       </div>
 
@@ -89,16 +163,18 @@ function ExecutiveKpiGrid({kpis, className}: ExecutiveKpiGridProps) {
             {EXECUTIVE_OPEN_BALANCE_LABELS.sectionHint}
           </p>
         </div>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-4">
-          <StatCard
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <ExecutiveKpiCard
             title={EXECUTIVE_OPEN_BALANCE_LABELS.accountsPayableTitle}
             value={formatCurrencyBr(kpis.accountsPayable)}
             subtitle={EXECUTIVE_OPEN_BALANCE_LABELS.accountsPayableSubtitle}
+            accent="warning"
           />
-          <StatCard
+          <ExecutiveKpiCard
             title={EXECUTIVE_OPEN_BALANCE_LABELS.accountsReceivableTitle}
             value={formatCurrencyBr(kpis.accountsReceivable)}
             subtitle={EXECUTIVE_OPEN_BALANCE_LABELS.accountsReceivableSubtitle}
+            accent="success"
           />
         </div>
       </div>

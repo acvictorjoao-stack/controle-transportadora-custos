@@ -5,6 +5,7 @@ import * as React from 'react';
 
 import {ROUTES} from '@/constants/routes/paths';
 import {VEHICLE_NATIVE_SELECT_CLASS} from '@/features/vehicles/utils/form-styles';
+import {cn} from '@/lib/utils';
 import {scheduleQueryUrlSync} from '@/lib/navigation/sync-query-url';
 
 import type {OperationalDreFilterOptions, OperationalDreFilters} from '../types';
@@ -22,6 +23,30 @@ export interface OperationalDreFiltersProps {
   basePath?: string;
   /** Presets nomeados (Dashboard Executivo). DRE/Rentabilidade permanecem só com de/ate. */
   showNamedPeriodPresets?: boolean;
+  /**
+   * `executive`: área visual única com pills de período e grade rotulada.
+   * `default`: grade simples (DRE / Rentabilidade).
+   */
+  variant?: 'default' | 'executive';
+}
+
+function FilterField({
+  label,
+  children,
+  className,
+}: {
+  label: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <label className={cn('flex min-w-0 flex-col gap-1.5', className)}>
+      <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        {label}
+      </span>
+      {children}
+    </label>
+  );
 }
 
 function OperationalDreFiltersBar({
@@ -29,10 +54,12 @@ function OperationalDreFiltersBar({
   initialFilters,
   basePath = ROUTES.dashboardDre,
   showNamedPeriodPresets = false,
+  variant = 'default',
 }: OperationalDreFiltersProps) {
   const router = useRouter();
   const [filters, setFilters] = React.useState(initialFilters);
   const namedPreset = matchNamedPeriodPreset(filters);
+  const isExecutive = variant === 'executive';
 
   React.useEffect(() => {
     return scheduleQueryUrlSync(router, () =>
@@ -40,167 +67,263 @@ function OperationalDreFiltersBar({
     );
   }, [basePath, filters, router]);
 
+  const applyNamedPreset = (value: string) => {
+    if (value === 'personalizado') return;
+    const range = resolveNamedPeriodRange(value);
+    if (!range) return;
+    setFilters((prev) => ({
+      ...prev,
+      dateFrom: range.dateFrom,
+      dateTo: range.dateTo,
+    }));
+  };
+
+  const periodSelect = showNamedPeriodPresets ? (
+    isExecutive ? (
+      <div className="flex flex-col gap-2">
+        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          Período
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {NAMED_ANALYTICS_PERIOD_PRESETS.map((preset) => {
+            const active = namedPreset === preset.id;
+            return (
+              <button
+                key={preset.id}
+                type="button"
+                onClick={() => applyNamedPreset(preset.id)}
+                className={cn(
+                  'inline-flex h-8 items-center rounded-lg border px-3 text-xs font-medium transition-colors',
+                  active
+                    ? 'border-foreground bg-foreground text-background'
+                    : 'border-border bg-background text-foreground hover:bg-muted',
+                )}
+                aria-pressed={active}
+              >
+                {preset.label}
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            className={cn(
+              'inline-flex h-8 items-center rounded-lg border px-3 text-xs font-medium transition-colors',
+              namedPreset === 'personalizado'
+                ? 'border-foreground bg-foreground text-background'
+                : 'border-border bg-background text-foreground hover:bg-muted',
+            )}
+            aria-pressed={namedPreset === 'personalizado'}
+            onClick={() => {
+              /* Mantém datas atuais; usuário ajusta de/até abaixo. */
+            }}
+          >
+            Personalizado
+          </button>
+        </div>
+      </div>
+    ) : (
+      <select
+        value={namedPreset}
+        onChange={(e) => applyNamedPreset(e.target.value)}
+        className={VEHICLE_NATIVE_SELECT_CLASS}
+        aria-label="Período"
+      >
+        {NAMED_ANALYTICS_PERIOD_PRESETS.map((preset) => (
+          <option key={preset.id} value={preset.id}>
+            {preset.label}
+          </option>
+        ))}
+        <option value="personalizado">Personalizado</option>
+      </select>
+    )
+  ) : null;
+
+  const branchSelect = (
+    <select
+      value={filters.branchId ?? ''}
+      onChange={(e) =>
+        setFilters((prev) => ({...prev, branchId: e.target.value || undefined}))
+      }
+      className={VEHICLE_NATIVE_SELECT_CLASS}
+      aria-label="Filial"
+    >
+      <option value="">Todas as filiais</option>
+      {options.branches.map((branch) => (
+        <option key={branch.id} value={branch.id}>
+          {branch.name}
+        </option>
+      ))}
+    </select>
+  );
+
+  const customerSelect = (
+    <select
+      value={filters.customerId ?? ''}
+      onChange={(e) =>
+        setFilters((prev) => ({
+          ...prev,
+          customerId: e.target.value || undefined,
+        }))
+      }
+      className={VEHICLE_NATIVE_SELECT_CLASS}
+      aria-label="Cliente"
+    >
+      <option value="">Todos os clientes</option>
+      {options.customers.map((customer) => (
+        <option key={customer.id} value={customer.id}>
+          {customer.name}
+        </option>
+      ))}
+    </select>
+  );
+
+  const routeSelect = (
+    <select
+      value={filters.routeId ?? ''}
+      onChange={(e) =>
+        setFilters((prev) => ({...prev, routeId: e.target.value || undefined}))
+      }
+      className={VEHICLE_NATIVE_SELECT_CLASS}
+      aria-label="Rota"
+    >
+      <option value="">Todas as rotas</option>
+      {options.routes.map((route) => (
+        <option key={route.id} value={route.id}>
+          {route.code ? `${route.code} — ${route.name}` : route.name}
+        </option>
+      ))}
+    </select>
+  );
+
+  const vehicleSelect = (
+    <select
+      value={filters.vehicleId ?? ''}
+      onChange={(e) =>
+        setFilters((prev) => ({
+          ...prev,
+          vehicleId: e.target.value || undefined,
+        }))
+      }
+      className={VEHICLE_NATIVE_SELECT_CLASS}
+      aria-label="Veículo"
+    >
+      <option value="">Todos os veículos</option>
+      {(options.vehicles ?? []).map((vehicle) => (
+        <option key={vehicle.id} value={vehicle.id}>
+          {vehicle.label}
+        </option>
+      ))}
+    </select>
+  );
+
+  const driverSelect = (
+    <select
+      value={filters.driverId ?? ''}
+      onChange={(e) =>
+        setFilters((prev) => ({
+          ...prev,
+          driverId: e.target.value || undefined,
+        }))
+      }
+      className={VEHICLE_NATIVE_SELECT_CLASS}
+      aria-label="Motorista"
+    >
+      <option value="">Todos os motoristas</option>
+      {(options.drivers ?? []).map((driver) => (
+        <option key={driver.id} value={driver.id}>
+          {driver.name}
+        </option>
+      ))}
+    </select>
+  );
+
+  const costCenterSelect = (
+    <select
+      value={filters.costCenterId ?? ''}
+      onChange={(e) =>
+        setFilters((prev) => ({
+          ...prev,
+          costCenterId: e.target.value || undefined,
+        }))
+      }
+      className={VEHICLE_NATIVE_SELECT_CLASS}
+      aria-label="Centro de Custo"
+    >
+      <option value="">Todos os centros</option>
+      {options.costCenters.map((center) => (
+        <option key={center.id} value={center.id}>
+          {center.code} — {center.name}
+        </option>
+      ))}
+    </select>
+  );
+
+  const dateFromInput = (
+    <input
+      type="date"
+      value={filters.dateFrom ?? ''}
+      onChange={(e) =>
+        setFilters((prev) => ({
+          ...prev,
+          dateFrom: e.target.value || undefined,
+        }))
+      }
+      className={VEHICLE_NATIVE_SELECT_CLASS}
+      aria-label="Período inicial"
+    />
+  );
+
+  const dateToInput = (
+    <input
+      type="date"
+      value={filters.dateTo ?? ''}
+      onChange={(e) =>
+        setFilters((prev) => ({
+          ...prev,
+          dateTo: e.target.value || undefined,
+        }))
+      }
+      className={VEHICLE_NATIVE_SELECT_CLASS}
+      aria-label="Período final"
+    />
+  );
+
+  if (isExecutive) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-4 shadow-card">
+        <div className="flex flex-col gap-4">
+          {periodSelect}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            <FilterField label="Filial">{branchSelect}</FilterField>
+            <FilterField label="Placa do veículo">{vehicleSelect}</FilterField>
+            <FilterField label="Motorista">{driverSelect}</FilterField>
+            <FilterField label="Cliente">{customerSelect}</FilterField>
+            <FilterField label="Rota">{routeSelect}</FilterField>
+            <FilterField label="Centro de custo">{costCenterSelect}</FilterField>
+            <FilterField label="De" className="sm:col-span-1">
+              {dateFromInput}
+            </FilterField>
+            <FilterField label="Até" className="sm:col-span-1">
+              {dateToInput}
+            </FilterField>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {showNamedPeriodPresets ? (
-        <select
-          value={namedPreset}
-          onChange={(e) => {
-            const value = e.target.value;
-            if (value === 'personalizado') return;
-            const range = resolveNamedPeriodRange(value);
-            if (!range) return;
-            setFilters((prev) => ({
-              ...prev,
-              dateFrom: range.dateFrom,
-              dateTo: range.dateTo,
-            }));
-          }}
-          className={VEHICLE_NATIVE_SELECT_CLASS}
-          aria-label="Período"
-        >
-          {NAMED_ANALYTICS_PERIOD_PRESETS.map((preset) => (
-            <option key={preset.id} value={preset.id}>
-              {preset.label}
-            </option>
-          ))}
-          <option value="personalizado">Personalizado</option>
-        </select>
-      ) : null}
-
-      <select
-        value={filters.branchId ?? ''}
-        onChange={(e) =>
-          setFilters((prev) => ({...prev, branchId: e.target.value || undefined}))
-        }
-        className={VEHICLE_NATIVE_SELECT_CLASS}
-        aria-label="Filial"
-      >
-        <option value="">Todas as filiais</option>
-        {options.branches.map((branch) => (
-          <option key={branch.id} value={branch.id}>
-            {branch.name}
-          </option>
-        ))}
-      </select>
-
-      <select
-        value={filters.customerId ?? ''}
-        onChange={(e) =>
-          setFilters((prev) => ({
-            ...prev,
-            customerId: e.target.value || undefined,
-          }))
-        }
-        className={VEHICLE_NATIVE_SELECT_CLASS}
-        aria-label="Cliente"
-      >
-        <option value="">Todos os clientes</option>
-        {options.customers.map((customer) => (
-          <option key={customer.id} value={customer.id}>
-            {customer.name}
-          </option>
-        ))}
-      </select>
-
-      <select
-        value={filters.routeId ?? ''}
-        onChange={(e) =>
-          setFilters((prev) => ({...prev, routeId: e.target.value || undefined}))
-        }
-        className={VEHICLE_NATIVE_SELECT_CLASS}
-        aria-label="Rota"
-      >
-        <option value="">Todas as rotas</option>
-        {options.routes.map((route) => (
-          <option key={route.id} value={route.id}>
-            {route.code ? `${route.code} — ${route.name}` : route.name}
-          </option>
-        ))}
-      </select>
-
-      <select
-        value={filters.vehicleId ?? ''}
-        onChange={(e) =>
-          setFilters((prev) => ({
-            ...prev,
-            vehicleId: e.target.value || undefined,
-          }))
-        }
-        className={VEHICLE_NATIVE_SELECT_CLASS}
-        aria-label="Veículo"
-      >
-        <option value="">Todos os veículos</option>
-        {(options.vehicles ?? []).map((vehicle) => (
-          <option key={vehicle.id} value={vehicle.id}>
-            {vehicle.label}
-          </option>
-        ))}
-      </select>
-
-      <select
-        value={filters.driverId ?? ''}
-        onChange={(e) =>
-          setFilters((prev) => ({
-            ...prev,
-            driverId: e.target.value || undefined,
-          }))
-        }
-        className={VEHICLE_NATIVE_SELECT_CLASS}
-        aria-label="Motorista"
-      >
-        <option value="">Todos os motoristas</option>
-        {(options.drivers ?? []).map((driver) => (
-          <option key={driver.id} value={driver.id}>
-            {driver.name}
-          </option>
-        ))}
-      </select>
-
-      <select
-        value={filters.costCenterId ?? ''}
-        onChange={(e) =>
-          setFilters((prev) => ({
-            ...prev,
-            costCenterId: e.target.value || undefined,
-          }))
-        }
-        className={VEHICLE_NATIVE_SELECT_CLASS}
-        aria-label="Centro de Custo"
-      >
-        <option value="">Todos os centros</option>
-        {options.costCenters.map((center) => (
-          <option key={center.id} value={center.id}>
-            {center.code} — {center.name}
-          </option>
-        ))}
-      </select>
-
+      {periodSelect}
+      {branchSelect}
+      {customerSelect}
+      {routeSelect}
+      {vehicleSelect}
+      {driverSelect}
+      {costCenterSelect}
       <div className="grid grid-cols-2 gap-2 sm:col-span-2">
-        <input
-          type="date"
-          value={filters.dateFrom ?? ''}
-          onChange={(e) =>
-            setFilters((prev) => ({
-              ...prev,
-              dateFrom: e.target.value || undefined,
-            }))
-          }
-          className={VEHICLE_NATIVE_SELECT_CLASS}
-          aria-label="Período inicial"
-        />
-        <input
-          type="date"
-          value={filters.dateTo ?? ''}
-          onChange={(e) =>
-            setFilters((prev) => ({
-              ...prev,
-              dateTo: e.target.value || undefined,
-            }))
-          }
-          className={VEHICLE_NATIVE_SELECT_CLASS}
-          aria-label="Período final"
-        />
+        {dateFromInput}
+        {dateToInput}
       </div>
     </div>
   );

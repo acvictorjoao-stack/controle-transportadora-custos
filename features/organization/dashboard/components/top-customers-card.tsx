@@ -19,9 +19,9 @@ export interface TopCustomersCardProps {
 
 function TopCustomersCard({customers, filters = {}}: TopCustomersCardProps) {
   return (
-    <Card className="h-full">
-      <CardHeader>
-        <CardTitle>Top 5 Clientes</CardTitle>
+    <Card className="h-full shadow-card">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Top 5 Clientes</CardTitle>
         <CardDescription>Maiores lucros no período</CardDescription>
       </CardHeader>
       <CardContent>
