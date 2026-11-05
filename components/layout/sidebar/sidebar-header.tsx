@@ -19,12 +19,13 @@ function SidebarHeader() {
       data-slot="sidebar-header"
       className={cn(
         'flex shrink-0 items-center gap-2 border-b border-white/10 bg-[#0F172A] px-3 py-3.5',
-        collapsed ? 'justify-center' : 'justify-between',
+        collapsed ? 'flex-col justify-center' : 'justify-between',
         isMobile && !collapsed && 'pr-12',
       )}
     >
       <Link
         href={ROUTES.home}
+        aria-label={collapsed ? siteConfig.name : undefined}
         className={cn(
           'flex min-w-0 items-center gap-3 transition-opacity hover:opacity-90',
           collapsed && 'justify-center',

@@ -80,7 +80,7 @@ function WorkspaceMenu({
       aria-label="Workspace"
       className={cn(
         'absolute bottom-full z-50 mb-1 rounded-lg border border-border bg-popover p-1 shadow-lg animate-slide-up',
-        align === 'left' ? 'left-2 right-2' : 'left-1/2 w-56 -translate-x-1/2',
+        align === 'left' ? 'left-2 right-2' : 'left-2 w-56',
       )}
     >
       <div className="border-b border-border px-2.5 py-2">

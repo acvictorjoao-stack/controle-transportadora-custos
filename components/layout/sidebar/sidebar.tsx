@@ -31,7 +31,7 @@ function Sidebar() {
             : SIDEBAR_WIDTH_EXPANDED,
       }}
       className={cn(
-        'flex h-full flex-col overflow-hidden border-r border-white/10 bg-[#0F172A] text-slate-100 transition-[width] duration-300',
+        'flex h-full flex-col border-r border-white/10 bg-[#0F172A] text-slate-100 transition-[width] duration-300',
       )}
     >
       <div className="relative flex shrink-0 items-start">
