@@ -5,7 +5,8 @@ import Link from 'next/link';
 
 import {ROUTES} from '@/constants/routes/paths';
 import {useSidebar} from '@/contexts/shell/use-sidebar';
-import {hasPermission, useNavPermissions} from '@/hooks/use-nav-permissions';
+import {useNavPermissions} from '@/hooks/use-nav-permissions';
+import {getQuickActionAccess} from '@/lib/navigation/quick-actions';
 import {cn} from '@/lib/utils';
 
 /**
@@ -16,8 +17,7 @@ function SidebarQuickActions() {
   const {collapsed, setMobileOpen} = useSidebar();
   const permissions = useNavPermissions();
 
-  const canCreateTrip = hasPermission('trips:read', permissions);
-  const canCreateExpense = hasPermission('financeiro_pagar:read', permissions);
+  const {canCreateTrip, canCreateExpense} = getQuickActionAccess(permissions);
 
   if (!canCreateTrip && !canCreateExpense) return null;
 
