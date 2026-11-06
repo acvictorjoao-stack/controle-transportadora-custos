@@ -2,54 +2,42 @@ import type {SupabaseClient} from '@supabase/supabase-js';
 
 import {ACCOUNTS_PAYABLE_SOURCE_MODULE} from '@/features/accounts-payable/constants';
 import {ACCOUNTS_RECEIVABLE_SOURCE_MODULE} from '@/features/accounts-receivable/constants';
-import {listFinancialEntries} from '@/features/financial/queries';
+import {listFinancialEntriesByIds} from '@/features/financial/queries';
 import type {
-  FinancialEntry,
   FinancialEntryStatus,
   FinancialEntryType,
   FinancialListFilters,
 } from '@/features/financial/types';
 import {mapDatabaseError} from '@/features/master/companies/utils/database-error';
-import {
-  fetchAllPagedRows,
-  fetchPagedRangeRows,
-} from '@/lib/supabase/fetch-all-pages';
+import {fetchAllPagedRows} from '@/lib/supabase/fetch-all-pages';
 
 import {CASH_FLOW_PAGE_SIZE, CASH_FLOW_SOURCE_MODULES} from '../constants';
 import type {
+  CashFlowLine,
   CashFlowListFilters,
   CashFlowSummary,
   PaginatedCashFlow,
 } from '../types';
 import {
-  getCashFlowSignedAmount,
+  getCashFlowSignedLineAmount,
+  getCashFlowType,
   mapCashFlowLine,
 } from '../utils/cash-flow-mappers';
 
-type AggregateRow = {
+type CashFlowLineRow = {
+  line_id: string;
+  financial_entry_id: string;
   entry_type: FinancialEntryType;
-  entry_status: FinancialEntryStatus;
-  amount: number;
-  paid_amount: number | null;
+  line_status: FinancialEntryStatus;
   source_module: string | null;
-  entry_date: string;
-  due_date: string | null;
-  paid_at: string | null;
+  movement_date: string;
+  line_amount: number;
 };
 
-type SummaryRow = {
-  entry_type: FinancialEntryType;
-  entry_status: FinancialEntryStatus;
-  amount: number;
-  paid_amount: number | null;
-  source_module: string | null;
-};
+const CASH_FLOW_VIEW = 'financial_cash_flow_lines';
 
-const AGGREGATE_COLUMNS =
-  'entry_type, entry_status, amount, paid_amount, source_module, entry_date, due_date, paid_at';
-
-const SUMMARY_COLUMNS =
-  'entry_type, entry_status, amount, paid_amount, source_module';
+const LINE_COLUMNS =
+  'line_id, financial_entry_id, entry_type, line_status, source_module, movement_date, line_amount';
 
 function sanitizeSearchTerm(value: string): string {
   return value.replace(/[%(),]/g, '').trim();
@@ -91,135 +79,62 @@ function resolveListFilters(filters: CashFlowListFilters = {}): FinancialListFil
   return financialFilters;
 }
 
-function toAggregateEntry(row: AggregateRow): FinancialEntry {
-  return {
-    id: '',
-    companyId: '',
-    branchId: null,
-    branchName: null,
-    vehicleId: null,
-    vehiclePlate: null,
-    driverId: null,
-    driverName: null,
-    tripId: null,
-    tripNumber: null,
-    fuelRecordId: null,
-    maintenanceRecordId: null,
-    tireId: null,
-    customerId: null,
-    customerContractId: null,
-    customerName: null,
-    categoryId: null,
-    categoryName: null,
-    categorySlug: null,
-    costCenterId: null,
-    costCenterName: null,
-    entryType: row.entry_type,
-    entryStatus: row.entry_status,
-    description: null,
-    referenceNumber: null,
-    supplierId: null,
-    supplier: null,
-    client: null,
-    amount: Number(row.amount),
-    currency: 'BRL',
-    entryDate: row.entry_date,
-    dueDate: row.due_date,
-    paidAt: row.paid_at,
-    paidAmount: row.paid_amount != null ? Number(row.paid_amount) : null,
-    reversedEntryId: null,
-    sourceModule: row.source_module,
-    sourceId: null,
-    isSystemGenerated: false,
-    installmentNumber: null,
-    installmentTotal: null,
-    notes: null,
-    externalId: null,
-    integrationSource: null,
-    metadata: {},
-    status: 'active',
-    createdAt: '',
-    updatedAt: '',
-  };
+function signedLineAmount(row: CashFlowLineRow): number {
+  const type = getCashFlowType({sourceModule: row.source_module, entryType: row.entry_type});
+  return getCashFlowSignedLineAmount(type, Number(row.line_amount));
 }
 
-function sumSigned(rows: AggregateRow[]): number {
-  return rows.reduce((sum, row) => sum + getCashFlowSignedAmount(toAggregateEntry(row)), 0);
+function sumSigned(rows: CashFlowLineRow[]): number {
+  return rows.reduce((sum, row) => sum + signedLineAmount(row), 0);
 }
 
-function applyAggregateFilters<
-  T extends {
-    in: (column: string, values: string[]) => T;
-    eq: (column: string, value: string) => T;
-    gte: (column: string, value: string) => T;
-    lte: (column: string, value: string) => T;
-    or: (filters: string) => T;
-    order: (
-      column: string,
-      options?: {ascending?: boolean; nullsFirst?: boolean},
-    ) => T;
-  },
->(query: T, resolved: FinancialListFilters, term: string): T {
-  let next = query;
-
-  if (resolved.sourceModules?.length) {
-    next = next.in('source_module', resolved.sourceModules);
-  } else if (resolved.sourceModule) {
-    next = next.eq('source_module', resolved.sourceModule);
-  }
-
-  if (resolved.entryType) {
-    next = next.eq('entry_type', resolved.entryType);
-  }
-
-  if (resolved.entryStatuses?.length) {
-    next = next.in('entry_status', resolved.entryStatuses);
-  } else if (resolved.entryStatus) {
-    next = next.eq('entry_status', resolved.entryStatus);
-  }
-
-  if (resolved.dateFrom) next = next.gte('entry_date', resolved.dateFrom);
-  if (resolved.dateTo) next = next.lte('entry_date', resolved.dateTo);
-
-  if (term) {
-    next = next.or(
-      `description.ilike.%${term}%,supplier.ilike.%${term}%,client.ilike.%${term}%`,
-    );
-  }
-
-  return next
-    .order('entry_date', {ascending: false, nullsFirst: false})
-    .order('id', {ascending: false});
-}
-
-async function fetchAggregateRows(
+async function fetchLineRows(
   supabase: SupabaseClient,
   companyId: string,
   filters: CashFlowListFilters,
   search: string | undefined,
-  range?: {from: number; to: number},
-): Promise<AggregateRow[]> {
+): Promise<CashFlowLineRow[]> {
   const resolved = resolveListFilters(filters);
   const term = sanitizeSearchTerm(search ?? '');
 
-  const fetchPage = async (from: number, to: number) => {
-    let query = supabase
-      .from('financial_entries')
-      .select(AGGREGATE_COLUMNS, {count: 'exact'})
-      .eq('company_id', companyId)
-      .is('deleted_at', null);
+  return fetchAllPagedRows<CashFlowLineRow>(
+    async (from, to) => {
+      let query = supabase
+        .from(CASH_FLOW_VIEW)
+        .select(LINE_COLUMNS, {count: 'exact'})
+        .eq('company_id', companyId)
+        .is('deleted_at', null);
 
-    query = applyAggregateFilters(query, resolved, term);
-    return query.range(from, to);
-  };
+      if (resolved.sourceModules?.length) {
+        query = query.in('source_module', resolved.sourceModules);
+      } else if (resolved.sourceModule) {
+        query = query.eq('source_module', resolved.sourceModule);
+      }
 
-  if (range) {
-    return fetchPagedRangeRows<AggregateRow>(fetchPage, range, {
-      mapError: postgrestError,
-    });
-  }
+      if (resolved.entryType) query = query.eq('entry_type', resolved.entryType);
 
-  return fetchAllPagedRows<AggregateRow>(fetchPage, {mapError: postgrestError});
+      if (resolved.entryStatuses?.length) {
+        query = query.in('line_status', resolved.entryStatuses);
+      } else if (resolved.entryStatus) {
+        query = query.eq('line_status', resolved.entryStatus);
+      }
+
+      if (resolved.dateFrom) query = query.gte('movement_date', resolved.dateFrom);
+      if (resolved.dateTo) query = query.lte('movement_date', resolved.dateTo);
+
+      if (term) {
+        query = query.or(
+          `description.ilike.%${term}%,supplier.ilike.%${term}%,client.ilike.%${term}%`,
+        );
+      }
+
+      return query
+        .order('movement_date', {ascending: false})
+        .order('line_id', {ascending: false})
+        .range(from, to);
+    },
+    {mapError: postgrestError},
+  );
 }
 
 export async function getCashFlowSummary(
@@ -227,22 +142,11 @@ export async function getCashFlowSummary(
   companyId: string,
   options?: {dateFrom?: string; dateTo?: string},
 ): Promise<CashFlowSummary> {
-  const rows = await fetchAllPagedRows<SummaryRow>(
-    async (from, to) => {
-      let query = supabase
-        .from('financial_entries')
-        .select(SUMMARY_COLUMNS, {count: 'exact'})
-        .eq('company_id', companyId)
-        .is('deleted_at', null)
-        .in('source_module', [...CASH_FLOW_SOURCE_MODULES])
-        .in('entry_status', ['pending', 'overdue', 'paid']);
-
-      if (options?.dateFrom) query = query.gte('entry_date', options.dateFrom);
-      if (options?.dateTo) query = query.lte('entry_date', options.dateTo);
-
-      return query.order('id', {ascending: true}).range(from, to);
-    },
-    {mapError: postgrestError},
+  const rows = await fetchLineRows(
+    supabase,
+    companyId,
+    {dateFrom: options?.dateFrom, dateTo: options?.dateTo},
+    undefined,
   );
 
   let entradasRecebidas = 0;
@@ -251,10 +155,7 @@ export async function getCashFlowSummary(
   let aPagar = 0;
 
   for (const row of rows) {
-    const amount =
-      row.entry_status === 'paid' && row.paid_amount != null
-        ? Number(row.paid_amount)
-        : Number(row.amount);
+    const amount = Number(row.line_amount);
     const isReceivable =
       row.source_module === ACCOUNTS_RECEIVABLE_SOURCE_MODULE ||
       row.entry_type === 'revenue';
@@ -262,13 +163,13 @@ export async function getCashFlowSummary(
       row.source_module === ACCOUNTS_PAYABLE_SOURCE_MODULE ||
       row.entry_type === 'expense';
 
-    if (row.entry_status === 'paid') {
+    if (row.line_status === 'paid') {
       if (isReceivable) entradasRecebidas += amount;
       if (isPayable) saidasPagas += amount;
       continue;
     }
 
-    if (isOpenStatus(row.entry_status as FinancialEntryStatus)) {
+    if (isOpenStatus(row.line_status)) {
       if (isReceivable) aReceber += amount;
       if (isPayable) aPagar += amount;
     }
@@ -300,39 +201,42 @@ export async function listCashFlow(
   const pageSize = CASH_FLOW_PAGE_SIZE;
   const from = (page - 1) * pageSize;
   const filters = options.filters ?? {};
-  const financialFilters = resolveListFilters(filters);
 
-  const [paginated, priorRows, totalRows] = await Promise.all([
-    listFinancialEntries(supabase, {
-      companyId: options.companyId,
-      search: options.search,
-      page,
-      pageSize,
-      filters: financialFilters,
-      sort: {sortBy: 'entry_date', sortOrder: 'desc'},
-    }),
-    page > 1
-      ? fetchAggregateRows(supabase, options.companyId, filters, options.search, {
-          from: 0,
-          to: from - 1,
-        })
-      : Promise.resolve([] as AggregateRow[]),
-    fetchAggregateRows(supabase, options.companyId, filters, options.search),
-  ]);
+  const rows = await fetchLineRows(supabase, options.companyId, filters, options.search);
+  const pageRows = rows.slice(from, from + pageSize);
+  const entries = await listFinancialEntriesByIds(
+    supabase,
+    options.companyId,
+    pageRows.map((row) => row.financial_entry_id),
+  );
+  const entryById = new Map(entries.map((entry) => [entry.id, entry] as const));
 
-  let runningBalance = sumSigned(totalRows) - sumSigned(priorRows);
+  let runningBalance = sumSigned(rows) - sumSigned(rows.slice(0, from));
 
-  const items = paginated.items.map((entry) => {
-    const line = mapCashFlowLine(entry, runningBalance);
+  const items: CashFlowLine[] = [];
+  for (const row of pageRows) {
+    const entry = entryById.get(row.financial_entry_id);
+    if (!entry) continue;
+
+    const line = mapCashFlowLine(
+      entry,
+      {
+        lineId: row.line_id,
+        status: row.line_status,
+        movementDate: row.movement_date,
+        amount: Number(row.line_amount),
+      },
+      runningBalance,
+    );
     runningBalance -= line.signedAmount;
-    return line;
-  });
+    items.push(line);
+  }
 
   return {
     items,
-    total: paginated.total,
-    page: paginated.page,
-    pageSize: paginated.pageSize,
-    totalPages: paginated.totalPages,
+    total: rows.length,
+    page,
+    pageSize,
+    totalPages: Math.ceil(rows.length / pageSize),
   };
 }

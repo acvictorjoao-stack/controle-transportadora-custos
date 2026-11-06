@@ -62,6 +62,8 @@ export function mapFinancialEntryRow(row: FinancialEntryRow): FinancialEntry {
     dueDate: row.due_date,
     paidAt: row.paid_at,
     paidAmount: row.paid_amount != null ? Number(row.paid_amount) : null,
+    adjustmentTotal: Number(row.adjustment_total ?? 0),
+    tripChargeKey: row.trip_charge_key ?? null,
     reversedEntryId: row.reversed_entry_id,
     sourceModule: row.source_module,
     sourceId: row.source_id ?? null,

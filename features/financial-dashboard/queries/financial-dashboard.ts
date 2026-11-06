@@ -16,20 +16,19 @@ import {fetchAllPagedRows} from '@/lib/supabase/fetch-all-pages';
 
 import {FINANCIAL_DASHBOARD_UPCOMING_LIMIT} from '../constants';
 import type {FinancialDashboardData} from '../types';
-import {localDateIso, paidAtDateIso, startOfMonthIso} from '../utils/dates';
+import {localDateIso, startOfMonthIso} from '../utils/dates';
 
 type MetricRow = {
   entry_type: string;
-  entry_status: FinancialEntryStatus;
-  amount: number;
-  paid_amount: number | null;
+  line_status: FinancialEntryStatus;
+  line_amount: number;
   source_module: string | null;
   due_date: string | null;
-  paid_at: string | null;
+  movement_date: string;
 };
 
 const METRIC_COLUMNS =
-  'entry_type, entry_status, amount, paid_amount, source_module, due_date, paid_at';
+  'entry_type, line_status, line_amount, source_module, due_date, movement_date';
 
 function isOpenStatus(status: FinancialEntryStatus): boolean {
   return status === 'pending' || status === 'overdue';
@@ -45,16 +44,10 @@ function isPayable(row: Pick<MetricRow, 'source_module' | 'entry_type'>): boolea
   return row.source_module === ACCOUNTS_PAYABLE_SOURCE_MODULE || row.entry_type === 'expense';
 }
 
-function rowAmount(row: MetricRow): number {
-  if (row.entry_status === 'paid' && row.paid_amount != null) {
-    return Number(row.paid_amount);
-  }
-  return Number(row.amount);
-}
 
 function isOverdueOpen(row: MetricRow, today: string): boolean {
-  if (!isOpenStatus(row.entry_status)) return false;
-  if (row.entry_status === 'overdue') return true;
+  if (!isOpenStatus(row.line_status)) return false;
+  if (row.line_status === 'overdue') return true;
   return Boolean(row.due_date && row.due_date < today);
 }
 
@@ -70,13 +63,13 @@ export async function getFinancialDashboardData(
     fetchAllPagedRows<MetricRow>(
       async (from, to) =>
         supabase
-          .from('financial_entries')
+          .from('financial_cash_flow_lines')
           .select(METRIC_COLUMNS, {count: 'exact'})
           .eq('company_id', companyId)
           .is('deleted_at', null)
           .in('source_module', [...CASH_FLOW_SOURCE_MODULES])
-          .in('entry_status', ['pending', 'overdue', 'paid'])
-          .order('id', {ascending: true})
+          .in('line_status', ['pending', 'overdue', 'paid'])
+          .order('line_id', {ascending: true})
           .range(from, to),
       {
         mapError: (error) => new Error(mapDatabaseError(error)),
@@ -105,11 +98,11 @@ export async function getFinancialDashboardData(
   let vencidasPagar = 0;
 
   for (const row of rows) {
-    const amount = rowAmount(row);
+    const amount = Number(row.line_amount);
     const receivable = isReceivable(row);
     const payable = isPayable(row);
 
-    if (isOpenStatus(row.entry_status)) {
+    if (isOpenStatus(row.line_status)) {
       if (receivable) receberQtd += 1;
       if (payable) pagarQtd += 1;
 
@@ -120,10 +113,9 @@ export async function getFinancialDashboardData(
       continue;
     }
 
-    if (row.entry_status !== 'paid') continue;
+    if (row.line_status !== 'paid') continue;
 
-    const paidDate = paidAtDateIso(row.paid_at);
-    if (!paidDate) continue;
+    const paidDate = row.movement_date;
 
     if (receivable) {
       if (paidDate >= monthStart && paidDate <= today) recebidoMes += amount;

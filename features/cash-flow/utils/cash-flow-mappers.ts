@@ -1,10 +1,16 @@
 import {ACCOUNTS_PAYABLE_SOURCE_MODULE} from '@/features/accounts-payable/constants';
 import {ACCOUNTS_RECEIVABLE_SOURCE_MODULE} from '@/features/accounts-receivable/constants';
 import type {FinancialEntry} from '@/features/financial/types';
+import {getReceivableBalance} from '@/features/financial/utils/receivable-balance';
 
-import type {CashFlowLine, CashFlowType} from '../types';
+import type {CashFlowLine, CashFlowLineData, CashFlowType} from '../types';
 
-export function getCashFlowType(entry: FinancialEntry): CashFlowType | null {
+type CashFlowTypeInput = {
+  sourceModule: FinancialEntry['sourceModule'];
+  entryType: FinancialEntry['entryType'];
+};
+
+export function getCashFlowType(entry: CashFlowTypeInput): CashFlowType | null {
   if (entry.sourceModule === ACCOUNTS_RECEIVABLE_SOURCE_MODULE || entry.entryType === 'revenue') {
     return 'recebimento';
   }
@@ -25,43 +31,41 @@ export function getCashFlowPerson(entry: FinancialEntry): string | null {
   return entry.client ?? entry.supplier ?? entry.customerName ?? null;
 }
 
-export function getCashFlowMovementDate(entry: FinancialEntry): string {
-  if (entry.entryStatus === 'paid' && entry.paidAt) {
-    return entry.paidAt.slice(0, 10);
-  }
-  return entry.dueDate ?? entry.entryDate;
-}
-
+/** Valor do lançamento: pago quando quitado; saldo em aberto nos demais casos. */
 export function getCashFlowAmount(entry: FinancialEntry): number {
   if (entry.entryStatus === 'paid' && entry.paidAmount != null) {
     return Number(entry.paidAmount);
   }
-  return Number(entry.amount);
+  return getReceivableBalance(entry);
 }
 
-export function getCashFlowSignedAmount(entry: FinancialEntry): number {
-  const type = getCashFlowType(entry);
-  const amount = getCashFlowAmount(entry);
-  if (type === 'recebimento') return amount;
-  if (type === 'pagamento') return -amount;
+/** Valor com sinal: estorno de recebimento chega negativo e reduz a entrada. */
+export function getCashFlowSignedLineAmount(
+  type: CashFlowType | null,
+  lineAmount: number,
+): number {
+  if (type === 'recebimento') return lineAmount;
+  if (type === 'pagamento') return -lineAmount;
   return 0;
 }
 
 export function mapCashFlowLine(
   entry: FinancialEntry,
+  line: CashFlowLineData,
   runningBalance: number,
 ): CashFlowLine {
   const cashFlowType = getCashFlowType(entry) ?? 'pagamento';
-  const amount = getCashFlowAmount(entry);
-  const signedAmount = getCashFlowSignedAmount(entry);
+  const signedAmount = getCashFlowSignedLineAmount(cashFlowType, line.amount);
 
   return {
     ...entry,
+    entryStatus: line.status,
+    lineId: line.lineId,
     cashFlowType,
     personName: getCashFlowPerson(entry),
-    movementDate: getCashFlowMovementDate(entry),
-    entrada: cashFlowType === 'recebimento' ? amount : null,
-    saida: cashFlowType === 'pagamento' ? amount : null,
+    movementDate: line.movementDate,
+    entrada: signedAmount >= 0 ? signedAmount : null,
+    saida: signedAmount < 0 ? Math.abs(signedAmount) : null,
     signedAmount,
     runningBalance,
   };

@@ -358,6 +358,28 @@ export async function getFinancialEntryById(
   return mapFinancialEntryRow(data as unknown as FinancialEntryRow);
 }
 
+/** Lançamentos pelos ids, para hidratar as linhas do fluxo de caixa. */
+export async function listFinancialEntriesByIds(
+  supabase: SupabaseClient,
+  companyId: string,
+  entryIds: string[],
+): Promise<FinancialEntry[]> {
+  const ids = Array.from(new Set(entryIds));
+  if (ids.length === 0) return [];
+
+  const {data, error} = await supabase
+    .from('financial_entries')
+    .select(FINANCIAL_LIST_COLUMNS)
+    .eq('company_id', companyId)
+    .in('id', ids);
+
+  if (error) {
+    throw new Error(mapDatabaseError(error));
+  }
+
+  return ((data ?? []) as unknown as FinancialEntryRow[]).map(mapFinancialEntryRow);
+}
+
 export async function createFinancialEntry(
   supabase: SupabaseClient,
   companyId: string,
