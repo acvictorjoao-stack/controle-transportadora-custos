@@ -121,6 +121,7 @@ O hook `useNavPermissions()` retorna `['*']` até RBAC ser implementado.
 |------------|--------|
 | `sidebar.tsx` | Container principal, responsivo |
 | `sidebar-header.tsx` | Logo + botão recolher |
+| `sidebar-quick-actions.tsx` | Ações rápidas, exibidas conforme a permissão de criação |
 | `sidebar-nav.tsx` | Lista de grupos accordion |
 | `sidebar-group.tsx` | Grupo expansível com animação |
 | `sidebar-item.tsx` | Item com destaque de rota ativa (hash-aware) |
