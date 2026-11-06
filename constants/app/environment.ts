@@ -21,19 +21,29 @@ export type AppEnvironmentLabel = 'Produção' | 'Teste';
 
 /**
  * Resolve o rótulo de ambiente sem alterar RBAC/rotas.
- * Preferência: NEXT_PUBLIC_APP_ENV → NODE_ENV.
+ * Preferência: NEXT_PUBLIC_APP_ENV → NEXT_PUBLIC_VERCEL_ENV → NODE_ENV.
+ *
+ * O padrão precisa ler cada variável de forma literal: o Next.js só as embute
+ * no navegador assim. Passar `process.env` inteiro gera divergência de hidratação.
  */
 export function resolveAppEnvironmentLabel(
-  env: NodeJS.ProcessEnv = process.env,
+  env: Partial<NodeJS.ProcessEnv> = {
+    NEXT_PUBLIC_APP_ENV: process.env.NEXT_PUBLIC_APP_ENV,
+    NEXT_PUBLIC_VERCEL_ENV: process.env.NEXT_PUBLIC_VERCEL_ENV,
+    NODE_ENV: process.env.NODE_ENV,
+  },
 ): AppEnvironmentLabel {
-  const explicit = env.NEXT_PUBLIC_APP_ENV?.trim().toLowerCase();
+  const explicit = (env.NEXT_PUBLIC_APP_ENV || env.NEXT_PUBLIC_VERCEL_ENV)
+    ?.trim()
+    .toLowerCase();
   if (explicit === 'production' || explicit === 'prod') return 'Produção';
   if (
     explicit === 'test' ||
     explicit === 'testing' ||
     explicit === 'development' ||
     explicit === 'dev' ||
-    explicit === 'staging'
+    explicit === 'staging' ||
+    explicit === 'preview'
   ) {
     return 'Teste';
   }
