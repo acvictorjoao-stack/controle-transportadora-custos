@@ -56,6 +56,12 @@ describe('migrations de título de frete — contrato estático', () => {
     expect(sync).toContain('before insert or update or delete on public.financial_entries');
   });
 
+  it('a liberação do reset vale só para DELETE e exige as duas GUCs', () => {
+    expect(sync).toMatch(
+      /if tg_op = 'DELETE'\n\s+and current_setting\('app\.allow_hml_company_reset', true\) = 'HML_RESET_COMPANY_BUSINESS'\n\s+and current_setting\('app\.hml_expected_project_ref', true\) = 'aobfjjaucdrwybebosxm' then\n\s+return old;/,
+    );
+  });
+
   it('a view do caixa respeita a RLS de quem consulta', () => {
     expect(cashFlow).toContain('with (security_invoker = true)');
     expect(cashFlow).toContain('revoke all on table public.financial_cash_flow_lines');

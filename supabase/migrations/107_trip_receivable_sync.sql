@@ -118,6 +118,14 @@ declare
   v_has_movements boolean;
   v_target public.financial_entries%rowtype;
 begin
+  -- Reset de empresa (RPC 103): roda com auth.uid() preenchido e define estas
+  -- GUCs na própria sessão. PostgREST não consegue defini-las. Vale só para DELETE.
+  if tg_op = 'DELETE'
+     and current_setting('app.allow_hml_company_reset', true) = 'HML_RESET_COMPANY_BUSINESS'
+     and current_setting('app.hml_expected_project_ref', true) = 'aobfjjaucdrwybebosxm' then
+    return old;
+  end if;
+
   if coalesce(current_setting('fleetcontrol.receivable_internal', true), 'off') = 'on'
      or public.request_is_service_context() then
     if tg_op = 'DELETE' then

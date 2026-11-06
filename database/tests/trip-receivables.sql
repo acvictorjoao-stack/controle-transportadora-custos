@@ -574,6 +574,86 @@ select pg_temp.expect('Financeiro de outra empresa não ajusta',
     like '%Sem permissão%');
 select pg_temp.act_as_owner();
 
+-- ---------------------------------------------------------------------------
+-- Limpeza controlada: RPC 103 real, com sessão de Super Admin
+-- ---------------------------------------------------------------------------
+
+insert into public.companies (id, legal_name, tax_id, slug, email)
+values ('451a7940-a56b-425f-ae5f-e493d536591f', 'Primeira Empresa', 'TR-TAX-P', 'primeira-empresa', 'p@tr.test');
+
+insert into public.branches (company_id, name, code, is_headquarters)
+select '451a7940-a56b-425f-ae5f-e493d536591f', 'Matriz', 'HQ', true
+where not exists (
+  select 1 from public.branches
+  where company_id = '451a7940-a56b-425f-ae5f-e493d536591f' and is_headquarters
+);
+
+select public.seed_cost_centers_for_company('451a7940-a56b-425f-ae5f-e493d536591f');
+select public.seed_positions_for_company('451a7940-a56b-425f-ae5f-e493d536591f');
+select public.seed_financial_defaults_for_company('451a7940-a56b-425f-ae5f-e493d536591f', null);
+
+insert into public.roles (company_id, name, is_system)
+select '451a7940-a56b-425f-ae5f-e493d536591f', 'Super Admin', true
+where not exists (
+  select 1 from public.roles
+  where company_id = '451a7940-a56b-425f-ae5f-e493d536591f' and name = 'Super Admin'
+);
+
+insert into public.company_members (company_id, profile_id, role_id)
+select r.company_id, '12000000-0000-4000-8000-000000000001', r.id
+from public.roles r
+where r.company_id = '451a7940-a56b-425f-ae5f-e493d536591f' and r.name = 'Super Admin';
+
+insert into public.customers (id, company_id, legal_name, trade_name)
+values ('cc000000-0000-4000-8000-000000000001', '451a7940-a56b-425f-ae5f-e493d536591f', 'Cliente Reset SA', 'Cliente Reset');
+
+select pg_temp.act_as('12000000-0000-4000-8000-000000000001');
+select pg_temp.new_trip('10000000-0000-4000-8000-00000000000d', 'TR-RST', 1000, 'term',
+  'cc000000-0000-4000-8000-000000000001', '451a7940-a56b-425f-ae5f-e493d536591f');
+select pg_temp.act_as_owner();
+insert into _ids select 'title-rst', id from _title where trip_id = '10000000-0000-4000-8000-00000000000d';
+
+select pg_temp.act_as('12000000-0000-4000-8000-000000000001');
+insert into _ids select 'receipt-rst', public.register_receivable_receipt((select id from _ids where name = 'title-rst'), 300, date '2026-11-01', 'pix', null, 'k-rst1');
+select public.register_receivable_receipt((select id from _ids where name = 'title-rst'), 200, date '2026-11-01', 'pix', null, 'k-rst2');
+select public.reverse_receivable_receipt((select id from _ids where name = 'receipt-rst'), 'Teste', 'k-rst3');
+select pg_temp.act_as_owner();
+
+select set_config('request.jwt.claims', json_build_object('sub', '12000000-0000-4000-8000-000000000001', 'role', 'authenticated')::text, true);
+
+select pg_temp.expect('sem as GUCs do reset, o título segue protegido',
+  pg_temp.error_of($q$delete from public.financial_entries where id = (select id from _ids where name = 'title-rst')$q$)
+    like '%não pode ser excluído%');
+
+select set_config('app.allow_hml_company_reset', 'HML_RESET_COMPANY_BUSINESS', true);
+select pg_temp.expect('uma GUC só não libera a exclusão',
+  pg_temp.error_of($q$delete from public.financial_entries where id = (select id from _ids where name = 'title-rst')$q$)
+    like '%não pode ser excluído%');
+select set_config('app.hml_expected_project_ref', 'aobfjjaucdrwybebosxm', true);
+select pg_temp.expect('as GUCs do reset não liberam alteração de título',
+  pg_temp.error_of($q$update public.financial_entries set amount = 1 where id = (select id from _ids where name = 'title-rst')$q$)
+    like '%controlado pela viagem%');
+
+select pg_temp.expect('RPC 103 limpa título com recebimento, estorno e viagem',
+  pg_temp.error_of($q$select public.hml_reset_company_business_data('451a7940-a56b-425f-ae5f-e493d536591f', 'HML_RESET_COMPANY_BUSINESS')$q$) is null);
+
+select set_config('app.allow_hml_company_reset', '', true);
+select set_config('app.hml_expected_project_ref', '', true);
+select pg_temp.act_as_owner();
+
+select pg_temp.expect('reset remove viagens, títulos e movimentos da empresa',
+  not exists (select 1 from public.trips where company_id = '451a7940-a56b-425f-ae5f-e493d536591f')
+  and not exists (select 1 from public.financial_entries where company_id = '451a7940-a56b-425f-ae5f-e493d536591f')
+  and not exists (select 1 from public.financial_entry_movements where company_id = '451a7940-a56b-425f-ae5f-e493d536591f')
+  and not exists (select 1 from public.customers where company_id = '451a7940-a56b-425f-ae5f-e493d536591f'));
+select pg_temp.expect('reset preserva empresa, filial HQ e usuário',
+  exists (select 1 from public.companies where id = '451a7940-a56b-425f-ae5f-e493d536591f')
+  and exists (select 1 from public.branches where company_id = '451a7940-a56b-425f-ae5f-e493d536591f' and is_headquarters)
+  and exists (select 1 from public.company_members where company_id = '451a7940-a56b-425f-ae5f-e493d536591f' and profile_id = '12000000-0000-4000-8000-000000000001'));
+select pg_temp.expect('reset não toca a outra empresa',
+  exists (select 1 from public.financial_entry_movements where company_id = 'a0000000-0000-4000-8000-000000000001')
+  and exists (select 1 from public.trips where company_id = 'a0000000-0000-4000-8000-000000000001'));
+
 select seq, name, ok, detail from _tr_results order by seq;
 
 do $$
