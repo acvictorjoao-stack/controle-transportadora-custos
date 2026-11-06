@@ -253,7 +253,7 @@ function RouteImportContent({
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="rounded-md border border-border p-3">
                 <p className="text-xs text-muted-foreground">Válidos</p>
-                <p className="text-xl font-semibold text-emerald-700">
+                <p className="text-xl font-semibold text-success">
                   {preview.validCount + preview.warningCount}
                 </p>
               </div>

@@ -67,13 +67,13 @@ function RevenueCostProfitChart({
                     <Bar
                       value={point.revenue}
                       max={maxValue}
-                      className="bg-emerald-500/80"
+                      className="bg-primary"
                       label="Receita"
                     />
                     <Bar
                       value={point.costs}
                       max={maxValue}
-                      className="bg-amber-500/80"
+                      className="bg-muted-foreground/40"
                       label="Custos"
                     />
                     <Bar
@@ -82,7 +82,7 @@ function RevenueCostProfitChart({
                       className={
                         point.profit != null && point.profit < 0
                           ? 'bg-destructive/80'
-                          : 'bg-sky-500/80'
+                          : 'bg-success'
                       }
                       label="Lucro"
                       empty={point.profit == null}
@@ -95,9 +95,9 @@ function RevenueCostProfitChart({
               ))}
             </div>
             <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
-              <Legend swatch="bg-emerald-500/80" label="Receita" />
-              <Legend swatch="bg-amber-500/80" label="Custos" />
-              <Legend swatch="bg-sky-500/80" label="Lucro" />
+              <Legend swatch="bg-success" label="Receita" />
+              <Legend swatch="bg-warning" label="Custos" />
+              <Legend swatch="bg-primary" label="Lucro" />
             </div>
             <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-3">
               {points.map((point) => (

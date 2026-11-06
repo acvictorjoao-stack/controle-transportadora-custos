@@ -75,7 +75,7 @@ function DimensionBarChart({
                       title={`${valueLabel}: ${formatCurrencyBr(point.value)}`}
                       className={cn(
                         'h-2 rounded-full',
-                        negative ? 'bg-destructive/80' : 'bg-sky-500/80',
+                        negative ? 'bg-destructive/80' : 'bg-primary',
                       )}
                       style={{width: `${width}%`}}
                     />

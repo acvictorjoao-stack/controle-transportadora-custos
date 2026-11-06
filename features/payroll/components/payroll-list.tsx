@@ -321,7 +321,7 @@ function PayrollList({
         <StatCard
           title="Total pago"
           value={
-            <span className="text-emerald-600 dark:text-emerald-400">
+            <span className="text-success">
               {formatCurrencyBr(summary.totalPaid)}
             </span>
           }
@@ -330,7 +330,7 @@ function PayrollList({
         <StatCard
           title="Total pendente"
           value={
-            <span className="text-red-600 dark:text-red-400">
+            <span className="text-destructive">
               {formatCurrencyBr(summary.totalPending)}
             </span>
           }

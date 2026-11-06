@@ -133,7 +133,7 @@ function FinancialDashboardView({data, error}: FinancialDashboardViewProps) {
             <StatCard
               title="Saldo Atual"
               value={
-                <span className="text-blue-600 dark:text-blue-400">
+                <span className="text-primary">
                   {formatCurrencyBr(summary.saldoAtual)}
                 </span>
               }
@@ -142,7 +142,7 @@ function FinancialDashboardView({data, error}: FinancialDashboardViewProps) {
             <StatCard
               title="Contas a Receber"
               value={
-                <span className="text-emerald-600 dark:text-emerald-400">
+                <span className="text-success">
                   {formatCurrencyBr(data.contasAReceber.total)}
                 </span>
               }
@@ -151,7 +151,7 @@ function FinancialDashboardView({data, error}: FinancialDashboardViewProps) {
             <StatCard
               title="Contas a Pagar"
               value={
-                <span className="text-red-600 dark:text-red-400">
+                <span className="text-destructive">
                   {formatCurrencyBr(data.contasAPagar.total)}
                 </span>
               }
@@ -160,7 +160,7 @@ function FinancialDashboardView({data, error}: FinancialDashboardViewProps) {
             <StatCard
               title="Saldo Projetado"
               value={
-                <span className="text-blue-600 dark:text-blue-400">
+                <span className="text-primary">
                   {formatCurrencyBr(summary.saldoProjetado)}
                 </span>
               }
@@ -174,7 +174,7 @@ function FinancialDashboardView({data, error}: FinancialDashboardViewProps) {
             <StatCard
               title="Recebimentos"
               value={
-                <span className="text-emerald-600 dark:text-emerald-400">
+                <span className="text-success">
                   {formatCurrencyBr(data.recebimentos.mes)}
                 </span>
               }
@@ -191,7 +191,7 @@ function FinancialDashboardView({data, error}: FinancialDashboardViewProps) {
             <StatCard
               title="Pagamentos"
               value={
-                <span className="text-red-600 dark:text-red-400">
+                <span className="text-destructive">
                   {formatCurrencyBr(data.pagamentos.mes)}
                 </span>
               }
@@ -208,7 +208,7 @@ function FinancialDashboardView({data, error}: FinancialDashboardViewProps) {
             <StatCard
               title="Inadimplência"
               value={
-                <span className="text-red-600 dark:text-red-400">
+                <span className="text-destructive">
                   {formatCurrencyBr(data.inadimplencia.aReceber)}
                 </span>
               }
@@ -217,7 +217,7 @@ function FinancialDashboardView({data, error}: FinancialDashboardViewProps) {
             <StatCard
               title="Contas vencidas"
               value={
-                <span className="text-red-600 dark:text-red-400">
+                <span className="text-destructive">
                   {formatCurrencyBr(data.inadimplencia.aPagar)}
                 </span>
               }
@@ -249,7 +249,7 @@ function FinancialDashboardView({data, error}: FinancialDashboardViewProps) {
                   <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     Total recebido
                   </p>
-                  <p className="mt-2 font-financial text-xl font-semibold text-emerald-600 dark:text-emerald-400">
+                  <p className="mt-2 font-financial text-xl font-semibold text-success">
                     {formatCurrencyBr(data.resumo.totalRecebido)}
                   </p>
                 </div>
@@ -257,7 +257,7 @@ function FinancialDashboardView({data, error}: FinancialDashboardViewProps) {
                   <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     Total pago
                   </p>
-                  <p className="mt-2 font-financial text-xl font-semibold text-red-600 dark:text-red-400">
+                  <p className="mt-2 font-financial text-xl font-semibold text-destructive">
                     {formatCurrencyBr(data.resumo.totalPago)}
                   </p>
                 </div>
@@ -268,8 +268,8 @@ function FinancialDashboardView({data, error}: FinancialDashboardViewProps) {
                   <p
                     className={`mt-2 font-financial text-xl font-semibold ${
                       data.resumo.resultado < 0
-                        ? 'text-red-600 dark:text-red-400'
-                        : 'text-blue-600 dark:text-blue-400'
+                        ? 'text-destructive'
+                        : 'text-primary'
                     }`}
                   >
                     {formatCurrencyBr(data.resumo.resultado)}

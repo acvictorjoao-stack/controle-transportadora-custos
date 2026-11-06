@@ -19,15 +19,15 @@ export function MasterCompanyBanner({companyName}: MasterCompanyBannerProps) {
   return (
     <div
       data-slot="master-company-banner"
-      className="flex flex-wrap items-center justify-between gap-3 border-b border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-sm lg:px-6"
+      className="flex flex-wrap items-center justify-between gap-3 border-b border-warning/30 bg-warning/10 px-4 py-2.5 text-sm lg:px-6"
     >
       <div className="flex min-w-0 items-center gap-2">
-        <Shield className="size-4 shrink-0 text-amber-700 dark:text-amber-400" />
+        <Shield className="size-4 shrink-0 text-warning" />
         <div className="min-w-0">
-          <p className="font-medium text-amber-900 dark:text-amber-100">
+          <p className="font-medium text-foreground">
             Master
           </p>
-          <p className="truncate text-xs text-amber-800/80 dark:text-amber-200/80">
+          <p className="truncate text-xs text-muted-foreground">
             Empresa: {companyName}
           </p>
         </div>

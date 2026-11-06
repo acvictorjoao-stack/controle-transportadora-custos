@@ -51,7 +51,7 @@ function OperationalTimeline({timeline}: OperationalTimelineProps) {
                 <span
                   className={cn(
                     'relative z-10 mt-1 size-2.5 shrink-0 rounded-full',
-                    event.done ? 'bg-sky-500' : 'bg-muted-foreground/40',
+                    event.done ? 'bg-primary' : 'bg-muted-foreground/40',
                   )}
                 />
                 <div>
