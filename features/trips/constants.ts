@@ -18,6 +18,7 @@ export const TRIP_DETAIL_COLUMNS = `
   id, company_id, branch_id, trip_number, trip_status, driver_id, vehicle_id,
   client_name, contract_reference, customer_id, customer_contract_id,
   freight_table, contracted_freight_value, actual_freight_value, freight_margin,
+  payment_condition, payment_issue_date, payment_due_date,
   origin, destination, route, route_id,
   planned_distance_km, planned_departure_at,
   lead_time_minutes, unload_time_minutes, planned_arrival_at, planned_completion_at,

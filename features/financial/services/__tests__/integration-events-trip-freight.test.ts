@@ -52,6 +52,9 @@ function makeTrip(
     freightTable: null,
     contractedFreightValue: null,
     actualFreightValue: null,
+    paymentCondition: null,
+    paymentIssueDate: null,
+    paymentDueDate: null,
     freightMargin: null,
     origin: null,
     destination: null,
@@ -236,6 +239,38 @@ describe('onTripCompleted — Audit #8 freight preference', () => {
         }),
       }),
     );
+  });
+
+  it('viagem com título não cria segunda receita ao concluir', async () => {
+    const trip = {
+      ...makeTrip({actualFreightValue: 8500, contractedFreightValue: null}),
+      paymentCondition: 'term' as const,
+    };
+    const {supabase, updatePayloads} = createSupabaseMock([]);
+
+    await onTripCompleted(supabase as never, 'company-1', trip, 'profile-1');
+
+    expect(createFinancialEntryMock).not.toHaveBeenCalled();
+    expect(updatePayloads[0]).toMatchObject({
+      metadata: {profitability: {revenue: 8500}},
+    });
+  });
+
+  it('receita do título não substitui o frete da viagem', async () => {
+    const trip = {
+      ...makeTrip({actualFreightValue: 9000, contractedFreightValue: null}),
+      paymentCondition: 'term' as const,
+    };
+    const {supabase, updatePayloads} = createSupabaseMock([
+      {entry_type: 'revenue', amount: 8500},
+    ]);
+
+    await onTripCompleted(supabase as never, 'company-1', trip, 'profile-1');
+
+    expect(createFinancialEntryMock).not.toHaveBeenCalled();
+    expect(updatePayloads[0]).toMatchObject({
+      metadata: {profitability: {revenue: 9000}},
+    });
   });
 
   it('confirma alinhamento com getTripFreightValue em todos os pares trip', async () => {
