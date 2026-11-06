@@ -48,6 +48,7 @@ import {
 import {AccountsPayableFilters} from './accounts-payable-filters';
 import {AccountsPayableFormModal} from './accounts-payable-form-modal';
 import {AccountsPayablePayModal} from './accounts-payable-pay-modal';
+import {FiltersDisclosure} from '@/components/forms/filters-disclosure';
 
 export interface AccountsPayableListProps {
   initialData: PaginatedAccountsPayable;
@@ -351,11 +352,13 @@ function AccountsPayableList({
         />
       </div>
 
-      <AccountsPayableFilters
-        categories={categories}
-        initialFilters={initialFilters}
-        initialSort={initialSort}
-      />
+      <FiltersDisclosure>
+        <AccountsPayableFilters
+          categories={categories}
+          initialFilters={initialFilters}
+          initialSort={initialSort}
+        />
+      </FiltersDisclosure>
 
       <TableContainer className="mt-4">
         <DataTable

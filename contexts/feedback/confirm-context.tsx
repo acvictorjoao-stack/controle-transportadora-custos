@@ -74,11 +74,11 @@ function ConfirmProvider({children}: {children: React.ReactNode}) {
           aria-describedby="confirm-dialog-description"
         >
           <div
-            className="absolute inset-0 bg-black/50"
+            className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
             aria-hidden="true"
             onClick={() => close(false)}
           />
-          <Card className="relative z-10 w-full max-w-md shadow-lg">
+          <Card className="relative z-10 w-full max-w-md animate-slide-up shadow-xl">
             <CardHeader>
               <CardTitle id="confirm-dialog-title">{options.title}</CardTitle>
               <CardDescription id="confirm-dialog-description">

@@ -47,6 +47,7 @@ import {getTripStatusVariant} from '../utils/trip-status';
 import {TripCompleteModal} from './trip-complete-modal';
 import {TripFilters} from './trip-filters';
 import {TripFormModal} from './trip-form-modal';
+import {FiltersDisclosure} from '@/components/forms/filters-disclosure';
 
 export interface TripsListProps {
   initialData: PaginatedTrips;
@@ -276,15 +277,17 @@ function TripsList({
               placeholder="Buscar por número, cliente, rota, origem ou destino..."
               className="w-full max-w-md"
             />
-            <TripFilters
-              branches={branches}
-              drivers={drivers}
-              vehicles={vehicles}
-              routes={routes}
-              routeFilterOptions={routeFilterOptions}
-              initialFilters={initialFilters}
-              initialSort={initialSort}
-            />
+            <FiltersDisclosure>
+              <TripFilters
+                branches={branches}
+                drivers={drivers}
+                vehicles={vehicles}
+                routes={routes}
+                routeFilterOptions={routeFilterOptions}
+                initialFilters={initialFilters}
+                initialSort={initialSort}
+              />
+            </FiltersDisclosure>
           </div>
         ),
       }}

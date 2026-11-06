@@ -40,6 +40,7 @@ import {buildAccountsReceivableListUrl} from '../utils/list-url';
 import {AccountsReceivableFilters} from './accounts-receivable-filters';
 import {AccountsReceivableFormModal} from './accounts-receivable-form-modal';
 import {AccountsReceivableReceiveModal} from './accounts-receivable-receive-modal';
+import {FiltersDisclosure} from '@/components/forms/filters-disclosure';
 
 export interface AccountsReceivableListProps {
   initialData: PaginatedAccountsReceivable;
@@ -314,11 +315,13 @@ function AccountsReceivableList({
         />
       </div>
 
-      <AccountsReceivableFilters
-        categories={categories}
-        initialFilters={initialFilters}
-        initialSort={initialSort}
-      />
+      <FiltersDisclosure>
+        <AccountsReceivableFilters
+          categories={categories}
+          initialFilters={initialFilters}
+          initialSort={initialSort}
+        />
+      </FiltersDisclosure>
 
       <TableContainer className="mt-4">
         <DataTable

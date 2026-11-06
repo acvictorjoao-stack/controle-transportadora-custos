@@ -30,6 +30,7 @@ import {formatCurrencyBr, formatKm} from '../utils/tire-format';
 import {buildTiresListUrl} from '../utils/list-url';
 import {TireFilters} from './tire-filters';
 import {TireFormModal} from './tire-form-modal';
+import {FiltersDisclosure} from '@/components/forms/filters-disclosure';
 
 export interface TiresListProps {
   initialData: PaginatedTires;
@@ -228,12 +229,14 @@ function TiresList({
           onValueChange={setSearch}
           placeholder="Buscar por patrimônio, marca, fornecedor..."
         />
-        <TireFilters
-          branches={branches}
-          vehicles={vehicles.map((v) => ({id: v.id, plate: v.plate}))}
-          initialFilters={initialFilters}
-          initialSort={initialSort}
-        />
+        <FiltersDisclosure>
+          <TireFilters
+            branches={branches}
+            vehicles={vehicles.map((v) => ({id: v.id, plate: v.plate}))}
+            initialFilters={initialFilters}
+            initialSort={initialSort}
+          />
+        </FiltersDisclosure>
       </div>
 
       <TableContainer>

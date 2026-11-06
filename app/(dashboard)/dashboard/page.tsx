@@ -131,6 +131,7 @@ export default async function DashboardPage({searchParams}: DashboardPageProps) 
         ]}
         actions={
           <AnalyticsExportToolbar
+            className="border-0 bg-transparent p-0"
             filters={core.period}
             basePath={ROUTES.dashboard}
             filenameBase={executiveDashboardExportFilenameBase(core.period)}

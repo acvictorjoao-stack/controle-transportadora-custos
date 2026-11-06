@@ -9,7 +9,7 @@ import {DataTable} from '@/components/data-display/data-table';
 import {TableContainer} from '@/components/data-display/table-container';
 import {PageTemplate} from '@/components/layout/page-template';
 import {Badge} from '@/components/ui/badge';
-import {Button} from '@/components/ui/button';
+import {Button, buttonVariants} from '@/components/ui/button';
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
 import {useConfirm} from '@/contexts/feedback/confirm-context';
 import {useToast} from '@/contexts/feedback/toast-context';
@@ -41,6 +41,7 @@ import {
 } from '../utils/origin';
 import {AccountsPayableFormModal} from './accounts-payable-form-modal';
 import {AccountsPayablePayModal} from './accounts-payable-pay-modal';
+import {TabsNav} from '@/components/ui/tabs-nav';
 
 export interface AccountsPayableDetailViewProps {
   data: AccountsPayableDetailData;
@@ -178,7 +179,7 @@ function AccountsPayableDetailView({
         <div className="flex flex-wrap gap-2">
           <Link
             href={ROUTES.contasAPagar}
-            className="inline-flex h-8 items-center gap-2 rounded-md border border-border bg-background px-3 text-xs font-medium shadow-xs hover:bg-accent"
+            className={buttonVariants({variant: 'outline', size: 'sm'})}
           >
             <ArrowLeft className="size-4" />
             Voltar
@@ -194,7 +195,7 @@ function AccountsPayableDetailView({
               {originHref && (
                 <Link
                   href={originHref}
-                  className="inline-flex h-8 items-center gap-2 rounded-md border border-border bg-background px-3 text-xs font-medium shadow-xs hover:bg-accent"
+                  className={buttonVariants({variant: 'outline', size: 'sm'})}
                 >
                   <ExternalLink className="size-4" />
                   Abrir origem
@@ -213,7 +214,7 @@ function AccountsPayableDetailView({
           {!isOpenStatus(entry.entryStatus) && originHref && (
             <Link
               href={originHref}
-              className="inline-flex h-8 items-center gap-2 rounded-md border border-border bg-background px-3 text-xs font-medium shadow-xs hover:bg-accent"
+              className={buttonVariants({variant: 'outline', size: 'sm'})}
             >
               <ExternalLink className="size-4" />
               Abrir origem
@@ -231,22 +232,7 @@ function AccountsPayableDetailView({
         </span>
       </div>
 
-      <div className="mb-4 flex gap-2 border-b border-border">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setActiveTab(tab.id)}
-            className={`px-3 py-2 text-sm font-medium transition-colors ${
-              activeTab === tab.id
-                ? 'border-b-2 border-primary text-foreground'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <TabsNav items={TABS} value={activeTab} onChange={setActiveTab} className="mb-4" />
 
       {activeTab === 'dados' && (
         <Card>

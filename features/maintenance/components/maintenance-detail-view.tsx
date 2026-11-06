@@ -9,7 +9,7 @@ import {DataTable} from '@/components/data-display/data-table';
 import {TableContainer} from '@/components/data-display/table-container';
 import {PageTemplate} from '@/components/layout/page-template';
 import {Badge} from '@/components/ui/badge';
-import {Button} from '@/components/ui/button';
+import {Button, buttonVariants} from '@/components/ui/button';
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
 import {Input} from '@/components/ui/input';
 import {ROUTES} from '@/constants/routes/paths';
@@ -41,6 +41,7 @@ import {
 } from '../utils/maintenance-format';
 import {MaintenanceFileUpload} from './maintenance-file-upload';
 import {MaintenanceFormModal} from './maintenance-form-modal';
+import {TabsNav} from '@/components/ui/tabs-nav';
 
 export interface MaintenanceDetailViewProps {
   companyId: string;
@@ -160,7 +161,7 @@ function MaintenanceDetailView({
         <div className="flex gap-2">
           <Link
             href={ROUTES.manutencoes}
-            className="inline-flex h-8 items-center gap-2 rounded-md border border-border bg-background px-3 text-xs font-medium shadow-xs hover:bg-accent"
+            className={buttonVariants({variant: 'outline', size: 'sm'})}
           >
             <ArrowLeft className="size-4" />
             Voltar
@@ -178,18 +179,7 @@ function MaintenanceDetailView({
         <span className="text-sm text-muted-foreground">{formatDateTimeBr(record.openedAt)}</span>
       </div>
 
-      <div className="mb-6 flex flex-wrap gap-2 border-b border-border pb-2">
-        {TABS.map((tab) => (
-          <Button
-            key={tab.id}
-            variant={activeTab === tab.id ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setActiveTab(tab.id)}
-          >
-            {tab.label}
-          </Button>
-        ))}
-      </div>
+      <TabsNav items={TABS} value={activeTab} onChange={setActiveTab} className="mb-4" />
 
       {activeTab === 'resumo' && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

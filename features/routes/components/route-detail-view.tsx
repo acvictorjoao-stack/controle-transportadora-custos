@@ -9,7 +9,7 @@ import {DataTable} from '@/components/data-display/data-table';
 import {TableContainer} from '@/components/data-display/table-container';
 import {PageTemplate} from '@/components/layout/page-template';
 import {Badge} from '@/components/ui/badge';
-import {Button} from '@/components/ui/button';
+import {Button, buttonVariants} from '@/components/ui/button';
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
 import {ROUTES} from '@/constants/routes/paths';
 
@@ -26,6 +26,7 @@ import {
 } from '../utils/route-format';
 import type {RouteFormOption} from './route-form-modal';
 import {RouteFormModal} from './route-form-modal';
+import {TabsNav} from '@/components/ui/tabs-nav';
 
 export interface RouteDetailViewProps {
   data: RouteDetailData;
@@ -76,7 +77,7 @@ function RouteDetailView({data, customers, branches}: RouteDetailViewProps) {
         <div className="flex gap-2">
           <Link
             href={ROUTES.rotas}
-            className="inline-flex h-8 items-center gap-2 rounded-md border border-border bg-background px-3 text-xs font-medium shadow-xs hover:bg-accent"
+            className={buttonVariants({variant: 'outline', size: 'sm'})}
           >
             <ArrowLeft className="size-4" />
             Voltar
@@ -95,18 +96,7 @@ function RouteDetailView({data, customers, branches}: RouteDetailViewProps) {
         {route.code && <Badge variant="secondary">{route.code}</Badge>}
       </div>
 
-      <div className="mb-6 flex flex-wrap gap-2 border-b border-border pb-2">
-        {TABS.map((tab) => (
-          <Button
-            key={tab.id}
-            variant={activeTab === tab.id ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setActiveTab(tab.id)}
-          >
-            {tab.label}
-          </Button>
-        ))}
-      </div>
+      <TabsNav items={TABS} value={activeTab} onChange={setActiveTab} className="mb-4" />
 
       {activeTab === 'dados' && (
         <Card>

@@ -32,6 +32,7 @@ import {formatPhone} from '../utils/supplier-format';
 import {SupplierCategoriesBadges} from './supplier-badge';
 import {SupplierFilters} from './supplier-filters';
 import {SupplierFormModal} from './supplier-form-modal';
+import {FiltersDisclosure} from '@/components/forms/filters-disclosure';
 
 export interface SuppliersListProps {
   initialData: PaginatedSuppliers;
@@ -239,7 +240,9 @@ function SuppliersList({
               placeholder="Buscar por nome, fantasia, CNPJ, CPF…"
               className="w-full max-w-sm"
             />
-            <SupplierFilters search={search} filters={initialFilters} />
+            <FiltersDisclosure>
+              <SupplierFilters search={search} filters={initialFilters} />
+            </FiltersDisclosure>
           </div>
         ),
       }}

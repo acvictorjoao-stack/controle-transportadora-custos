@@ -43,6 +43,7 @@ import {
 import type {RouteFormOption} from './route-form-modal';
 import {RouteFilters} from './route-filters';
 import {RouteFormModal} from './route-form-modal';
+import {FiltersDisclosure} from '@/components/forms/filters-disclosure';
 
 export interface RoutesListProps {
   initialData: PaginatedRoutes;
@@ -284,11 +285,13 @@ function RoutesList({
               placeholder="Buscar por nome, origem ou destino..."
               className="w-full max-w-md"
             />
-            <RouteFilters
-              filterOptions={filterOptions}
-              initialFilters={initialFilters}
-              initialSort={initialSort}
-            />
+            <FiltersDisclosure>
+              <RouteFilters
+                filterOptions={filterOptions}
+                initialFilters={initialFilters}
+                initialSort={initialSort}
+              />
+            </FiltersDisclosure>
           </div>
         ),
       }}

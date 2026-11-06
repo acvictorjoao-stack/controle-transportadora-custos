@@ -43,6 +43,7 @@ import {
 import {buildMaintenanceListUrl} from '../utils/list-url';
 import {MaintenanceFilters} from './maintenance-filters';
 import {MaintenanceFormModal} from './maintenance-form-modal';
+import {FiltersDisclosure} from '@/components/forms/filters-disclosure';
 
 export interface MaintenanceListProps {
   initialData: PaginatedMaintenanceRecords;
@@ -240,12 +241,14 @@ function MaintenanceList({
         />
       </div>
 
-      <MaintenanceFilters
-        branches={branches}
-        vehicles={vehicles}
-        initialFilters={initialFilters}
-        initialSort={initialSort}
-      />
+      <FiltersDisclosure>
+        <MaintenanceFilters
+          branches={branches}
+          vehicles={vehicles}
+          initialFilters={initialFilters}
+          initialSort={initialSort}
+        />
+      </FiltersDisclosure>
 
       <TableContainer className="mt-4">
         <DataTable

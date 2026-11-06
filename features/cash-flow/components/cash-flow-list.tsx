@@ -24,6 +24,7 @@ import type {
 } from '../types';
 import {buildCashFlowListUrl} from '../utils/list-url';
 import {CashFlowFilters} from './cash-flow-filters';
+import {FiltersDisclosure} from '@/components/forms/filters-disclosure';
 
 export interface CashFlowListProps {
   initialData: PaginatedCashFlow;
@@ -204,7 +205,9 @@ function CashFlowList({
         />
       </div>
 
-      <CashFlowFilters initialFilters={initialFilters} />
+      <FiltersDisclosure>
+        <CashFlowFilters initialFilters={initialFilters} />
+      </FiltersDisclosure>
 
       <TableContainer className="mt-4">
         <DataTable

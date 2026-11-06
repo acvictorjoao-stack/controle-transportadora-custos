@@ -23,7 +23,7 @@ function ActionBar({
       )}
       {...props}
     >
-      {leading && <div className="flex flex-wrap items-center gap-2">{leading}</div>}
+      {leading && <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">{leading}</div>}
       {children}
       {trailing && (
         <div className="flex flex-wrap items-center gap-2 sm:ml-auto">{trailing}</div>

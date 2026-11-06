@@ -34,6 +34,7 @@ import {formatCnpj, getCustomerStatusVariant} from '../utils/customer-format';
 import {buildCustomersListUrl} from '../utils/list-url';
 import {CustomerFilters} from './customer-filters';
 import {CustomerFormModal} from './customer-form-modal';
+import {FiltersDisclosure} from '@/components/forms/filters-disclosure';
 
 export interface CustomersListProps {
   initialData: PaginatedCustomers;
@@ -226,12 +227,14 @@ function CustomersList({
           placeholder="Buscar por nome, CNPJ, e-mail..."
           className="max-w-sm"
         />
-        <CustomerFilters
-          filters={initialFilters}
-          sort={initialSort}
-          search={search}
-          branches={branches}
-        />
+        <FiltersDisclosure>
+          <CustomerFilters
+            filters={initialFilters}
+            sort={initialSort}
+            search={search}
+            branches={branches}
+          />
+        </FiltersDisclosure>
       </div>
 
       <TableContainer>

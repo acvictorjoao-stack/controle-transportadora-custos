@@ -42,6 +42,7 @@ import {
 import {buildDriversListUrl} from '../utils/list-url';
 import {DriverFilters} from './driver-filters';
 import {DriverFormModal} from './driver-form-modal';
+import {FiltersDisclosure} from '@/components/forms/filters-disclosure';
 
 export interface DriversListProps {
   initialData: PaginatedDrivers;
@@ -263,11 +264,13 @@ function DriversList({
               placeholder="Buscar por nome, CPF, CNH ou telefone..."
               className="w-full max-w-md"
             />
-            <DriverFilters
-              branches={branches}
-              initialFilters={initialFilters}
-              initialSort={initialSort}
-            />
+            <FiltersDisclosure>
+              <DriverFilters
+                branches={branches}
+                initialFilters={initialFilters}
+                initialSort={initialSort}
+              />
+            </FiltersDisclosure>
           </div>
         ),
       }}

@@ -44,6 +44,7 @@ import {formatCompetenceBr} from '../utils/competence';
 import {buildPayrollListUrl} from '../utils/list-url';
 import {PayrollExpenseFormModal} from './payroll-expense-form-modal';
 import {PayrollFilters} from './payroll-filters';
+import {FiltersDisclosure} from '@/components/forms/filters-disclosure';
 
 export interface PayrollListProps {
   initialData: PaginatedPayrollExpenses;
@@ -352,13 +353,15 @@ function PayrollList({
         />
       </div>
 
-      <PayrollFilters
-        people={people}
-        positions={positions}
-        costCenters={costCenters}
-        initialFilters={initialFilters}
-        initialSort={initialSort}
-      />
+      <FiltersDisclosure>
+        <PayrollFilters
+          people={people}
+          positions={positions}
+          costCenters={costCenters}
+          initialFilters={initialFilters}
+          initialSort={initialSort}
+        />
+      </FiltersDisclosure>
 
       <TableContainer className="mt-4">
         <DataTable
