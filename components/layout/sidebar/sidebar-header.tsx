@@ -18,7 +18,7 @@ function SidebarHeader() {
     <div
       data-slot="sidebar-header"
       className={cn(
-        'flex shrink-0 items-center gap-2 border-b border-white/10 bg-[#0F172A] px-3 py-3.5',
+        'flex shrink-0 items-center gap-2 border-b border-sidebar-border bg-sidebar px-3 py-3.5',
         collapsed ? 'flex-col justify-center' : 'justify-between',
         isMobile && !collapsed && 'pr-12',
       )}
@@ -31,15 +31,15 @@ function SidebarHeader() {
           collapsed && 'justify-center',
         )}
       >
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#1D5EFF] text-white shadow-sm">
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-accent-foreground shadow-sm">
           <Truck className="size-4" aria-hidden="true" />
         </div>
         {!collapsed && (
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold tracking-tight text-white">
+            <p className="truncate text-sm font-semibold tracking-tight text-sidebar-accent-foreground">
               {siteConfig.name}
             </p>
-            <p className="truncate text-[11px] leading-tight text-slate-400">
+            <p className="truncate text-[11px] leading-tight text-sidebar-muted">
               {siteConfig.tagline}
             </p>
           </div>
@@ -52,7 +52,7 @@ function SidebarHeader() {
           onClick={toggleCollapsed}
           aria-label={collapsed ? 'Expandir sidebar' : 'Recolher sidebar'}
           className={cn(
-            'shrink-0 text-slate-400 hover:bg-white/10 hover:text-white',
+            'shrink-0 text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
             collapsed && 'mx-auto',
           )}
         >

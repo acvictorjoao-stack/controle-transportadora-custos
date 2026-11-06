@@ -20,12 +20,12 @@ function MasterSidebarHeader() {
     >
       {!collapsed && (
         <div className="flex items-center gap-2">
-          <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <div className="flex size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
             <Shield className="size-4" />
           </div>
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold">FleetControl</p>
-            <p className="truncate text-[10px] text-muted-foreground">
+            <p className="truncate text-sm font-semibold text-sidebar-accent-foreground">FleetControl</p>
+            <p className="truncate text-[10px] text-sidebar-muted">
               Portal Master
             </p>
           </div>
@@ -37,7 +37,10 @@ function MasterSidebarHeader() {
           size="icon-sm"
           onClick={toggleCollapsed}
           aria-label={collapsed ? 'Expandir sidebar' : 'Recolher sidebar'}
-          className={cn(collapsed && 'mx-auto')}
+          className={cn(
+            'text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+            collapsed && 'mx-auto',
+          )}
         >
           {collapsed ? (
             <PanelLeftOpen className="size-4" />

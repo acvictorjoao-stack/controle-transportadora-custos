@@ -71,12 +71,12 @@ function SidebarNav() {
       data-slot="sidebar-nav"
       aria-label="Navegação principal"
       className={cn(
-        'min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-2 py-3',
+        'min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-2 py-3 [scrollbar-color:var(--sidebar-accent-hover)_transparent] [scrollbar-width:thin]',
         collapsed ? 'space-y-1' : 'space-y-3',
       )}
     >
       {!collapsed && (
-        <p className="px-2.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-[#94A3B8]">
+        <p className="px-2.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-sidebar-muted">
           Navegação principal
         </p>
       )}

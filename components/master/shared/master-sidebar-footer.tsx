@@ -41,10 +41,10 @@ function MasterSidebarFooter() {
           </div>
         </div>
         <div className="mt-3 border-t border-sidebar-border pt-3">
-          <p className="truncate text-xs font-medium">
+          <p className="truncate text-xs font-medium text-sidebar-foreground">
             {role ? PORTAL_ROLE_LABELS[role] : '—'}
           </p>
-          <p className="truncate text-[10px] text-muted-foreground">
+          <p className="truncate text-[10px] text-sidebar-muted">
             {user?.email ?? '—'}
           </p>
         </div>

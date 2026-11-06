@@ -32,7 +32,7 @@ function SidebarItem({item, pathname, hash = '', depth = 0}: SidebarItemProps) {
       <Icon
         className={cn(
           'size-4 shrink-0 transition-colors duration-200',
-          isActive ? 'text-white' : 'text-slate-400',
+          isActive ? 'text-sidebar-accent-foreground' : 'text-sidebar-muted',
         )}
         aria-hidden="true"
       />
@@ -47,10 +47,10 @@ function SidebarItem({item, pathname, hash = '', depth = 0}: SidebarItemProps) {
             className={cn(
               'ml-auto',
               isActive &&
-                'border-transparent bg-white/20 text-white hover:bg-white/20',
+                'border-transparent bg-sidebar-accent-hover text-sidebar-accent-foreground hover:bg-sidebar-accent-hover',
               !isActive &&
                 badgeTone === 'count' &&
-                'border-transparent bg-white/10 text-slate-300',
+                'border-transparent bg-sidebar-accent text-sidebar-foreground',
             )}
           />
         </span>
@@ -61,12 +61,12 @@ function SidebarItem({item, pathname, hash = '', depth = 0}: SidebarItemProps) {
   const className = cn(
     'relative flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors duration-200',
     isActive
-      ? 'bg-[#1D5EFF] font-medium text-white shadow-sm'
-      : 'font-medium text-slate-300 hover:bg-white/5 hover:text-white',
+      ? 'bg-sidebar-primary font-medium text-sidebar-accent-foreground shadow-sm'
+      : 'font-medium text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground',
     collapsed && 'justify-center px-2',
     depth > 0 && 'py-1.5 text-[13px]',
     item.disabled &&
-      'cursor-not-allowed opacity-55 hover:bg-transparent hover:text-slate-300',
+      'cursor-not-allowed opacity-55 hover:bg-transparent hover:text-sidebar-foreground',
   );
 
   const handleClick = React.useCallback(
