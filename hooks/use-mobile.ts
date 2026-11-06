@@ -1,6 +1,7 @@
 import * as React from 'react';
 
-const MOBILE_BREAKPOINT = 768;
+/** Abaixo de lg a sidebar vira gaveta, alinhada ao botão de menu do header. */
+const MOBILE_BREAKPOINT = 1024;
 const MOBILE_QUERY = `(max-width: ${MOBILE_BREAKPOINT - 1}px)`;
 
 function subscribeToMobileQuery(callback: () => void) {

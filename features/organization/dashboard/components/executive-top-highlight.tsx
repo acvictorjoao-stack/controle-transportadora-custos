@@ -3,6 +3,7 @@ import Link from 'next/link';
 import {buildCrossNavHref} from '@/features/analytics-nav/utils/shared-filters';
 import type {SharedAnalyticsFilters} from '@/features/analytics-nav/types';
 import {formatCurrencyBr, formatPercent} from '@/features/financial/utils/financial-format';
+import {buttonVariants} from '@/components/ui/button';
 import {cn} from '@/lib/utils';
 
 import type {TopRouteRankingItem} from '../utils/rankings';
@@ -32,16 +33,16 @@ function ExecutiveTopHighlight({
   return (
     <div
       className={cn(
-        'flex flex-col gap-3 rounded-xl border border-primary/20 bg-primary px-5 py-4 text-primary-foreground shadow-card sm:flex-row sm:items-center sm:justify-between',
+        'flex flex-col gap-3 rounded-xl border border-primary/20 bg-accent px-5 py-4 shadow-card sm:flex-row sm:items-center sm:justify-between',
         className,
       )}
     >
       <div className="min-w-0 space-y-1">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-primary-foreground/80">
+        <p className="text-xs font-medium text-accent-foreground">
           Rota mais rentável no período
         </p>
-        <p className="truncate text-base font-semibold">{route.name}</p>
-        <p className="text-sm text-primary-foreground/85">
+        <p className="truncate text-base font-semibold text-foreground">{route.name}</p>
+        <p className="text-sm text-muted-foreground">
           Faturou {formatCurrencyBr(route.revenue)} com lucro líquido de{' '}
           {route.profit == null ? '—' : formatCurrencyBr(route.profit)}
           {route.marginPercent == null
@@ -52,7 +53,7 @@ function ExecutiveTopHighlight({
       <Link
         href={href}
         className={cn(
-          'inline-flex h-9 shrink-0 items-center justify-center rounded-lg bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-background/90',
+          buttonVariants({variant: 'outline'}),
           negative && 'ring-1 ring-destructive/40',
         )}
       >

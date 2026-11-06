@@ -10,13 +10,13 @@ export type ExecutiveKpiAccent =
   | 'danger'
   | 'muted';
 
-const ACCENT_BAR: Record<ExecutiveKpiAccent, string> = {
-  primary: 'bg-primary',
-  info: 'bg-sky-500',
-  success: 'bg-emerald-500',
-  warning: 'bg-amber-500',
-  danger: 'bg-destructive',
-  muted: 'bg-muted-foreground/40',
+const ACCENT_ICON: Record<ExecutiveKpiAccent, string> = {
+  primary: 'bg-accent text-accent-foreground',
+  info: 'bg-accent text-accent-foreground',
+  success: 'bg-success/12 text-success',
+  warning: 'bg-warning/12 text-warning',
+  danger: 'bg-destructive/12 text-destructive',
+  muted: 'bg-muted text-muted-foreground',
 };
 
 export interface ExecutiveKpiCardProps {
@@ -25,6 +25,8 @@ export interface ExecutiveKpiCardProps {
   subtitle?: ReactNode;
   accent?: ExecutiveKpiAccent;
   icon?: ReactNode;
+  /** `lg` para os indicadores principais; `md` para os de apoio. */
+  size?: 'lg' | 'md';
   valueClassName?: string;
   className?: string;
 }
@@ -35,6 +37,7 @@ function ExecutiveKpiCard({
   subtitle,
   accent = 'primary',
   icon,
+  size = 'lg',
   valueClassName,
   className,
 }: ExecutiveKpiCardProps) {
@@ -42,25 +45,29 @@ function ExecutiveKpiCard({
     <div
       data-slot="executive-kpi-card"
       className={cn(
-        'relative flex h-full min-h-[7.5rem] flex-col overflow-hidden rounded-xl border border-border bg-card p-4 shadow-card',
+        'flex h-full flex-col rounded-xl border border-border bg-card p-5 shadow-card',
         className,
       )}
     >
-      <span
-        aria-hidden
-        className={cn('absolute inset-y-0 left-0 w-1', ACCENT_BAR[accent])}
-      />
-      <div className="flex items-start justify-between gap-2 pl-2">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <div className="flex items-start justify-between gap-3">
+        <p className="min-w-0 text-sm font-medium text-muted-foreground">
           {title}
         </p>
         {icon ? (
-          <span className="shrink-0 text-muted-foreground/70">{icon}</span>
+          <span
+            className={cn(
+              'flex size-8 shrink-0 items-center justify-center rounded-lg',
+              ACCENT_ICON[accent],
+            )}
+          >
+            {icon}
+          </span>
         ) : null}
       </div>
       <p
         className={cn(
-          'mt-2 pl-2 font-financial text-2xl font-semibold tracking-tight text-foreground',
+          'mt-2 whitespace-nowrap font-financial font-semibold tracking-tight text-foreground',
+          size === 'lg' ? 'text-2xl xl:text-xl 2xl:text-[1.75rem]' : 'text-xl',
           valueClassName,
         )}
         data-financial="true"
@@ -68,10 +75,8 @@ function ExecutiveKpiCard({
         {value}
       </p>
       {subtitle ? (
-        <p className="mt-auto pt-2 pl-2 text-xs text-muted-foreground">{subtitle}</p>
-      ) : (
-        <div className="mt-auto" />
-      )}
+        <p className="mt-auto pt-2 text-xs text-muted-foreground">{subtitle}</p>
+      ) : null}
     </div>
   );
 }

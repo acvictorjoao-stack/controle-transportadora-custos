@@ -114,10 +114,10 @@ function OperationalDreFiltersBar({
                 type="button"
                 onClick={() => applyNamedPreset(preset.id)}
                 className={cn(
-                  'inline-flex h-8 items-center rounded-lg border px-3 text-xs font-medium transition-colors',
+                  'inline-flex h-8 cursor-pointer items-center rounded-lg border px-3 text-xs font-medium transition-colors',
                   active
-                    ? 'border-foreground bg-foreground text-background'
-                    : 'border-border bg-background text-foreground hover:bg-muted',
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'border-input bg-card text-foreground hover:bg-muted',
                 )}
                 aria-pressed={active}
               >
@@ -128,10 +128,10 @@ function OperationalDreFiltersBar({
           <button
             type="button"
             className={cn(
-              'inline-flex h-8 items-center rounded-lg border px-3 text-xs font-medium transition-colors',
+              'inline-flex h-8 cursor-pointer items-center rounded-lg border px-3 text-xs font-medium transition-colors',
               namedPreset === 'personalizado'
-                ? 'border-foreground bg-foreground text-background'
-                : 'border-border bg-background text-foreground hover:bg-muted',
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'border-input bg-card text-foreground hover:bg-muted',
             )}
             aria-pressed={namedPreset === 'personalizado'}
             onClick={() => applyNamedPreset('personalizado')}

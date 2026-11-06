@@ -38,7 +38,9 @@ function TopCustomersCard({customers, filters = {}}: TopCustomersCardProps) {
               >
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">
-                    <span className="mr-2 text-muted-foreground">{index + 1}.</span>
+                    <span className="mr-2 inline-flex size-5 items-center justify-center rounded-md bg-muted text-xs font-semibold tabular-nums text-muted-foreground">
+                      {index + 1}
+                    </span>
                     <Link
                       href={buildCrossNavHref(
                         'rentabilidade-clientes',
@@ -52,7 +54,7 @@ function TopCustomersCard({customers, filters = {}}: TopCustomersCardProps) {
                   </p>
                 </div>
                 <div className="shrink-0 text-right text-sm">
-                  <p className="font-financial">{formatCurrencyBr(customer.revenue)}</p>
+                  <p className="font-financial font-medium">{formatCurrencyBr(customer.revenue)}</p>
                   <p
                     className={`font-financial text-xs ${
                       customer.profit != null && customer.profit < 0

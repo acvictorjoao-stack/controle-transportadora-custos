@@ -70,7 +70,7 @@ function ExecutiveKpiGrid({kpis, className}: ExecutiveKpiGridProps) {
         </p>
       )}
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <ExecutiveKpiCard
           title="Faturamento Total"
           value={revenueValue}
@@ -86,7 +86,7 @@ function ExecutiveKpiGrid({kpis, className}: ExecutiveKpiGridProps) {
               ? EXECUTIVE_OPEN_BALANCE_LABELS.costsSubtitle
               : 'combustível, manutenção e demais custos'
           }
-          accent="warning"
+          accent="muted"
           icon={<Receipt className={iconClass} aria-hidden />}
         />
         <ExecutiveKpiCard
@@ -108,6 +108,7 @@ function ExecutiveKpiGrid({kpis, className}: ExecutiveKpiGridProps) {
           icon={<Percent className={iconClass} aria-hidden />}
         />
         <ExecutiveKpiCard
+          size="md"
           title="Total de Viagens"
           value={
             hasOperationalData
@@ -123,6 +124,7 @@ function ExecutiveKpiGrid({kpis, className}: ExecutiveKpiGridProps) {
           icon={<Route className={iconClass} aria-hidden />}
         />
         <ExecutiveKpiCard
+          size="md"
           title="Custo por KM"
           value={formatPerKm(
             costsOnlyMode ? null : kpis.costPerKm,
@@ -133,6 +135,7 @@ function ExecutiveKpiGrid({kpis, className}: ExecutiveKpiGridProps) {
           icon={<Gauge className={iconClass} aria-hidden />}
         />
         <ExecutiveKpiCard
+          size="md"
           title="Faturamento por KM"
           value={formatPerKm(
             costsOnlyMode ? null : kpis.revenuePerKm,
@@ -143,6 +146,7 @@ function ExecutiveKpiGrid({kpis, className}: ExecutiveKpiGridProps) {
           icon={<ArrowUpRight className={iconClass} aria-hidden />}
         />
         <ExecutiveKpiCard
+          size="md"
           title="Média por Viagem"
           value={formatPerTrip(
             costsOnlyMode ? null : kpis.revenuePerTrip,
@@ -156,25 +160,27 @@ function ExecutiveKpiGrid({kpis, className}: ExecutiveKpiGridProps) {
 
       <div className="flex flex-col gap-2">
         <div className="flex flex-col gap-0.5">
-          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          <p className="text-sm font-semibold tracking-tight text-foreground">
             {EXECUTIVE_OPEN_BALANCE_LABELS.sectionTitle}
           </p>
           <p className="text-xs text-muted-foreground">
             {EXECUTIVE_OPEN_BALANCE_LABELS.sectionHint}
           </p>
         </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <ExecutiveKpiCard
+            size="md"
             title={EXECUTIVE_OPEN_BALANCE_LABELS.accountsPayableTitle}
             value={formatCurrencyBr(kpis.accountsPayable)}
             subtitle={EXECUTIVE_OPEN_BALANCE_LABELS.accountsPayableSubtitle}
-            accent="warning"
+            accent="muted"
           />
           <ExecutiveKpiCard
+            size="md"
             title={EXECUTIVE_OPEN_BALANCE_LABELS.accountsReceivableTitle}
             value={formatCurrencyBr(kpis.accountsReceivable)}
             subtitle={EXECUTIVE_OPEN_BALANCE_LABELS.accountsReceivableSubtitle}
-            accent="success"
+            accent="muted"
           />
         </div>
       </div>

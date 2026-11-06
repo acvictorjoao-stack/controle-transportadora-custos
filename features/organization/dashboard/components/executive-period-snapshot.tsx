@@ -28,21 +28,26 @@ function Bar({
   max: number;
   className: string;
 }) {
-  const height = max > 0 ? Math.max(4, Math.round((Math.abs(value) / max) * 100)) : 4;
+  const width = max > 0 ? Math.max(1, (Math.abs(value) / max) * 100) : 1;
+  const negative = value < 0;
+
   return (
-    <div className="flex flex-1 flex-col items-center gap-2">
-      <div className="flex h-40 w-full items-end justify-center">
+    <div className="grid grid-cols-[5.5rem_1fr] items-center gap-x-3 gap-y-1 sm:grid-cols-[6.5rem_1fr_9rem]">
+      <p className="text-sm font-medium text-foreground">{label}</p>
+      <p
+        className={cn(
+          'text-right font-financial text-sm font-semibold sm:order-last',
+          negative ? 'text-destructive' : 'text-foreground',
+        )}
+      >
+        {formatCurrencyBr(value)}
+      </p>
+      <div className="col-span-2 h-3 overflow-hidden rounded-r-sm sm:col-span-1">
         <div
-          className={cn('w-10 rounded-t-md sm:w-12', className)}
-          style={{height: `${height}%`}}
+          className={cn('h-full rounded-r-sm', className)}
+          style={{width: `${width}%`}}
           title={`${label}: ${formatCurrencyBr(value)}`}
         />
-      </div>
-      <div className="text-center">
-        <p className="text-xs font-medium text-foreground">{label}</p>
-        <p className="font-financial text-xs text-muted-foreground">
-          {formatCurrencyBr(value)}
-        </p>
       </div>
     </div>
   );
@@ -63,54 +68,32 @@ function ExecutivePeriodSnapshot({
   const max = Math.max(1, Math.abs(revenue), Math.abs(costs), Math.abs(profitValue));
 
   return (
-    <Card className={cn('shadow-card', className)}>
-      <CardHeader className="pb-3">
-        <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <CardTitle className="text-base">
-              Faturamento × Despesas (período)
-            </CardTitle>
-            <CardDescription>
-              Comparativo operacional do período selecionado com receita, custos e
-              lucro.
-            </CardDescription>
-          </div>
-          <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-1.5">
-              <span className="size-2.5 rounded-sm bg-sky-500" aria-hidden />
-              Faturamento
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="size-2.5 rounded-sm bg-slate-400" aria-hidden />
-              Despesas
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="size-2.5 rounded-sm bg-emerald-500" aria-hidden />
-              Lucro
-            </span>
-          </div>
-        </div>
+    <Card className={className}>
+      <CardHeader>
+        <CardTitle>Faturamento × Despesas (período)</CardTitle>
+        <CardDescription>
+          Comparativo operacional do período selecionado com receita, custos e
+          lucro.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         {!hasOperationalData || costsOnlyMode ? (
-          <p className="py-10 text-center text-sm text-muted-foreground">
+          <p className="py-6 text-center text-sm text-muted-foreground">
             Sem dados operacionais suficientes para o comparativo neste período.
           </p>
         ) : (
           <div
-            className="flex items-end gap-4 sm:gap-8"
+            className="flex flex-col gap-4"
             role="img"
-            aria-label="Comparativo de faturamento, despesas e lucro do período"
+            aria-label={`Comparativo do período. Faturamento ${formatCurrencyBr(revenue)}, despesas ${formatCurrencyBr(costs)}, lucro ${formatCurrencyBr(profitValue)}.`}
           >
-            <Bar label="Faturamento" value={revenue} max={max} className="bg-sky-500/90" />
-            <Bar label="Despesas" value={costs} max={max} className="bg-slate-400/90" />
+            <Bar label="Faturamento" value={revenue} max={max} className="bg-primary" />
+            <Bar label="Despesas" value={costs} max={max} className="bg-muted-foreground/40" />
             <Bar
               label="Lucro"
               value={profitValue}
               max={max}
-              className={
-                profitValue < 0 ? 'bg-destructive/90' : 'bg-emerald-500/90'
-              }
+              className={profitValue < 0 ? 'bg-destructive' : 'bg-success'}
             />
           </div>
         )}
