@@ -31,7 +31,7 @@ function Sidebar() {
             : SIDEBAR_WIDTH_EXPANDED,
       }}
       className={cn(
-        'flex h-full flex-col border-r border-white/10 bg-[#0F172A] text-slate-100 transition-[width] duration-300',
+        'flex h-full flex-col border-r border-sidebar-border bg-sidebar text-sidebar-accent-foreground transition-[width] duration-300',
       )}
     >
       <div className="relative flex shrink-0 items-start">
@@ -42,7 +42,7 @@ function Sidebar() {
           <Button
             variant="ghost"
             size="icon-sm"
-            className="absolute right-2 top-3 text-slate-400 hover:bg-white/10 hover:text-white lg:hidden"
+            className="absolute right-2 top-3 text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-accent-foreground lg:hidden"
             onClick={() => setMobileOpen(false)}
             aria-label="Fechar menu"
           >

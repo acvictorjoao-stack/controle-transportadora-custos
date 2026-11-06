@@ -60,24 +60,24 @@ function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center p-4"
+      className="fixed inset-0 z-[var(--z-modal)] flex items-end justify-center sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
     >
       <div
-        className="absolute inset-0 bg-black/50"
+        className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
         onClick={onClose}
         aria-hidden="true"
       />
       <Card
         className={cn(
-          'relative z-10 max-h-[90vh] w-full overflow-y-auto py-0 shadow-lg',
+          'relative z-10 max-h-[92dvh] w-full animate-slide-up gap-0 overflow-y-auto rounded-b-none py-0 shadow-xl sm:max-h-[90vh] sm:rounded-b-xl',
           sizeClasses[size],
           className,
         )}
       >
-        <CardHeader className="sticky top-0 z-10 border-b border-border bg-card py-4">
+        <CardHeader className="sticky top-0 z-10 border-b border-border bg-card px-5 py-4 sm:px-6">
           <div className="flex items-start justify-between gap-4">
             <div>
               <CardTitle id="modal-title">{title}</CardTitle>
@@ -95,7 +95,7 @@ function Modal({
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="py-6">{children}</CardContent>
+        <CardContent className="px-5 py-5 sm:px-6">{children}</CardContent>
       </Card>
     </div>
   );

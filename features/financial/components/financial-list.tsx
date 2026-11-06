@@ -43,6 +43,7 @@ import {formatCurrencyBr, formatDateBr} from '../utils/financial-format';
 import {buildFinancialListUrl} from '../utils/list-url';
 import {FinancialFilters} from './financial-filters';
 import {FinancialFormModal} from './financial-form-modal';
+import {FiltersDisclosure} from '@/components/forms/filters-disclosure';
 
 export interface FinancialListProps {
   initialData: PaginatedFinancialEntries;
@@ -263,16 +264,18 @@ function FinancialList({
         />
       </div>
 
-      <FinancialFilters
-        branches={branches}
-        drivers={drivers}
-        vehicles={vehicles}
-        trips={trips}
-        categories={categories}
-        costCenters={costCenters}
-        initialFilters={initialFilters}
-        initialSort={initialSort}
-      />
+      <FiltersDisclosure>
+        <FinancialFilters
+          branches={branches}
+          drivers={drivers}
+          vehicles={vehicles}
+          trips={trips}
+          categories={categories}
+          costCenters={costCenters}
+          initialFilters={initialFilters}
+          initialSort={initialSort}
+        />
+      </FiltersDisclosure>
 
       <TableContainer className="mt-4">
         <DataTable

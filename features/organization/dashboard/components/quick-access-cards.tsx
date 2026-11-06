@@ -53,16 +53,18 @@ function QuickAccessCards({className}: QuickAccessCardsProps) {
       description="Acesso direto aos módulos de decisão."
       className={className}
     >
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {QUICK_LINKS.map((item) => {
           const Icon = item.icon;
           return (
             <Link key={item.href} href={item.href} className="group block">
-              <Card className="h-full transition-colors group-hover:border-primary/40 group-hover:bg-accent/30">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center gap-2">
-                    <Icon className="size-4 text-muted-foreground" />
-                    <CardTitle className="text-base">{item.title}</CardTitle>
+              <Card className="h-full py-5 transition-colors group-hover:border-primary/40">
+                <CardHeader className="px-5">
+                  <div className="flex items-center gap-2.5">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground">
+                      <Icon className="size-4" aria-hidden="true" />
+                    </span>
+                    <CardTitle className="text-sm">{item.title}</CardTitle>
                   </div>
                   <CardDescription>{item.description}</CardDescription>
                 </CardHeader>

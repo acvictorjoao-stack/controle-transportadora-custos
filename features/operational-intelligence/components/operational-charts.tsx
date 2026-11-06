@@ -55,7 +55,7 @@ function MiniBarChart({
                   </div>
                   <div className="h-2 rounded-full bg-muted">
                     <div
-                      className={cn('h-2 rounded-full bg-sky-500/80')}
+                      className={cn('h-2 rounded-full bg-primary')}
                       style={{width: `${width}%`}}
                     />
                   </div>

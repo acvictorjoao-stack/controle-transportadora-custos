@@ -9,7 +9,7 @@ import {DataTable} from '@/components/data-display/data-table';
 import {TableContainer} from '@/components/data-display/table-container';
 import {PageTemplate} from '@/components/layout/page-template';
 import {Badge} from '@/components/ui/badge';
-import {Button} from '@/components/ui/button';
+import {Button, buttonVariants} from '@/components/ui/button';
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
 import {useConfirm} from '@/contexts/feedback/confirm-context';
 import {ROUTES} from '@/constants/routes/paths';
@@ -68,6 +68,7 @@ import type {CustomerAddressInput, CustomerContactInput} from '../validation';
 import {ContractFormModal} from './contract-form-modal';
 import {CustomerFileUpload} from './customer-file-upload';
 import {CustomerFormModal} from './customer-form-modal';
+import {TabsNav} from '@/components/ui/tabs-nav';
 
 export interface CustomerDetailViewProps {
   companyId: string;
@@ -142,7 +143,7 @@ function CustomerDetailView({companyId, data, branches}: CustomerDetailViewProps
         <div className="flex gap-2">
           <Link
             href={ROUTES.clientes}
-            className="inline-flex h-8 items-center gap-2 rounded-md border border-border bg-background px-3 text-xs font-medium shadow-xs hover:bg-accent"
+            className={buttonVariants({variant: 'outline', size: 'sm'})}
           >
             <ArrowLeft className="size-4" />
             Voltar
@@ -162,22 +163,7 @@ function CustomerDetailView({companyId, data, branches}: CustomerDetailViewProps
         <Badge variant="secondary">Receita contratada: {formatCurrency(totalContractedRevenue)}</Badge>
       </div>
 
-      <div className="mb-6 flex flex-wrap gap-2 border-b border-border pb-2">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setActiveTab(tab.id)}
-            className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-              activeTab === tab.id
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <TabsNav items={TABS} value={activeTab} onChange={setActiveTab} className="mb-4" />
 
       {activeTab === 'resumo' && (
         <div className="grid gap-4 md:grid-cols-3">
@@ -664,7 +650,7 @@ function AddressForm({
     onSaved();
   }
 
-  const inputClass = 'h-9 rounded-md border px-2 text-sm';
+  const inputClass = 'h-9 rounded-lg border border-input bg-card px-3 text-sm';
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3 rounded-lg border p-3">
@@ -806,7 +792,7 @@ function ContactForm({
     onSaved();
   }
 
-  const inputClass = 'h-9 rounded-md border px-2 text-sm';
+  const inputClass = 'h-9 rounded-lg border border-input bg-card px-3 text-sm';
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3 rounded-lg border p-3">

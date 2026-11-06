@@ -349,11 +349,11 @@ function AnalyticalExpandableTable<TGroup, TDetail>({
   return (
     <div className={className}>
       {heading}
-      <div className="overflow-hidden rounded-xl border border-border bg-card">
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-card">
         <div className="overflow-x-auto">
           <table className="w-full caption-bottom text-sm">
             <thead>
-              <tr className="border-b border-border bg-muted/40">
+              <tr className="border-b border-border bg-muted/50">
                 <th className="h-10 w-10 px-2 text-left align-middle" aria-label="Expandir" />
                 {groupColumns.map((column) => (
                   <th
@@ -378,7 +378,7 @@ function AnalyticalExpandableTable<TGroup, TDetail>({
 
                 return (
                   <React.Fragment key={key}>
-                    <tr className="border-b border-border transition-colors hover:bg-muted/30">
+                    <tr className="border-b border-border transition-colors hover:bg-muted/40">
                       <td className="px-2 py-3 align-middle">
                         <button
                           type="button"

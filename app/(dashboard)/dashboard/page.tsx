@@ -129,9 +129,17 @@ export default async function DashboardPage({searchParams}: DashboardPageProps) 
           {label: 'Dashboard', href: ROUTES.dashboard},
           {label: 'Visão Geral'},
         ]}
-        className="gap-4"
+        actions={
+          <AnalyticsExportToolbar
+            className="border-0 bg-transparent p-0"
+            filters={core.period}
+            basePath={ROUTES.dashboard}
+            filenameBase={executiveDashboardExportFilenameBase(core.period)}
+            payload={buildExecutiveDashboardExportPayload({core, filterOptions})}
+          />
+        }
       >
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-6">
           <div className="flex flex-col gap-2">
             <OperationalDreFiltersBar
               options={filterOptions}
@@ -146,19 +154,9 @@ export default async function DashboardPage({searchParams}: DashboardPageProps) 
             <OperationalDreCostsOnlyBanner active={core.kpis.costsOnlyMode} />
           </div>
 
-          <div className="flex justify-end">
-            <AnalyticsExportToolbar
-              filters={core.period}
-              basePath={ROUTES.dashboard}
-              filenameBase={executiveDashboardExportFilenameBase(core.period)}
-              payload={buildExecutiveDashboardExportPayload({core, filterOptions})}
-            />
-          </div>
-
           <Section
             title="Indicadores executivos"
             description="Visão consolidada para tomada de decisão."
-            className="gap-3"
           >
             <ExecutiveKpiGrid kpis={core.kpis} />
           </Section>
@@ -179,7 +177,6 @@ export default async function DashboardPage({searchParams}: DashboardPageProps) 
           <Section
             title="Top Rankings"
             description="Melhores resultados do período."
-            className="gap-3"
           >
             <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
               <TopRoutesCard routes={core.topRoutes} filters={core.period} />

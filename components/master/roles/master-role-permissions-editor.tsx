@@ -75,7 +75,7 @@ export function MasterRolePermissionsEditor({
         </p>
       ) : null}
       {message ? (
-        <p className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-800 dark:text-emerald-200">
+        <p className="rounded-md border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
           {message}
         </p>
       ) : null}

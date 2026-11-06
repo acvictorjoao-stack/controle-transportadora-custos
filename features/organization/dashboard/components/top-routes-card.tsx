@@ -20,9 +20,9 @@ export interface TopRoutesCardProps {
 
 function TopRoutesCard({routes, filters = {}}: TopRoutesCardProps) {
   return (
-    <Card className="h-full shadow-card">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base">Top 5 Rotas</CardTitle>
+    <Card className="h-full">
+      <CardHeader>
+        <CardTitle>Top 5 Rotas</CardTitle>
         <CardDescription>Maiores lucros no período</CardDescription>
       </CardHeader>
       <CardContent>
@@ -39,7 +39,9 @@ function TopRoutesCard({routes, filters = {}}: TopRoutesCardProps) {
               >
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">
-                    <span className="mr-2 text-muted-foreground">{index + 1}.</span>
+                    <span className="mr-2 inline-flex size-5 items-center justify-center rounded-md bg-muted text-xs font-semibold tabular-nums text-muted-foreground">
+                      {index + 1}
+                    </span>
                     <Link
                       href={buildCrossNavHref('rentabilidade-rotas', filters, {
                         routeId: route.id,
@@ -57,7 +59,7 @@ function TopRoutesCard({routes, filters = {}}: TopRoutesCardProps) {
                   </p>
                 </div>
                 <div className="shrink-0 text-right text-sm">
-                  <p className="font-financial">{formatCurrencyBr(route.revenue)}</p>
+                  <p className="font-financial font-medium">{formatCurrencyBr(route.revenue)}</p>
                   <p
                     className={`font-financial text-xs ${
                       route.profit != null && route.profit < 0

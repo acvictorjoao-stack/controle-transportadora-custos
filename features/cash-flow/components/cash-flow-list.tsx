@@ -24,6 +24,7 @@ import type {
 } from '../types';
 import {buildCashFlowListUrl} from '../utils/list-url';
 import {CashFlowFilters} from './cash-flow-filters';
+import {FiltersDisclosure} from '@/components/forms/filters-disclosure';
 
 export interface CashFlowListProps {
   initialData: PaginatedCashFlow;
@@ -115,7 +116,7 @@ function CashFlowList({
       header: 'Entrada',
       cell: (row: CashFlowLine) =>
         row.entrada != null ? (
-          <span className="font-financial text-emerald-600 dark:text-emerald-400">
+          <span className="font-financial text-success">
             {formatCurrencyBr(row.entrada, row.currency)}
           </span>
         ) : (
@@ -127,7 +128,7 @@ function CashFlowList({
       header: 'Saída',
       cell: (row: CashFlowLine) =>
         row.saida != null ? (
-          <span className="font-financial text-red-600 dark:text-red-400">
+          <span className="font-financial text-destructive">
             {formatCurrencyBr(row.saida, row.currency)}
           </span>
         ) : (
@@ -138,7 +139,7 @@ function CashFlowList({
       id: 'saldo',
       header: 'Saldo',
       cell: (row: CashFlowLine) => (
-        <span className="font-financial font-medium text-blue-600 dark:text-blue-400">
+        <span className="font-financial font-medium text-primary">
           {formatCurrencyBr(row.runningBalance, row.currency)}
         </span>
       ),
@@ -160,7 +161,7 @@ function CashFlowList({
         <StatCard
           title="Saldo Atual"
           value={
-            <span className="text-blue-600 dark:text-blue-400">
+            <span className="text-primary">
               {formatCurrencyBr(summary.saldoAtual)}
             </span>
           }
@@ -169,7 +170,7 @@ function CashFlowList({
         <StatCard
           title="A Receber"
           value={
-            <span className="text-emerald-600 dark:text-emerald-400">
+            <span className="text-success">
               {formatCurrencyBr(summary.aReceber)}
             </span>
           }
@@ -178,7 +179,7 @@ function CashFlowList({
         <StatCard
           title="A Pagar"
           value={
-            <span className="text-red-600 dark:text-red-400">
+            <span className="text-destructive">
               {formatCurrencyBr(summary.aPagar)}
             </span>
           }
@@ -187,7 +188,7 @@ function CashFlowList({
         <StatCard
           title="Saldo Projetado"
           value={
-            <span className="text-blue-600 dark:text-blue-400">
+            <span className="text-primary">
               {formatCurrencyBr(summary.saldoProjetado)}
             </span>
           }
@@ -204,7 +205,9 @@ function CashFlowList({
         />
       </div>
 
-      <CashFlowFilters initialFilters={initialFilters} />
+      <FiltersDisclosure>
+        <CashFlowFilters initialFilters={initialFilters} />
+      </FiltersDisclosure>
 
       <TableContainer className="mt-4">
         <DataTable

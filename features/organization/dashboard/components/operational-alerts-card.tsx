@@ -45,7 +45,7 @@ function OperationalAlertsCard({alerts}: OperationalAlertsCardProps) {
             return (
               <Alert key={alert.id} variant={alert.variant}>
                 <Icon />
-                <AlertTitle>⚠ {alert.title}</AlertTitle>
+                <AlertTitle>{alert.title}</AlertTitle>
                 <AlertDescription>{alert.description}</AlertDescription>
               </Alert>
             );

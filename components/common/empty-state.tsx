@@ -31,7 +31,7 @@ function EmptyState({
       )}
       {...props}
     >
-      <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
+      <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-accent text-accent-foreground">
         {icon ?? <Inbox className="size-6" />}
       </div>
       <h3 className="text-base font-semibold tracking-tight">{title}</h3>

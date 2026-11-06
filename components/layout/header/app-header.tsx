@@ -1,6 +1,6 @@
 'use client';
 
-import {Menu, Plus} from 'lucide-react';
+import {Menu} from 'lucide-react';
 
 import {Breadcrumb} from '@/components/layout/breadcrumb/breadcrumb';
 import {HeaderLogo} from '@/components/layout/header/header-logo';
@@ -27,7 +27,7 @@ function AppHeader({className, portalMode = false}: AppHeaderProps) {
     <header
       data-slot="app-header"
       className={cn(
-        'sticky top-0 z-[var(--z-sticky)] flex h-14 shrink-0 items-center gap-4 border-b border-border bg-background/80 px-4 backdrop-blur-md lg:px-6',
+        'sticky top-0 z-[var(--z-sticky)] flex h-14 shrink-0 items-center gap-4 border-b border-border bg-card/90 px-4 backdrop-blur-md lg:px-8',
         className,
       )}
     >
@@ -65,15 +65,6 @@ function AppHeader({className, portalMode = false}: AppHeaderProps) {
       </div>
 
       <div className="ml-auto flex items-center gap-1">
-        <Button
-          variant="default"
-          size="sm"
-          className="hidden sm:inline-flex"
-          disabled
-        >
-          <Plus className="size-4" />
-          Nova Ação
-        </Button>
         <HeaderThemeToggle />
         <HeaderNotifications />
         <HeaderUserMenu />

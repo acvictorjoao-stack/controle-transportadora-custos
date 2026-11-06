@@ -44,6 +44,7 @@ import {formatCompetenceBr} from '../utils/competence';
 import {buildPayrollListUrl} from '../utils/list-url';
 import {PayrollExpenseFormModal} from './payroll-expense-form-modal';
 import {PayrollFilters} from './payroll-filters';
+import {FiltersDisclosure} from '@/components/forms/filters-disclosure';
 
 export interface PayrollListProps {
   initialData: PaginatedPayrollExpenses;
@@ -321,7 +322,7 @@ function PayrollList({
         <StatCard
           title="Total pago"
           value={
-            <span className="text-emerald-600 dark:text-emerald-400">
+            <span className="text-success">
               {formatCurrencyBr(summary.totalPaid)}
             </span>
           }
@@ -330,7 +331,7 @@ function PayrollList({
         <StatCard
           title="Total pendente"
           value={
-            <span className="text-red-600 dark:text-red-400">
+            <span className="text-destructive">
               {formatCurrencyBr(summary.totalPending)}
             </span>
           }
@@ -352,13 +353,15 @@ function PayrollList({
         />
       </div>
 
-      <PayrollFilters
-        people={people}
-        positions={positions}
-        costCenters={costCenters}
-        initialFilters={initialFilters}
-        initialSort={initialSort}
-      />
+      <FiltersDisclosure>
+        <PayrollFilters
+          people={people}
+          positions={positions}
+          costCenters={costCenters}
+          initialFilters={initialFilters}
+          initialSort={initialSort}
+        />
+      </FiltersDisclosure>
 
       <TableContainer className="mt-4">
         <DataTable

@@ -10,7 +10,7 @@ import {DataTable} from '@/components/data-display/data-table';
 import {TableContainer} from '@/components/data-display/table-container';
 import {PageTemplate} from '@/components/layout/page-template';
 import {Badge} from '@/components/ui/badge';
-import {Button} from '@/components/ui/button';
+import {Button, buttonVariants} from '@/components/ui/button';
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
 import {useConfirm} from '@/contexts/feedback/confirm-context';
 import {ROUTES} from '@/constants/routes/paths';
@@ -37,6 +37,7 @@ import {
 } from '../utils/driver-status';
 import {DriverFileUpload} from './driver-file-upload';
 import {DriverFormModal} from './driver-form-modal';
+import {TabsNav} from '@/components/ui/tabs-nav';
 
 export interface DriverDetailViewProps {
   companyId: string;
@@ -126,7 +127,7 @@ function DriverDetailView({companyId, data, branches}: DriverDetailViewProps) {
         <div className="flex gap-2">
           <Link
             href={ROUTES.motoristas}
-            className="inline-flex h-8 items-center gap-2 rounded-md border border-border bg-background px-3 text-xs font-medium shadow-xs hover:bg-accent"
+            className={buttonVariants({variant: 'outline', size: 'sm'})}
           >
             <ArrowLeft className="size-4" />
             Voltar
@@ -164,18 +165,7 @@ function DriverDetailView({companyId, data, branches}: DriverDetailViewProps) {
         )}
       </div>
 
-      <div className="mb-6 flex flex-wrap gap-2 border-b border-border pb-2">
-        {TABS.map((tab) => (
-          <Button
-            key={tab.id}
-            variant={activeTab === tab.id ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setActiveTab(tab.id)}
-          >
-            {tab.label}
-          </Button>
-        ))}
-      </div>
+      <TabsNav items={TABS} value={activeTab} onChange={setActiveTab} className="mb-4" />
 
       {activeTab === 'dados' && (
         <Card>

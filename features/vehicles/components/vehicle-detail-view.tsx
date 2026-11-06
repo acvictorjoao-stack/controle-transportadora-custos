@@ -10,7 +10,7 @@ import {DataTable} from '@/components/data-display/data-table';
 import {TableContainer} from '@/components/data-display/table-container';
 import {PageTemplate} from '@/components/layout/page-template';
 import {Badge} from '@/components/ui/badge';
-import {Button} from '@/components/ui/button';
+import {Button, buttonVariants} from '@/components/ui/button';
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
 import {useConfirm} from '@/contexts/feedback/confirm-context';
 import {ROUTES} from '@/constants/routes/paths';
@@ -27,6 +27,7 @@ import {getVehicleAssetStatusVariant} from '../utils/asset-status';
 import {formatPlate} from '../utils/vehicle-format';
 import {VehicleFileUpload} from './vehicle-file-upload';
 import {VehicleFormModal} from './vehicle-form-modal';
+import {TabsNav} from '@/components/ui/tabs-nav';
 
 export interface VehicleDetailViewProps {
   companyId: string;
@@ -133,7 +134,7 @@ function VehicleDetailView({companyId, data, branches}: VehicleDetailViewProps) 
         <div className="flex gap-2">
           <Link
             href={ROUTES.veiculos}
-            className="inline-flex h-8 items-center gap-2 rounded-md border border-border bg-background px-3 text-xs font-medium shadow-xs hover:bg-accent"
+            className={buttonVariants({variant: 'outline', size: 'sm'})}
           >
             <ArrowLeft className="size-4" />
             Voltar
@@ -162,18 +163,7 @@ function VehicleDetailView({companyId, data, branches}: VehicleDetailViewProps) 
         )}
       </div>
 
-      <div className="mb-6 flex flex-wrap gap-2 border-b border-border pb-2">
-        {TABS.map((tab) => (
-          <Button
-            key={tab.id}
-            variant={activeTab === tab.id ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setActiveTab(tab.id)}
-          >
-            {tab.label}
-          </Button>
-        ))}
-      </div>
+      <TabsNav items={TABS} value={activeTab} onChange={setActiveTab} className="mb-4" />
 
       {activeTab === 'dados' && (
         <Card>

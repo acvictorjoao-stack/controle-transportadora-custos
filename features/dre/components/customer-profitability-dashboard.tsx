@@ -109,7 +109,7 @@ function DeltaSubtitle({
       className={cn(
         'font-financial',
         favorable === true
-          ? 'text-emerald-600'
+          ? 'text-success'
           : favorable === false
             ? 'text-destructive'
             : undefined,

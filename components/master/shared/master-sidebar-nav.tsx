@@ -23,7 +23,7 @@ function MasterSidebarNav() {
         return (
           <div key={group.id}>
             {!collapsed && (
-              <p className="mb-2 px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              <p className="mb-2 px-3 text-xs font-medium uppercase tracking-wider text-sidebar-muted">
                 {group.label}
               </p>
             )}

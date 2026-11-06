@@ -26,8 +26,8 @@ function PageHeader({
       )}
       {...props}
     >
-      <div className="space-y-1.5">
-        <div className="flex items-center gap-2.5">
+      <div className="min-w-0 space-y-1">
+        <div className="flex flex-wrap items-center gap-2.5">
           <h1 className="text-2xl font-semibold tracking-tight text-balance">
             {title}
           </h1>
@@ -40,7 +40,7 @@ function PageHeader({
         )}
       </div>
       {actions && (
-        <div className="flex shrink-0 items-center gap-2">{actions}</div>
+        <div className="flex flex-wrap items-center gap-2 sm:shrink-0">{actions}</div>
       )}
     </div>
   );

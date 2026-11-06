@@ -9,6 +9,7 @@ import {getDisplayName} from '@/features/master/companies/utils/format';
 import type {CompanyProfile} from '../types';
 import {CompanyProfileForm} from './company-profile-form';
 import {CompanySettingsForm} from './company-settings-form';
+import {TabsNav} from '@/components/ui/tabs-nav';
 
 type TabId = 'dados' | 'configuracoes';
 
@@ -33,23 +34,7 @@ function CompanyPage({company: initialCompany, initialTab = 'dados'}: CompanyPag
       title="Empresa"
       description={`Cadastro e configurações de ${displayName}`}
     >
-      <div className="mb-6 flex gap-1 border-b border-border">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setActiveTab(tab.id)}
-            className={cn(
-              'px-4 py-2 text-sm font-medium transition-colors',
-              activeTab === tab.id
-                ? 'border-b-2 border-primary text-foreground'
-                : 'text-muted-foreground hover:text-foreground',
-            )}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <TabsNav items={TABS} value={activeTab} onChange={setActiveTab} className="mb-4" />
 
       {activeTab === 'dados' && (
         <CompanyProfileForm company={company} onSaved={setCompany} />

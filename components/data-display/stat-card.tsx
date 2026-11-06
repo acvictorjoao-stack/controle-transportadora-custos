@@ -7,6 +7,8 @@ export interface StatCardProps extends React.HTMLAttributes<HTMLDivElement> {
   value: React.ReactNode;
   subtitle?: React.ReactNode;
   footer?: React.ReactNode;
+  /** Ícone opcional no canto superior direito. */
+  icon?: React.ReactNode;
 }
 
 function StatCard({
@@ -14,6 +16,7 @@ function StatCard({
   value,
   subtitle,
   footer,
+  icon,
   className,
   children,
   ...props
@@ -27,9 +30,16 @@ function StatCard({
       )}
       {...props}
     >
-      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-        {title}
-      </p>
+      <div className="flex items-start justify-between gap-3">
+        <p className="min-w-0 text-sm font-medium text-muted-foreground">
+          {title}
+        </p>
+        {icon && (
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground [&_svg]:size-4">
+            {icon}
+          </div>
+        )}
+      </div>
       <p
         className="mt-2 font-financial text-2xl font-semibold tracking-tight"
         data-financial="true"

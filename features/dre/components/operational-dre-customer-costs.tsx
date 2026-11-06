@@ -354,7 +354,7 @@ function ComparisonLine({
       <span
         className={
           favorable === true
-            ? 'text-emerald-600'
+            ? 'text-success'
             : favorable === false
               ? 'text-destructive'
               : undefined

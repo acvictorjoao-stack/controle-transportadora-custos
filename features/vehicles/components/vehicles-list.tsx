@@ -41,6 +41,7 @@ import {buildVehiclesListUrl} from '../utils/list-url';
 import {formatPlate} from '../utils/vehicle-format';
 import {VehicleFilters} from './vehicle-filters';
 import {VehicleFormModal} from './vehicle-form-modal';
+import {FiltersDisclosure} from '@/components/forms/filters-disclosure';
 
 export interface VehiclesListProps {
   initialData: PaginatedVehicles;
@@ -252,11 +253,13 @@ function VehiclesList({
               placeholder="Buscar por placa, marca ou modelo..."
               className="w-full max-w-md"
             />
-            <VehicleFilters
-              branches={branches}
-              initialFilters={initialFilters}
-              initialSort={initialSort}
-            />
+            <FiltersDisclosure>
+              <VehicleFilters
+                branches={branches}
+                initialFilters={initialFilters}
+                initialSort={initialSort}
+              />
+            </FiltersDisclosure>
           </div>
         ),
       }}

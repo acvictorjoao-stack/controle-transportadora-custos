@@ -25,7 +25,7 @@ function SidebarQuickActions() {
     <div
       data-slot="sidebar-quick-actions"
       className={cn(
-        'shrink-0 space-y-2 border-b border-white/10 px-3 py-3',
+        'shrink-0 space-y-2 border-b border-sidebar-border px-3 py-3',
         collapsed && 'px-2',
       )}
     >
@@ -37,7 +37,7 @@ function SidebarQuickActions() {
           aria-label="Nova Viagem"
           onClick={() => setMobileOpen(false)}
           className={cn(
-            'inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-[#1D5EFF] text-sm font-medium text-white transition-colors duration-200 hover:bg-[#1A54E6] active:scale-[0.98]',
+            'inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-sidebar-primary text-sm font-medium text-sidebar-accent-foreground transition-colors duration-200 hover:bg-sidebar-primary-hover active:scale-[0.98]',
             collapsed && 'px-0',
           )}
         >
@@ -53,7 +53,7 @@ function SidebarQuickActions() {
           aria-label="Nova Despesa"
           onClick={() => setMobileOpen(false)}
           className={cn(
-            'inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg border border-white/10 bg-[#1E293B] text-sm font-medium text-slate-100 transition-colors duration-200 hover:bg-[#243247] active:scale-[0.98]',
+            'inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg border border-sidebar-border bg-sidebar-accent text-sm font-medium text-sidebar-accent-foreground transition-colors duration-200 hover:bg-sidebar-accent-hover active:scale-[0.98]',
             collapsed && 'px-0',
           )}
         >

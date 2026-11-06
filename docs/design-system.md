@@ -2,8 +2,8 @@
 
 Documentação oficial da infraestrutura visual do FleetControl.
 
-> Visual moderno inspirado em Stripe, Linear, Vercel e Notion.  
-> Evita aparência de ERP legado — prioriza clareza, espaçamento generoso e tipografia refinada.
+> SaaS empresarial: fundo neutro, cards brancos, sidebar navy e um único azul de interação.  
+> Prioriza clareza, espaçamento generoso e hierarquia tipográfica.
 
 ---
 
@@ -28,14 +28,15 @@ Documentação oficial da infraestrutura visual do FleetControl.
 | Nome | FleetControl |
 | Tagline | Controle total da sua frota |
 | Estilo | SaaS enterprise, minimalista, preciso |
-| Cor primária | Indigo (`#4F46E5` light / `#818CF8` dark) |
-| Superfícies | Zinc neutro com bordas sutis |
+| Cor primária | Azul (`#1D5EFF` light / `#5B8CFF` dark) |
+| Sidebar | Navy (`#0F172A`), a mesma nos dois temas |
+| Superfícies | Neutros frios com bordas sutis |
 | Sombras | Leves — `shadow-card` como padrão |
 
 ### Princípios
 
 - **Clareza** — hierarquia visual óbvia, sem ruído
-- **Precisão** — números financeiros em JetBrains Mono com `tabular-nums`
+- **Precisão** — números financeiros em Inter com `tabular-nums`, alinhados em colunas
 - **Consistência** — tokens centralizados, nunca valores hardcoded
 - **Escalabilidade** — componentes genéricos em `components/`, lógica de negócio em `features/`
 
@@ -48,7 +49,7 @@ Documentação oficial da infraestrutura visual do FleetControl.
 | Uso | Fonte | Variável CSS | Classe |
 |-----|-------|--------------|--------|
 | Texto geral | Inter | `--font-inter` | `font-sans` |
-| Valores financeiros / numéricos | JetBrains Mono | `--font-jetbrains-mono` | `font-financial` ou `data-financial="true"` |
+| Valores financeiros / numéricos | Inter (`tabular-nums`) | `--font-inter` | `font-financial` ou `data-financial="true"` |
 
 ### Configuração
 
@@ -84,28 +85,36 @@ Componentes `MetricCard` e `StatCard` aplicam automaticamente a tipografia finan
 
 | Token | Valor | Uso |
 |-------|-------|-----|
-| `background` | `#FAFAFA` | Fundo da aplicação |
-| `foreground` | `#09090B` | Texto principal |
+| `background` | `#F5F7FA` | Fundo da aplicação |
+| `foreground` | `#0F172A` | Texto principal |
 | `card` | `#FFFFFF` | Superfícies elevadas |
-| `primary` | `#4F46E5` | Ações principais, links |
-| `secondary` | `#F4F4F5` | Ações secundárias |
-| `muted` | `#F4F4F5` | Fundos sutis |
-| `muted-foreground` | `#71717A` | Texto secundário |
-| `border` | `#E4E4E7` | Bordas e divisores |
-| `destructive` | `#DC2626` | Erros, exclusões |
-| `success` | `#16A34A` | Confirmações, tendências positivas |
-| `warning` | `#D97706` | Alertas de atenção |
-| `info` | `#2563EB` | Informações neutras |
+| `primary` | `#1D5EFF` | Ações principais, links, estado ativo |
+| `secondary` | `#EEF2F7` | Ações secundárias |
+| `muted` | `#EEF2F7` | Fundos sutis |
+| `muted-foreground` | `#5A6880` | Texto secundário |
+| `border` | `#E2E8F0` | Bordas e divisores |
+| `destructive` | `#C9281C` | Erros, exclusões, valores negativos |
+| `success` | `#0B7A45` | Confirmações, tendências positivas |
+| `warning` | `#A85F00` | Alertas de atenção |
+| `info` | `#0A6FB0` | Informações neutras |
 
 ### Dark Mode
 
 | Token | Valor |
 |-------|-------|
-| `background` | `#09090B` |
-| `foreground` | `#FAFAFA` |
-| `card` | `#18181B` |
-| `primary` | `#818CF8` |
-| `border` | `#27272A` |
+| `background` | `#0B1220` |
+| `foreground` | `#E8EDF5` |
+| `card` | `#121B2C` |
+| `primary` | `#5B8CFF` |
+| `border` | `#24304A` |
+
+### Sidebar
+
+Tokens `sidebar`, `sidebar-foreground`, `sidebar-muted`, `sidebar-border`, `sidebar-accent`, `sidebar-accent-hover`, `sidebar-primary` e `sidebar-primary-hover`. Valem para o app e para o portal Master, nos dois temas.
+
+### Gráficos
+
+`chart-1` a `chart-5` seguem ordem fixa, validada contra daltonismo em cada tema. Verde, âmbar e vermelho ficam reservados para status; nos gráficos de resultado, receita usa `primary`, despesas usam `muted-foreground/40` e lucro usa `success` ou `destructive`.
 
 ### Uso no Tailwind
 
@@ -115,7 +124,7 @@ Componentes `MetricCard` e `StatCard` aplicam automaticamente a tipografia finan
 <p className="text-muted-foreground" />
 ```
 
-Tokens definidos em `app/globals.css` e espelhados em `config/design-tokens/colors.ts`.
+Tokens definidos em `app/globals.css` e espelhados em `config/design-tokens/colors.ts`. Não use cores cruas do Tailwind (`emerald-600`, `red-500`) nem hexadecimais nos componentes.
 
 ---
 
@@ -221,6 +230,16 @@ function ThemeToggle() {
 | Componente | Descrição |
 |------------|-----------|
 | `EmptyState` | Estado vazio com ícone, texto e CTA |
+
+### Padrões de módulo
+
+| Padrão | Use |
+|--------|-----|
+| Controles nativos (`<select>`, data) | `nativeControlClassName` de `components/ui/form-styles.ts` |
+| Abas de detalhe | `TabsNav` de `components/ui/tabs-nav.tsx` |
+| Filtros de listagem | `FiltersDisclosure` de `components/forms/`, que recolhe no celular |
+| Links com aparência de botão | `buttonVariants` |
+| Modais | `Modal`, que vira bottom sheet no celular |
 
 ### `components/forms/` — Formulários
 

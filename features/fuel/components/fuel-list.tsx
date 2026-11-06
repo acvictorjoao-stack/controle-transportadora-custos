@@ -44,6 +44,7 @@ import {
 import {buildFuelListUrl} from '../utils/list-url';
 import {FuelFilters} from './fuel-filters';
 import {FuelFormModal} from './fuel-form-modal';
+import {FiltersDisclosure} from '@/components/forms/filters-disclosure';
 
 export interface FuelListProps {
   initialData: PaginatedFuelRecords;
@@ -276,13 +277,15 @@ function FuelList({
         />
       </div>
 
-      <FuelFilters
-        branches={branches}
-        drivers={drivers}
-        vehicles={vehicles}
-        initialFilters={initialFilters}
-        initialSort={initialSort}
-      />
+      <FiltersDisclosure>
+        <FuelFilters
+          branches={branches}
+          drivers={drivers}
+          vehicles={vehicles}
+          initialFilters={initialFilters}
+          initialSort={initialSort}
+        />
+      </FiltersDisclosure>
 
       <TableContainer className="mt-4">
         <DataTable
