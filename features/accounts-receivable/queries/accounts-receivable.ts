@@ -8,11 +8,13 @@ import {
   listFinancialEntries,
   listFinancialFilterOptions,
   listFinancialHistory,
-  markFinancialEntryPaid,
   softDeleteFinancialEntry,
   updateFinancialEntry,
 } from '@/features/financial/queries';
-import type {FinancialEntry} from '@/features/financial/types';
+import {mapFinancialEntryRow} from '@/features/financial/services/mappers';
+import {FINANCIAL_LIST_COLUMNS} from '@/features/financial/constants';
+import type {FinancialEntry, FinancialEntryRow} from '@/features/financial/types';
+import {mapDatabaseError} from '@/features/master/companies/utils/database-error';
 
 import {
   ACCOUNTS_RECEIVABLE_PAGE_SIZE,
@@ -24,9 +26,15 @@ import type {
   AccountsReceivableListFilters,
   AccountsReceivableSortOptions,
   PaginatedAccountsReceivable,
+  ReceivableMovement,
+  ReceivableMovementKind,
+  ReceivablePaymentMethod,
 } from '../types';
 import type {
+  AdjustReceivableAmountInput,
   CreateAccountsReceivableInput,
+  ParsedReceiptInput,
+  ReverseReceivableReceiptInput,
   UpdateAccountsReceivableInput,
 } from '../validation';
 
@@ -99,8 +107,81 @@ export async function getAccountsReceivableDetail(
     return null;
   }
 
-  const history = await listFinancialHistory(supabase, companyId, entryId);
-  return {entry: detail.entry, history};
+  const [history, movements] = await Promise.all([
+    listFinancialHistory(supabase, companyId, entryId),
+    listReceivableMovements(supabase, companyId, entryId),
+  ]);
+  return {entry: detail.entry, history, movements};
+}
+
+type ReceivableMovementRow = {
+  id: string;
+  kind: ReceivableMovementKind;
+  amount: number;
+  movement_date: string;
+  payment_method: ReceivablePaymentMethod | null;
+  notes: string | null;
+  reason: string | null;
+  reverses_movement_id: string | null;
+  created_at: string;
+  profiles: {full_name: string | null} | {full_name: string | null}[] | null;
+};
+
+export async function listReceivableMovements(
+  supabase: SupabaseClient,
+  companyId: string,
+  entryId: string,
+): Promise<ReceivableMovement[]> {
+  const {data, error} = await supabase
+    .from('financial_entry_movements')
+    .select(
+      'id, kind, amount, movement_date, payment_method, notes, reason, reverses_movement_id, created_at, profiles:created_by (full_name)',
+    )
+    .eq('company_id', companyId)
+    .eq('financial_entry_id', entryId)
+    .order('created_at', {ascending: false});
+
+  if (error) {
+    throw new Error(mapDatabaseError(error));
+  }
+
+  return ((data ?? []) as unknown as ReceivableMovementRow[]).map((row) => {
+    const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
+    return {
+      id: row.id,
+      kind: row.kind,
+      amount: Number(row.amount),
+      movementDate: row.movement_date,
+      paymentMethod: row.payment_method,
+      notes: row.notes,
+      reason: row.reason,
+      reversesMovementId: row.reverses_movement_id,
+      createdAt: row.created_at,
+      createdByName: profile?.full_name ?? null,
+    };
+  });
+}
+
+/** Títulos gerados pela viagem. A RLS devolve vazio para quem não lê o financeiro. */
+export async function listTripReceivables(
+  supabase: SupabaseClient,
+  companyId: string,
+  tripId: string,
+): Promise<AccountsReceivableEntry[]> {
+  const {data, error} = await supabase
+    .from('financial_entries')
+    .select(FINANCIAL_LIST_COLUMNS)
+    .eq('company_id', companyId)
+    .eq('trip_id', tripId)
+    .eq('source_module', ACCOUNTS_RECEIVABLE_SOURCE_MODULE)
+    .is('deleted_at', null)
+    .order('created_at', {ascending: true});
+
+  if (error) {
+    throw new Error(mapDatabaseError(error));
+  }
+
+  return ((data ?? []) as unknown as FinancialEntryRow[]).map(mapFinancialEntryRow);
 }
 
 export async function createAccountsReceivable(
@@ -155,6 +236,11 @@ export async function updateAccountsReceivable(
     throw new Error('Não é possível editar uma conta cancelada.');
   }
 
+  // Valor, cliente e datas do título de frete vêm da viagem; com recebimento,
+  // o valor só muda por ajuste.
+  const fromTrip = existing.tripChargeKey != null;
+  const amountLocked = fromTrip || existing.paidAmount != null;
+
   return updateFinancialEntry(
     supabase,
     companyId,
@@ -172,11 +258,11 @@ export async function updateAccountsReceivable(
       referenceNumber: existing.referenceNumber,
       supplierId: existing.supplierId,
       supplier: existing.supplier,
-      client: input.client,
-      amount: input.amount,
+      client: fromTrip ? existing.client : input.client,
+      amount: amountLocked ? existing.amount : input.amount,
       currency: existing.currency || 'BRL',
-      entryDate: input.entryDate,
-      dueDate: input.dueDate,
+      entryDate: fromTrip ? existing.entryDate : input.entryDate,
+      dueDate: fromTrip ? existing.dueDate : input.dueDate,
       notes: input.notes,
     },
     profileId,
@@ -187,29 +273,62 @@ export async function markAccountsReceivableReceived(
   supabase: SupabaseClient,
   companyId: string,
   entryId: string,
-  profileId: string,
-  input: {paidAt: string; paidAmount: number},
+  input: ParsedReceiptInput,
 ): Promise<AccountsReceivableEntry> {
-  const existing = assertAccountsReceivableEntry(
+  const {error} = await supabase.rpc('register_receivable_receipt', {
+    p_entry_id: entryId,
+    p_amount: input.paidAmount,
+    p_movement_date: input.paidAt.slice(0, 10),
+    p_payment_method: input.paymentMethod,
+    p_notes: input.notes,
+    p_idempotency_key: input.idempotencyKey,
+  });
+
+  if (error) {
+    throw new Error(mapDatabaseError(error));
+  }
+
+  return assertAccountsReceivableEntry(
     await getFinancialEntryById(supabase, companyId, entryId),
   );
+}
 
-  if (existing.entryStatus === 'paid') {
-    throw new Error('Conta já está recebida.');
-  }
-
-  if (existing.entryStatus === 'cancelled') {
-    throw new Error('Não é possível receber uma conta cancelada.');
-  }
-
-  const paidAtIso = input.paidAt.includes('T')
-    ? input.paidAt
-    : `${input.paidAt}T12:00:00.000Z`;
-
-  return markFinancialEntryPaid(supabase, companyId, entryId, profileId, {
-    paidAt: paidAtIso,
-    paidAmount: input.paidAmount,
+export async function reverseReceivableReceipt(
+  supabase: SupabaseClient,
+  movementId: string,
+  input: ReverseReceivableReceiptInput,
+): Promise<void> {
+  const {error} = await supabase.rpc('reverse_receivable_receipt', {
+    p_movement_id: movementId,
+    p_reason: input.reason,
+    p_idempotency_key: input.idempotencyKey,
   });
+
+  if (error) {
+    throw new Error(mapDatabaseError(error));
+  }
+}
+
+export async function adjustReceivableAmount(
+  supabase: SupabaseClient,
+  companyId: string,
+  entryId: string,
+  input: AdjustReceivableAmountInput,
+): Promise<AccountsReceivableEntry> {
+  const {error} = await supabase.rpc('adjust_receivable_amount', {
+    p_entry_id: entryId,
+    p_new_amount: input.newAmount,
+    p_reason: input.reason,
+    p_idempotency_key: input.idempotencyKey,
+  });
+
+  if (error) {
+    throw new Error(mapDatabaseError(error));
+  }
+
+  return assertAccountsReceivableEntry(
+    await getFinancialEntryById(supabase, companyId, entryId),
+  );
 }
 
 export async function cancelAccountsReceivable(
@@ -218,7 +337,12 @@ export async function cancelAccountsReceivable(
   entryId: string,
   profileId: string,
 ): Promise<AccountsReceivableEntry> {
-  assertAccountsReceivableEntry(await getFinancialEntryById(supabase, companyId, entryId));
+  const entry = assertAccountsReceivableEntry(
+    await getFinancialEntryById(supabase, companyId, entryId),
+  );
+  if (entry.tripChargeKey) {
+    throw new Error('Este título acompanha a viagem. Cancele a viagem de origem.');
+  }
   return cancelFinancialEntry(supabase, companyId, entryId, profileId);
 }
 
@@ -228,6 +352,11 @@ export async function deleteAccountsReceivable(
   entryId: string,
   profileId: string,
 ): Promise<void> {
-  assertAccountsReceivableEntry(await getFinancialEntryById(supabase, companyId, entryId));
+  const entry = assertAccountsReceivableEntry(
+    await getFinancialEntryById(supabase, companyId, entryId),
+  );
+  if (entry.tripChargeKey) {
+    throw new Error('Este título acompanha a viagem. Cancele a viagem de origem.');
+  }
   await softDeleteFinancialEntry(supabase, companyId, entryId, profileId);
 }

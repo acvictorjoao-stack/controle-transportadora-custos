@@ -61,6 +61,11 @@ import type {
   UpdateTripInput,
   UpsertTripChecklistInput,
 } from '../validation';
+import {
+  buildTripPaymentFields,
+  isLegacyFreightTrip,
+  validateTripPayment,
+} from '../utils/trip-payment';
 
 export interface ListTripsOptions {
   companyId: string;
@@ -663,6 +668,27 @@ async function assertTripResourcesAvailable(
   }
 }
 
+async function findTripByCreationRequest(
+  supabase: SupabaseClient,
+  companyId: string,
+  creationRequestId: string | null,
+): Promise<Trip | null> {
+  if (!creationRequestId) return null;
+
+  const {data, error} = await supabase
+    .from('trips')
+    .select(TRIP_DETAIL_COLUMNS)
+    .eq('company_id', companyId)
+    .eq('creation_request_id', creationRequestId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(mapDatabaseError(error));
+  }
+
+  return data ? mapTripRow(data as unknown as TripRow) : null;
+}
+
 export async function createTrip(
   supabase: SupabaseClient,
   companyId: string,
@@ -676,7 +702,11 @@ export async function createTrip(
   });
 
   const tripNumber = await generateTripNumber(supabase, companyId);
-  const payload = buildTripPayload(input, profileId, true);
+  const payload = {
+    ...buildTripPayload(input, profileId, true),
+    ...buildTripPaymentFields(input),
+    creation_request_id: input.creationRequestId,
+  };
 
   const {data, error} = await supabase
     .from('trips')
@@ -685,6 +715,15 @@ export async function createTrip(
     .single();
 
   if (error) {
+    // Envio repetido do mesmo formulário: devolve a viagem já criada.
+    if (error.code === '23505' && error.message.includes('idx_trips_creation_request')) {
+      const existing = await findTripByCreationRequest(
+        supabase,
+        companyId,
+        input.creationRequestId,
+      );
+      if (existing) return existing;
+    }
     throw new Error(mapDatabaseError(error));
   }
 
@@ -714,6 +753,15 @@ export async function updateTrip(
 
   const payload = buildTripPayload(input, profileId, false);
   payload.trip_status = current.tripStatus;
+
+  // Viagens antigas ficam fora da cobrança automática; as demais seguem a regra.
+  if (!isLegacyFreightTrip(current)) {
+    const [issue] = validateTripPayment(input);
+    if (issue) {
+      throw new Error(issue.message);
+    }
+    Object.assign(payload, buildTripPaymentFields(input));
+  }
 
   const {data, error} = await supabase
     .from('trips')

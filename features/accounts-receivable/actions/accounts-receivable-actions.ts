@@ -14,16 +14,20 @@ import {
 import {zodFieldErrors} from '@/lib/validators/zod-field-errors';
 
 import {
+  adjustReceivableAmount,
   cancelAccountsReceivable,
   createAccountsReceivable,
   deleteAccountsReceivable,
   markAccountsReceivableReceived,
+  reverseReceivableReceipt,
   updateAccountsReceivable,
 } from '../queries';
 import type {AccountsReceivableEntry} from '../types';
 import {
+  adjustReceivableAmountSchema,
   createAccountsReceivableSchema,
   markAccountsReceivableReceivedSchema,
+  reverseReceivableReceiptSchema,
   updateAccountsReceivableSchema,
 } from '../validation';
 
@@ -35,6 +39,7 @@ type FinancialPermission =
 function revalidateAccountsReceivablePaths(entryId?: string) {
   revalidatePath(ROUTES.contasAReceber);
   revalidatePath(ROUTES.financeiro);
+  revalidatePath(ROUTES.fluxoDeCaixa);
   if (entryId) {
     revalidatePath(ROUTES.contasAReceberDetail(entryId));
   }
@@ -153,7 +158,6 @@ export async function markAccountsReceivableReceivedAction(
       supabase,
       resolved.data.companyId,
       entryId,
-      resolved.data.profileId,
       parsed.data,
     );
     revalidateAccountsReceivablePaths(entryId);
@@ -210,6 +214,73 @@ export async function deleteAccountsReceivableAction(
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Erro ao excluir conta a receber.',
+    };
+  }
+}
+
+export async function reverseReceivableReceiptAction(
+  entryId: string,
+  movementId: string,
+  input: unknown,
+): Promise<ActionResult<void>> {
+  const resolved = await resolveAccess('financeiro:update');
+  if (!resolved.success) return resolved;
+
+  const parsed = reverseReceivableReceiptSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: 'Verifique os campos do estorno.',
+      fieldErrors: zodFieldErrors(parsed.error.issues),
+    };
+  }
+
+  try {
+    const supabase = await getServerSupabaseClient();
+    await reverseReceivableReceipt(supabase, movementId, parsed.data);
+    revalidateAccountsReceivablePaths(entryId);
+    return {success: true, data: undefined};
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Erro ao estornar o recebimento.',
+    };
+  }
+}
+
+export async function adjustReceivableAmountAction(
+  entryId: string,
+  input: unknown,
+): Promise<ActionResult<AccountsReceivableEntry>> {
+  const resolved = await resolveAccess('financeiro:update');
+  if (!resolved.success) return resolved;
+
+  const parsed = adjustReceivableAmountSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: 'Verifique os campos do ajuste.',
+      fieldErrors: zodFieldErrors(parsed.error.issues),
+    };
+  }
+
+  try {
+    const supabase = await getServerSupabaseClient();
+    const data = await adjustReceivableAmount(
+      supabase,
+      resolved.data.companyId,
+      entryId,
+      parsed.data,
+    );
+    revalidateAccountsReceivablePaths(entryId);
+    if (data.tripId) {
+      revalidatePath(ROUTES.viagemDetail(data.tripId));
+    }
+    return {success: true, data};
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Erro ao ajustar o valor.',
     };
   }
 }

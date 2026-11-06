@@ -209,8 +209,11 @@ export async function onTripCompleted(
   // Audit #8 — mesma preferência da DRE (`getTripFreightValue`: actual ?? contracted).
   const hasTripFreight =
     trip.actualFreightValue != null || trip.contractedFreightValue != null;
-  const revenue =
-    totalRevenue > 0
+  // Viagem com condição de pagamento tem título próprio: a receita é o frete.
+  const hasReceivable = trip.paymentCondition != null;
+  const revenue = hasReceivable
+    ? getTripFreightValue(trip)
+    : totalRevenue > 0
       ? totalRevenue
       : hasTripFreight
         ? getTripFreightValue(trip)
@@ -242,7 +245,7 @@ export async function onTripCompleted(
     .eq('id', trip.id)
     .eq('company_id', companyId);
 
-  if (revenue > 0 && totalRevenue === 0) {
+  if (revenue > 0 && totalRevenue === 0 && !hasReceivable) {
     const category = await getCategoryBySlug(supabase, companyId, 'receitas');
     await createFinancialEntry(
       supabase,

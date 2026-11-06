@@ -1,3 +1,6 @@
+import type {FinancialEntry} from '@/features/financial/types';
+
+import type {TRIP_PAYMENT_CONDITIONS} from '../constants/enums';
 import type {EntityStatus} from '@/features/organization/companies/types';
 
 import type {
@@ -30,6 +33,9 @@ export interface TripRow {
   freight_table: string | null;
   contracted_freight_value: number | null;
   actual_freight_value: number | null;
+  payment_condition?: TripPaymentCondition | null;
+  payment_issue_date?: string | null;
+  payment_due_date?: string | null;
   freight_margin: number | null;
   origin: string | null;
   destination: string | null;
@@ -115,6 +121,10 @@ export interface Trip {
   freightTable: string | null;
   contractedFreightValue: number | null;
   actualFreightValue: number | null;
+  /** Nulo em viagens anteriores à cobrança automática. */
+  paymentCondition: TripPaymentCondition | null;
+  paymentIssueDate: string | null;
+  paymentDueDate: string | null;
   freightMargin: number | null;
   origin: string | null;
   destination: string | null;
@@ -400,6 +410,13 @@ export interface TripTimelineEntry {
   changes: Record<string, unknown>;
 }
 
+export type TripPaymentCondition = (typeof TRIP_PAYMENT_CONDITIONS)[number];
+
+export const TRIP_PAYMENT_CONDITION_LABELS: Record<TripPaymentCondition, string> = {
+  advance: 'Frete antecipado',
+  term: 'Frete a prazo',
+};
+
 export interface TripDetailData extends TripIntegrationSections {
   trip: Trip;
   history: TripHistory[];
@@ -410,6 +427,8 @@ export interface TripDetailData extends TripIntegrationSections {
   expenses: TripExpense[];
   locations: TripLocation[];
   timeline: TripTimelineEntry[];
+  /** Títulos da viagem; vazio para quem não tem acesso ao financeiro. */
+  receivables: FinancialEntry[];
 }
 
 export const TRIP_STATUS_LABELS: Record<TripStatus, string> = {

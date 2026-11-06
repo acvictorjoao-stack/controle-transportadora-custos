@@ -67,7 +67,41 @@ export function formatSafeDatabaseDiagnostic(error: DatabaseErrorLike): string {
     : `db_error code=${code} category=${category}`;
 }
 
+/**
+ * Mensagens de produto das regras de título a receber (migrations 106 e 107).
+ * Lista fechada: outros erros do banco continuam com o texto genérico.
+ */
+const RECEIVABLE_BUSINESS_ERRORS = [
+  'Esta viagem tem recebimentos.',
+  'Esta viagem tem movimentos financeiros.',
+  'Esta viagem já possui receita lançada.',
+  'Informe o cliente para gerar o título do frete.',
+  'Cliente não pertence a esta empresa.',
+  'Este título é controlado pela viagem de origem.',
+  'Este título não pode ser excluído.',
+  'Título com movimentos só muda por ajuste ou estorno.',
+  'Use o registro de recebimento',
+  'O valor excede o saldo em aberto do título.',
+  'A data do recebimento não pode ser futura.',
+  'Somente títulos em aberto podem receber pagamentos.',
+  'O novo valor é',
+  'Este recebimento já foi estornado.',
+  'Título cancelado não pode ser ajustado.',
+  'Informe o motivo',
+  'Informe um valor válido.',
+  'Sem permissão para esta operação.',
+  'Conta a receber não encontrada.',
+  'Recebimento não encontrado.',
+  'Chave de operação já utilizada.',
+  'Viagem com cobrança não pode mudar de empresa.',
+  'Título antigo com recebimento',
+] as const;
+
 export function mapDatabaseError(error: {code?: string; message: string}): string {
+  if (RECEIVABLE_BUSINESS_ERRORS.some((text) => error.message?.startsWith(text))) {
+    return error.message;
+  }
+
   if (isUniqueViolation(error)) {
     if (error.message.includes('idx_companies_slug')) {
       return 'Este slug já está em uso.';

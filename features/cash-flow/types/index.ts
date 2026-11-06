@@ -1,5 +1,6 @@
 export type {
   CashFlowLine,
+  CashFlowLineData,
   CashFlowListFilters,
   CashFlowStatus,
   CashFlowSummary,

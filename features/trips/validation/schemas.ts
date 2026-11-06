@@ -5,11 +5,13 @@ import {storageObjectPathSchema, storageReferenceSchema} from '@/lib/storage/pri
 
 import {
   SIMPLE_TRIP_STATUSES,
+  TRIP_PAYMENT_CONDITIONS,
   TRIP_DOCUMENT_TYPES,
   TRIP_EXPENSE_TYPES,
   TRIP_OCCURRENCE_TYPES,
   TRIP_STATUSES,
 } from '../constants/enums';
+import {validateTripPayment} from '../utils/trip-payment';
 
 // Campos opcionais aceitam null (formulários enviam null para vazio).
 const optionalString = z
@@ -121,6 +123,19 @@ const tripBaseSchema = z.object({
     .optional()
     .transform((v) => v ?? null),
   actualFreightValue: optionalNumber,
+  paymentCondition: z
+    .enum(TRIP_PAYMENT_CONDITIONS)
+    .nullable()
+    .optional()
+    .transform((v) => v ?? null),
+  paymentIssueDate: optionalDate,
+  paymentDueDate: optionalDate,
+  creationRequestId: z
+    .string()
+    .uuid()
+    .nullable()
+    .optional()
+    .transform((v) => v ?? null),
   freightMargin: optionalNumber,
   routeId: z
     .string()
@@ -172,6 +187,9 @@ export const createTripSchema = tripBaseSchema.superRefine((data, ctx) => {
     });
   }
   validateOdometerRange(data, ctx);
+  for (const issue of validateTripPayment(data)) {
+    ctx.addIssue({code: 'custom', path: [issue.field], message: issue.message});
+  }
 });
 
 export const updateTripSchema = tripBaseSchema.superRefine(validateOdometerRange);

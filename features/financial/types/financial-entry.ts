@@ -39,6 +39,8 @@ export interface FinancialEntryRow {
   due_date: string | null;
   paid_at: string | null;
   paid_amount: number | null;
+  adjustment_total?: number | null;
+  trip_charge_key?: string | null;
   reversed_entry_id: string | null;
   source_module: string | null;
   source_id: string | null;
@@ -102,6 +104,10 @@ export interface FinancialEntry {
   dueDate: string | null;
   paidAt: string | null;
   paidAmount: number | null;
+  /** Soma dos ajustes rastreáveis; valor efetivo = amount + adjustmentTotal. */
+  adjustmentTotal: number;
+  /** Preenchido em títulos gerados pela viagem. */
+  tripChargeKey: string | null;
   reversedEntryId: string | null;
   sourceModule: string | null;
   sourceId: string | null;
@@ -311,6 +317,9 @@ export const ACCOUNTS_RECEIVABLE_HISTORY_ACTION_LABELS: Record<string, string> =
   update: 'Conta editada',
   correction: 'Conta editada',
   payment: 'Conta recebida',
+  receipt: 'Recebimento registrado',
+  receipt_reversal: 'Recebimento estornado',
+  adjustment: 'Ajuste de valor',
   cancellation: 'Conta cancelada',
   soft_delete: 'Conta excluída',
   status_change: 'Alteração de status',

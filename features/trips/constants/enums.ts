@@ -1,3 +1,5 @@
+export const TRIP_PAYMENT_CONDITIONS = ['advance', 'term'] as const;
+
 export const TRIP_STATUSES = [
   'planned',
   'scheduled',

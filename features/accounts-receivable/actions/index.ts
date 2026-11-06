@@ -4,4 +4,6 @@ export {
   markAccountsReceivableReceivedAction,
   cancelAccountsReceivableAction,
   deleteAccountsReceivableAction,
+  reverseReceivableReceiptAction,
+  adjustReceivableAmountAction,
 } from './accounts-receivable-actions';

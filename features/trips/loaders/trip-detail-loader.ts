@@ -1,5 +1,7 @@
 import type {SupabaseClient} from '@supabase/supabase-js';
 
+import {listTripReceivables} from '@/features/accounts-receivable/queries';
+
 import {
   getTripById,
   listTripDocuments,
@@ -111,6 +113,7 @@ export async function composeTripDetail(
     expenses,
     locations,
     integrations,
+    receivables,
   ] = await Promise.all([
     loadSectionSafe('history', () => listTripHistory(supabase, companyId, tripId), []),
     loadSectionSafe('documents', () => listTripDocuments(supabase, companyId, tripId), []),
@@ -124,6 +127,7 @@ export async function composeTripDetail(
     loadSectionSafe('expenses', () => listTripExpenses(supabase, companyId, tripId), []),
     loadSectionSafe('locations', () => listTripLocations(supabase, companyId, tripId), []),
     loadIntegrationSections(supabase, companyId, tripId),
+    loadSectionSafe('receivables', () => listTripReceivables(supabase, companyId, tripId), []),
   ]);
 
   return {
@@ -136,6 +140,7 @@ export async function composeTripDetail(
     expenses,
     locations,
     timeline: buildTimeline(trip, history),
+    receivables,
     ...integrations,
   };
 }

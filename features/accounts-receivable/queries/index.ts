@@ -8,4 +8,8 @@ export {
   markAccountsReceivableReceived,
   cancelAccountsReceivable,
   deleteAccountsReceivable,
+  listReceivableMovements,
+  listTripReceivables,
+  reverseReceivableReceipt,
+  adjustReceivableAmount,
 } from './accounts-receivable';

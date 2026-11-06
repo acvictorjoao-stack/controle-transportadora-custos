@@ -21,7 +21,17 @@ export interface CashFlowSummary {
   saldoProjetado: number;
 }
 
+export interface CashFlowLineData {
+  lineId: string;
+  status: FinancialEntryStatus;
+  movementDate: string;
+  /** Valor da linha; estorno de recebimento é negativo. */
+  amount: number;
+}
+
 export interface CashFlowLine extends FinancialEntry {
+  /** Identifica a linha: um título pode gerar várias. */
+  lineId: string;
   cashFlowType: CashFlowType;
   personName: string | null;
   movementDate: string;

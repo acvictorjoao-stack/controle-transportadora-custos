@@ -213,7 +213,7 @@ function CashFlowList({
         <DataTable
           columns={columns}
           data={data.items}
-          getRowKey={(row) => row.id}
+          getRowKey={(row) => row.lineId}
           emptyTitle="Nenhum lançamento no fluxo de caixa"
           emptyDescription="Os lançamentos de Contas a Pagar e Contas a Receber aparecerão aqui automaticamente."
         />

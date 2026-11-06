@@ -113,6 +113,8 @@ function AccountsReceivableFormContent({
   const [formError, setFormError] = React.useState<string | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
   const toast = useToast();
+  const fromTrip = entry?.tripChargeKey != null;
+  const amountLocked = fromTrip || entry?.paidAmount != null;
 
   const displayStatus: AccountsReceivableStatus =
     entry?.entryStatus === 'paid' || entry?.entryStatus === 'cancelled'
@@ -183,6 +185,7 @@ function AccountsReceivableFormContent({
               value={formData.client}
               onChange={(e) => updateField('client', e.target.value.toUpperCase())}
               className="uppercase"
+              disabled={fromTrip}
               required
             />
           </FormField>
@@ -270,6 +273,7 @@ function AccountsReceivableFormContent({
                 setAmountDisplay(masked);
                 updateField('amount', parseCurrencyInput(masked));
               }}
+              disabled={amountLocked}
               required
             />
           </FormField>
@@ -284,6 +288,7 @@ function AccountsReceivableFormContent({
               type="date"
               value={formData.entryDate}
               onChange={(e) => updateField('entryDate', e.target.value)}
+              disabled={fromTrip}
               required
             />
           </FormField>
@@ -298,6 +303,7 @@ function AccountsReceivableFormContent({
               type="date"
               value={formData.dueDate}
               onChange={(e) => updateField('dueDate', e.target.value)}
+              disabled={fromTrip}
               required
             />
           </FormField>

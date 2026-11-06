@@ -17,6 +17,7 @@ import {
   parseCurrencyInput,
 } from '@/features/accounts-payable/utils/currency';
 import type {Customer} from '@/features/customers/types';
+import {localDateIso} from '@/features/financial-dashboard/utils/dates';
 import type {DriverSelectOption} from '@/features/drivers/types';
 import type {BranchSelectOption} from '@/features/organization/branches/types';
 import type {RouteSelectOption} from '@/features/routes/types';
@@ -26,11 +27,12 @@ import {VEHICLE_ASSET_STATUS_LABELS} from '@/features/vehicles/types';
 import {MSG} from '@/lib/feedback/messages';
 
 import {createTripAction, updateTripAction} from '../actions';
-import {TRIP_CARGO_TYPES} from '../constants/enums';
+import {TRIP_CARGO_TYPES, TRIP_PAYMENT_CONDITIONS} from '../constants/enums';
 import type {Trip, TripResourceAvailability} from '../types';
-import {TRIP_STATUS_LABELS} from '../types';
+import {TRIP_PAYMENT_CONDITION_LABELS, TRIP_STATUS_LABELS} from '../types';
 import type {CreateTripInput} from '../validation';
 import {TRIP_NATIVE_SELECT_CLASS} from '../utils/form-styles';
+import {isLegacyFreightTrip, suggestTripDueDate} from '../utils/trip-payment';
 import {
   fromDatetimeLocalValue,
   toDatetimeLocalValue,
@@ -153,6 +155,10 @@ function TripFormContent({
     clientName: trip?.clientName ?? null,
     customerId: trip?.customerId ?? null,
     actualFreightValue: trip?.actualFreightValue ?? null,
+    paymentCondition: trip?.paymentCondition ?? null,
+    paymentIssueDate: trip?.paymentIssueDate ?? null,
+    paymentDueDate: trip?.paymentDueDate ?? null,
+    creationRequestId: null,
     freightMargin: trip?.freightMargin ?? null,
     routeId: trip?.routeId ?? null,
     origin: trip?.origin ?? null,
@@ -182,7 +188,15 @@ function TripFormContent({
   const [fieldErrors, setFieldErrors] = React.useState<FieldErrors>({});
   const [formError, setFormError] = React.useState<string | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
+  const [creationRequestId] = React.useState(() => crypto.randomUUID());
+  const [dueDateEdited, setDueDateEdited] = React.useState(
+    () => trip?.paymentDueDate != null,
+  );
   const toast = useToast();
+
+  const legacyFreightTrip = trip ? isLegacyFreightTrip(trip) : false;
+  const showPaymentSection =
+    !legacyFreightTrip && (formData.actualFreightValue ?? 0) > 0;
 
   const routeOptions = React.useMemo(() => {
     if (!trip?.routeId) return routes;
@@ -244,6 +258,41 @@ function TripFormContent({
       ...prev,
       customerId,
       clientName: customer?.displayName ?? prev.clientName,
+      paymentDueDate: dueDateEdited
+        ? prev.paymentDueDate
+        : (suggestTripDueDate(prev.paymentIssueDate, customer?.paymentTermDays) ??
+          prev.paymentDueDate),
+    }));
+  }
+
+  function handlePaymentConditionChange(value: string) {
+    const condition = (value || null) as CreateTripInput['paymentCondition'];
+    const customer = customers.find((c) => c.id === formData.customerId);
+    const issueDate =
+      formData.paymentIssueDate ??
+      (condition === 'term' ? localDateIso() : null);
+
+    setFormData((prev) => ({
+      ...prev,
+      paymentCondition: condition,
+      paymentIssueDate: issueDate,
+      paymentDueDate: dueDateEdited
+        ? prev.paymentDueDate
+        : (suggestTripDueDate(issueDate, customer?.paymentTermDays) ?? prev.paymentDueDate),
+    }));
+    setFieldErrors((prev) => ({...prev, paymentCondition: undefined}));
+  }
+
+  function handleIssueDateChange(value: string) {
+    const issueDate = value || null;
+    const customer = customers.find((c) => c.id === formData.customerId);
+
+    setFormData((prev) => ({
+      ...prev,
+      paymentIssueDate: issueDate,
+      paymentDueDate: dueDateEdited
+        ? prev.paymentDueDate
+        : (suggestTripDueDate(issueDate, customer?.paymentTermDays) ?? prev.paymentDueDate),
     }));
   }
 
@@ -321,6 +370,7 @@ function TripFormContent({
     setSubmitting(true);
     const payload: CreateTripInput = {
       ...formData,
+      creationRequestId: isEdit ? null : creationRequestId,
       tripStatus: isEdit ? formData.tripStatus : 'planned',
     };
 
@@ -690,6 +740,79 @@ function TripFormContent({
             />
           </div>
         </FormField>
+
+        {legacyFreightTrip && (
+          <p className="text-sm text-muted-foreground sm:col-span-2">
+            Viagem anterior à cobrança automática: nenhum título será gerado.
+          </p>
+        )}
+
+        {showPaymentSection && (
+          <>
+            <FormSection title="Condição de Pagamento" />
+
+            <FormField
+              label="Condição"
+              htmlFor="trip-payment-condition"
+              error={fieldErrors.paymentCondition}
+              required
+            >
+              <select
+                id="trip-payment-condition"
+                value={formData.paymentCondition ?? ''}
+                onChange={(e) => handlePaymentConditionChange(e.target.value)}
+                className={TRIP_NATIVE_SELECT_CLASS}
+              >
+                <option value="">Selecione</option>
+                {TRIP_PAYMENT_CONDITIONS.map((condition) => (
+                  <option key={condition} value={condition}>
+                    {TRIP_PAYMENT_CONDITION_LABELS[condition]}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+
+            {formData.paymentCondition === 'term' && (
+              <FormField
+                label="Data de emissão"
+                htmlFor="trip-payment-issue-date"
+                error={fieldErrors.paymentIssueDate}
+                required
+              >
+                <Input
+                  id="trip-payment-issue-date"
+                  type="date"
+                  value={formData.paymentIssueDate ?? ''}
+                  onChange={(e) => handleIssueDateChange(e.target.value)}
+                />
+              </FormField>
+            )}
+
+            {formData.paymentCondition && (
+              <FormField
+                label={
+                  formData.paymentCondition === 'advance'
+                    ? 'Data prevista do pagamento'
+                    : 'Data de vencimento'
+                }
+                htmlFor="trip-payment-due-date"
+                error={fieldErrors.paymentDueDate}
+                hint="Sugerida pelo prazo do cliente; pode ser alterada nesta viagem."
+                required
+              >
+                <Input
+                  id="trip-payment-due-date"
+                  type="date"
+                  value={formData.paymentDueDate ?? ''}
+                  onChange={(e) => {
+                    setDueDateEdited(true);
+                    updateField('paymentDueDate', e.target.value || null);
+                  }}
+                />
+              </FormField>
+            )}
+          </>
+        )}
 
         <FormSection title="Execução" />
 

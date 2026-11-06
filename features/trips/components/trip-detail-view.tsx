@@ -47,6 +47,7 @@ import {TripExpensesTab} from './trip-expenses-tab';
 import {TripFileUpload} from './trip-file-upload';
 import {TripFormModal} from './trip-form-modal';
 import {TripLifecycleCard} from './trip-lifecycle-card';
+import {TripReceivableCard} from './trip-receivable-card';
 import {TabsNav} from '@/components/ui/tabs-nav';
 
 export interface TripDetailViewProps {
@@ -204,6 +205,8 @@ function TripDetailView({
               </CardContent>
             </Card>
           </div>
+
+          <TripReceivableCard trip={trip} receivables={data.receivables} />
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>

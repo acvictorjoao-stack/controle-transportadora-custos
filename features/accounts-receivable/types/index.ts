@@ -8,4 +8,7 @@ export type {
   AccountsReceivableSortOptions,
   AccountsReceivableStatus,
   PaginatedAccountsReceivable,
+  ReceivableMovement,
+  ReceivableMovementKind,
+  ReceivablePaymentMethod,
 } from './accounts-receivable';

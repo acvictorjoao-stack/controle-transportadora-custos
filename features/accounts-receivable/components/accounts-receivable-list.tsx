@@ -41,6 +41,11 @@ import {AccountsReceivableFilters} from './accounts-receivable-filters';
 import {AccountsReceivableFormModal} from './accounts-receivable-form-modal';
 import {AccountsReceivableReceiveModal} from './accounts-receivable-receive-modal';
 import {FiltersDisclosure} from '@/components/forms/filters-disclosure';
+import {
+  getReceivableBalance,
+  getReceivableEffectiveAmount,
+  isPartiallyReceived,
+} from '@/features/financial/utils/receivable-balance';
 
 export interface AccountsReceivableListProps {
   initialData: PaginatedAccountsReceivable;
@@ -80,6 +85,11 @@ function statusLabel(status: FinancialEntryStatus): string {
 
 function isOpenStatus(status: FinancialEntryStatus): boolean {
   return status === 'pending' || status === 'overdue';
+}
+
+/** Título de viagem acompanha a viagem; parcial exige estorno antes. */
+function canRemove(entry: AccountsReceivableEntry): boolean {
+  return !entry.tripChargeKey && !isPartiallyReceived(entry);
 }
 
 function AccountsReceivableList({
@@ -219,25 +229,46 @@ function AccountsReceivableList({
       id: 'description',
       header: 'Descrição',
       cell: (row: AccountsReceivableEntry) => (
-        <Link
-          href={ROUTES.contasAReceberDetail(row.id)}
-          className="text-sm font-medium hover:underline"
-        >
-          {row.description ?? '—'}
-        </Link>
+        <div className="min-w-0">
+          <Link
+            href={ROUTES.contasAReceberDetail(row.id)}
+            className="text-sm font-medium hover:underline"
+          >
+            {row.description ?? '—'}
+          </Link>
+          {row.tripChargeKey && row.tripId ? (
+            <Link
+              href={ROUTES.viagemDetail(row.tripId)}
+              className="block text-xs text-muted-foreground hover:underline"
+            >
+              Viagem {row.tripNumber ?? ''}
+            </Link>
+          ) : null}
+        </div>
       ),
     },
     {
       id: 'amount',
       header: 'Valor',
-      cell: (row: AccountsReceivableEntry) => formatCurrencyBr(row.amount, row.currency),
+      className: 'font-financial',
+      cell: (row: AccountsReceivableEntry) =>
+        formatCurrencyBr(getReceivableEffectiveAmount(row), row.currency),
+    },
+    {
+      id: 'balance',
+      header: 'Saldo',
+      className: 'font-financial font-medium',
+      cell: (row: AccountsReceivableEntry) =>
+        isOpenStatus(row.entryStatus)
+          ? formatCurrencyBr(getReceivableBalance(row), row.currency)
+          : '—',
     },
     {
       id: 'entryStatus',
       header: 'Status',
       cell: (row: AccountsReceivableEntry) => (
         <Badge variant={statusBadgeVariant(row.entryStatus)}>
-          {statusLabel(row.entryStatus)}
+          {isPartiallyReceived(row) ? 'Parcial' : statusLabel(row.entryStatus)}
         </Badge>
       ),
     },
@@ -274,16 +305,20 @@ function AccountsReceivableList({
                   setOpenMenuId(null);
                 }}
               >
-                <CheckCircle2 className="size-4" /> Marcar como recebido
+                <CheckCircle2 className="size-4" /> Registrar recebimento
               </RowActionsMenuItem>
-              <RowActionsMenuItem destructive onClick={() => handleCancel(row)}>
-                <Ban className="size-4" /> Cancelar
-              </RowActionsMenuItem>
+              {canRemove(row) && (
+                <RowActionsMenuItem destructive onClick={() => handleCancel(row)}>
+                  <Ban className="size-4" /> Cancelar
+                </RowActionsMenuItem>
+              )}
             </>
           )}
-          <RowActionsMenuItem destructive onClick={() => handleDelete(row)}>
-            <Trash2 className="size-4" /> Excluir
-          </RowActionsMenuItem>
+          {canRemove(row) && (
+            <RowActionsMenuItem destructive onClick={() => handleDelete(row)}>
+              <Trash2 className="size-4" /> Excluir
+            </RowActionsMenuItem>
+          )}
         </RowActionsMenu>
       ),
     },

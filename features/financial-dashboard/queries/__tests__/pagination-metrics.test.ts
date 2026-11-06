@@ -71,18 +71,17 @@ describe('financial dashboard / payroll / fuel pagination', () => {
   it('getFinancialDashboardData reads >1000 metric rows with stable id order', async () => {
     const rows = Array.from({length: 1001}, (_, i) => ({
       entry_type: 'revenue',
-      entry_status: 'pending',
-      amount: 1,
-      paid_amount: null,
+      line_status: 'pending',
+      line_amount: 1,
       source_module: 'accounts_receivable',
       due_date: '2026-08-01',
-      paid_at: null,
+      movement_date: '2026-08-01',
     }));
     const {rangeCalls, orderCalls, supabase} = createPagedChainMock(rows);
     const data = await getFinancialDashboardData(supabase as never, 'company-1');
     expect(data.contasAReceber.quantidade).toBe(1001);
     expect(rangeCalls).toHaveLength(2);
-    expect(orderCalls[0]).toEqual([{column: 'id', ascending: true}]);
+    expect(orderCalls[0]).toEqual([{column: 'line_id', ascending: true}]);
   });
 
   it('getPayrollSummary sums >1000 payroll rows with stable id order', async () => {

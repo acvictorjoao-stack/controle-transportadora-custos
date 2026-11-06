@@ -1499,8 +1499,13 @@ export async function runHomologacaoPhases(
           supabase,
           context.companyId,
           entry.id,
-          context.profileId,
-          {paidAt: isoDaysAgoDate(1), paidAmount: amount},
+          {
+            paidAt: isoDaysAgoDate(1),
+            paidAmount: amount,
+            paymentMethod: null,
+            notes: null,
+            idempotencyKey: `hml-receipt-${entry.id}`,
+          },
         );
         trackOk({
           phase: 'accounts_receivable',

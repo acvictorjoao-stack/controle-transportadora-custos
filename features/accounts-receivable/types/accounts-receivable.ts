@@ -8,7 +8,11 @@ import type {
   PaginatedFinancialEntries,
 } from '@/features/financial/types';
 
-import type {ACCOUNTS_RECEIVABLE_STATUSES} from '../constants';
+import type {
+  ACCOUNTS_RECEIVABLE_STATUSES,
+  RECEIVABLE_MOVEMENT_KIND_LABELS,
+  RECEIVABLE_PAYMENT_METHODS,
+} from '../constants';
 
 export type AccountsReceivableStatus = (typeof ACCOUNTS_RECEIVABLE_STATUSES)[number];
 
@@ -34,9 +38,26 @@ export interface AccountsReceivableSortOptions {
 
 export type PaginatedAccountsReceivable = PaginatedFinancialEntries;
 
+export type ReceivablePaymentMethod = (typeof RECEIVABLE_PAYMENT_METHODS)[number];
+export type ReceivableMovementKind = keyof typeof RECEIVABLE_MOVEMENT_KIND_LABELS;
+
+export interface ReceivableMovement {
+  id: string;
+  kind: ReceivableMovementKind;
+  amount: number;
+  movementDate: string;
+  paymentMethod: ReceivablePaymentMethod | null;
+  notes: string | null;
+  reason: string | null;
+  reversesMovementId: string | null;
+  createdAt: string;
+  createdByName: string | null;
+}
+
 export interface AccountsReceivableDetailData {
   entry: AccountsReceivableEntry;
   history: AccountsReceivableHistory[];
+  movements: ReceivableMovement[];
 }
 
 export type {FinancialDetailData, FinancialEntryStatus};
