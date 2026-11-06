@@ -38,9 +38,13 @@ Saldo do título: `amount + adjustment_total - paid_amount`.
 
 ## Publicação
 
-Aplique as migrations 105 a 108 **antes** de publicar o código: a aplicação lê colunas e a view criadas por elas.
+Aplique as migrations 105 a 108, nesta ordem, **antes** de publicar o código: a aplicação lê colunas e a view criadas por elas.
+
+Publique logo em seguida. Com as migrations aplicadas e o código antigo no ar, "Marcar como recebido" fica bloqueado.
 
 Depois de aplicar, regenere `supabase/types/database.ts`.
+
+Reversão: `database/rollback/trip-receivables-105-108.sql`, com as perdas descritas no próprio arquivo.
 
 Teste de banco, somente em ambiente local com as migrations aplicadas:
 
