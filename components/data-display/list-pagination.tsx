@@ -33,7 +33,7 @@ function ListPagination({
 
   return (
     <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <p className="text-sm text-muted-foreground">
+      <p className="text-sm tabular-nums text-muted-foreground">
         {total === 0
           ? `Nenhum ${itemLabel} encontrado`
           : `Mostrando ${start}–${end} de ${total} ${label}`}

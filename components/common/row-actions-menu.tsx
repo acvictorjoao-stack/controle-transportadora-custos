@@ -116,6 +116,7 @@ function RowActionsMenu({
         disabled={disabled}
         aria-expanded={open}
         aria-haspopup="menu"
+        aria-label="Ações"
         onClick={() => onOpenChange(!open)}
       >
         <MoreHorizontal className="size-4" />
@@ -127,7 +128,7 @@ function RowActionsMenu({
             ref={menuRef}
             role="menu"
             style={menuStyle}
-            className="rounded-md border border-border bg-popover p-1 shadow-md"
+            className="rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-lg"
           >
             {children}
           </div>,
@@ -153,8 +154,8 @@ function RowActionsMenuItem({
       type="button"
       role="menuitem"
       className={cn(
-        'flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent',
-        destructive && 'text-destructive',
+        'flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50',
+        destructive && 'text-destructive hover:bg-destructive/10',
         className,
       )}
       {...props}

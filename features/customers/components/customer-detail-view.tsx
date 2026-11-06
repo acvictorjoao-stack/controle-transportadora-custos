@@ -664,7 +664,7 @@ function AddressForm({
     onSaved();
   }
 
-  const inputClass = 'h-9 rounded-md border px-2 text-sm';
+  const inputClass = 'h-9 rounded-lg border border-input bg-card px-3 text-sm';
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3 rounded-lg border p-3">
@@ -806,7 +806,7 @@ function ContactForm({
     onSaved();
   }
 
-  const inputClass = 'h-9 rounded-md border px-2 text-sm';
+  const inputClass = 'h-9 rounded-lg border border-input bg-card px-3 text-sm';
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3 rounded-lg border p-3">

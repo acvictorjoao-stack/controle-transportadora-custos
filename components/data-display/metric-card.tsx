@@ -26,7 +26,7 @@ function MetricCard({
     <div
       data-slot="metric-card"
       className={cn(
-        'flex flex-col gap-3 rounded-xl border border-border bg-card p-6 shadow-card',
+        'flex flex-col gap-3 rounded-xl border border-border bg-card p-5 shadow-card',
         className,
       )}
       {...props}
@@ -39,7 +39,7 @@ function MetricCard({
           </div>
         )}
       </div>
-      <div className="font-financial text-3xl font-semibold tracking-tight" data-financial="true">
+      <div className="font-financial text-2xl font-semibold tracking-tight" data-financial="true">
         {value}
       </div>
       {(description || trend) && (

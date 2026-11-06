@@ -4,23 +4,23 @@ import * as React from 'react';
 import {cn} from '@/lib/utils';
 
 const badgeVariants = cva(
-  'inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium transition-colors',
+  'inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-colors',
   {
     variants: {
       variant: {
         default:
-          'border-transparent bg-primary text-primary-foreground',
+          'border-transparent bg-accent text-accent-foreground',
         secondary:
           'border-transparent bg-secondary text-secondary-foreground',
         destructive:
-          'border-transparent bg-destructive text-destructive-foreground',
+          'border-transparent bg-destructive/12 text-destructive',
         outline: 'text-foreground border-border',
         success:
-          'border-transparent bg-success/15 text-success',
+          'border-transparent bg-success/12 text-success',
         warning:
-          'border-transparent bg-warning/15 text-warning',
+          'border-transparent bg-warning/12 text-warning',
         info:
-          'border-transparent bg-info/15 text-info',
+          'border-transparent bg-info/12 text-info',
       },
     },
     defaultVariants: {

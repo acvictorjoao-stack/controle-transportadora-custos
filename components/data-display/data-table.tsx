@@ -65,12 +65,12 @@ function DataTable<T>({
       className={cn('w-full caption-bottom text-sm', className)}
     >
       <thead>
-        <tr className="border-b border-border bg-muted/40">
+        <tr className="border-b border-border bg-muted/50">
           {columns.map((column) => (
             <th
               key={column.id}
               className={cn(
-                'h-10 px-4 text-left align-middle text-xs font-medium uppercase tracking-wider text-muted-foreground',
+                'h-10 whitespace-nowrap px-4 text-left align-middle text-[11px] font-semibold uppercase tracking-wider text-muted-foreground',
                 column.headerClassName,
               )}
             >
@@ -84,7 +84,7 @@ function DataTable<T>({
           <tr
             key={getRowKey(row)}
             className={cn(
-              'border-b border-border transition-colors last:border-0 hover:bg-muted/30',
+              'border-b border-border transition-colors last:border-0 hover:bg-muted/40',
               getRowClassName?.(row),
             )}
           >

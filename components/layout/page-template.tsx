@@ -45,7 +45,7 @@ function PageTemplate({
         (breadcrumbItems ? (
           <BreadcrumbNavigation items={breadcrumbItems} />
         ) : (
-          <Breadcrumb />
+          <Breadcrumb className="lg:hidden" />
         ))}
       <PageHeader
         title={title}

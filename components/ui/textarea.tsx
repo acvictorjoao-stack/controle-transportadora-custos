@@ -12,7 +12,7 @@ function Textarea({className, error, ...props}: TextareaProps) {
     <textarea
       data-slot="textarea"
       className={cn(
-        'flex min-h-[80px] w-full rounded-lg border border-input bg-background px-3 py-2 text-sm shadow-xs transition-[color,box-shadow,border-color] outline-none resize-y',
+        'flex min-h-[80px] w-full rounded-lg border border-input bg-card px-3 py-2 text-sm shadow-xs transition-[color,box-shadow,border-color] outline-none resize-y',
         'placeholder:text-muted-foreground',
         'focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30',
         'disabled:cursor-not-allowed disabled:opacity-50',

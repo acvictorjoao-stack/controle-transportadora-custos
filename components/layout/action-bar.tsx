@@ -18,15 +18,15 @@ function ActionBar({
     <div
       data-slot="action-bar"
       className={cn(
-        'flex flex-col gap-3 rounded-lg border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between',
+        'flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-card sm:flex-row sm:items-center sm:justify-between',
         className,
       )}
       {...props}
     >
-      {leading && <div className="flex items-center gap-2">{leading}</div>}
+      {leading && <div className="flex flex-wrap items-center gap-2">{leading}</div>}
       {children}
       {trailing && (
-        <div className="flex items-center gap-2 sm:ml-auto">{trailing}</div>
+        <div className="flex flex-wrap items-center gap-2 sm:ml-auto">{trailing}</div>
       )}
     </div>
   );

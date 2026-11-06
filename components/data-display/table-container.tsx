@@ -28,16 +28,16 @@ function TableContainer({
       {...props}
     >
       {(title || description || toolbar) && (
-        <div className="flex flex-col gap-3 border-b border-border px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 border-b border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             {title && (
-              <h3 className="text-sm font-semibold tracking-tight">{title}</h3>
+              <h3 className="text-base font-semibold tracking-tight">{title}</h3>
             )}
             {description && (
               <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>
             )}
           </div>
-          {toolbar && <div className="flex items-center gap-2">{toolbar}</div>}
+          {toolbar && <div className="flex flex-wrap items-center gap-2">{toolbar}</div>}
         </div>
       )}
       {/* Horizontal scroll only. overflow-y-clip avoids the CSS quirk where

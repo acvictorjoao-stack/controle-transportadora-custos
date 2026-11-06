@@ -23,7 +23,7 @@ function FormField({
 }: FormFieldProps) {
   return (
     <div className={cn('space-y-2', className)}>
-      <label htmlFor={htmlFor} className="text-sm font-medium">
+      <label htmlFor={htmlFor} className="block text-sm font-medium">
         {label}
         {required && <span className="ml-0.5 text-destructive">*</span>}
       </label>
