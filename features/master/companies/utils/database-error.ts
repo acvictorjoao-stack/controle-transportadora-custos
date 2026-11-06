@@ -93,6 +93,8 @@ const RECEIVABLE_BUSINESS_ERRORS = [
   'Conta a receber não encontrada.',
   'Recebimento não encontrado.',
   'Chave de operação já utilizada.',
+  'Viagem com cobrança não pode mudar de empresa.',
+  'Título antigo com recebimento',
 ] as const;
 
 export function mapDatabaseError(error: {code?: string; message: string}): string {

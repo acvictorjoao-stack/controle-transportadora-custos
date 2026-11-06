@@ -87,6 +87,9 @@ where exists (select 1 from moved where moved.financial_entry_id = fe.id)
 comment on view public.financial_cash_flow_lines is
   'Linhas do fluxo de caixa: entrada só na data do recebimento; saldo em aberto à parte';
 
+revoke all on table public.financial_cash_flow_lines
+  from public, anon, authenticated, service_role;
+
 grant select on public.financial_cash_flow_lines to authenticated;
 grant select on public.financial_cash_flow_lines to service_role;
 

@@ -25,6 +25,8 @@ describe('migrations de título de frete — contrato estático', () => {
   });
 
   it('movimentos só são lidos por authenticated', () => {
+    expect(movements).toContain('revoke all on table public.financial_entry_movements');
+    expect(movements).toContain('from public, anon, authenticated, service_role;');
     expect(movements).toContain('grant select on public.financial_entry_movements to authenticated;');
     expect(movements).not.toMatch(/grant[^;]*(insert|update|delete)[^;]*financial_entry_movements/i);
   });
@@ -50,8 +52,13 @@ describe('migrations de título de frete — contrato estático', () => {
     );
   });
 
+  it('a proteção do título cobre inclusão, alteração e exclusão', () => {
+    expect(sync).toContain('before insert or update or delete on public.financial_entries');
+  });
+
   it('a view do caixa respeita a RLS de quem consulta', () => {
     expect(cashFlow).toContain('with (security_invoker = true)');
+    expect(cashFlow).toContain('revoke all on table public.financial_cash_flow_lines');
   });
 
   it('título de frete só vira receita com a viagem concluída', () => {

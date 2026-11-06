@@ -116,12 +116,56 @@ set search_path = public
 as $$
 declare
   v_has_movements boolean;
+  v_target public.financial_entries%rowtype;
 begin
   if coalesce(current_setting('fleetcontrol.receivable_internal', true), 'off') = 'on'
      or public.request_is_service_context() then
     if tg_op = 'DELETE' then
       return old;
     end if;
+    return new;
+  end if;
+
+  if tg_op = 'INSERT' then
+    if new.trip_charge_key is not null then
+      raise exception 'Este título é controlado pela viagem de origem.'
+        using errcode = 'P0001';
+    end if;
+
+    if new.source_module = 'accounts_receivable'
+       and new.entry_type = 'revenue'
+       and (
+         new.entry_status = 'paid'
+         or new.paid_amount is not null
+         or new.adjustment_total <> 0
+       ) then
+      raise exception 'Use o registro de recebimento para quitar o título.'
+        using errcode = 'P0001';
+    end if;
+
+    -- Estorno genérico grava este lançamento antes de marcar o original.
+    if new.reversed_entry_id is not null then
+      select * into v_target
+      from public.financial_entries
+      where id = new.reversed_entry_id;
+
+      if v_target.source_module = 'accounts_receivable' then
+        if v_target.trip_charge_key is not null then
+          raise exception 'Este título é controlado pela viagem de origem.'
+            using errcode = 'P0001';
+        end if;
+
+        if exists (
+          select 1
+          from public.financial_entry_movements m
+          where m.financial_entry_id = v_target.id
+        ) then
+          raise exception 'Título com movimentos só muda por ajuste ou estorno.'
+            using errcode = 'P0001';
+        end if;
+      end if;
+    end if;
+
     return new;
   end if;
 
@@ -194,7 +238,7 @@ end;
 $$;
 
 create trigger financial_entries_guard_receivable
-  before update or delete on public.financial_entries
+  before insert or update or delete on public.financial_entries
   for each row
   execute function public.guard_receivable_entry();
 
@@ -219,6 +263,19 @@ declare
   v_category_id uuid;
   v_cost_center_id uuid;
 begin
+  if tg_op = 'UPDATE' and new.company_id is distinct from old.company_id then
+    if old.payment_condition is not null
+       or new.payment_condition is not null
+       or exists (
+         select 1
+         from public.financial_entries fe
+         where fe.trip_id = new.id
+           and fe.trip_charge_key is not null
+       ) then
+      raise exception 'Viagem com cobrança não pode mudar de empresa.' using errcode = '42501';
+    end if;
+  end if;
+
   select * into v_title
   from public.financial_entries fe
   where fe.company_id = new.company_id
@@ -312,6 +369,8 @@ begin
       and cc.deleted_at is null
     limit 1;
 
+    perform set_config('fleetcontrol.receivable_internal', 'on', true);
+
     insert into public.financial_entries (
       company_id, branch_id, vehicle_id, driver_id, trip_id,
       customer_id, customer_contract_id, category_id, cost_center_id,
@@ -337,7 +396,12 @@ begin
       where trip_charge_key is not null
       do nothing;
 
+    perform set_config('fleetcontrol.receivable_internal', 'off', true);
     return new;
+  end if;
+
+  if new.customer_id is null and v_freight > 0 and new.payment_condition is not null then
+    raise exception 'Informe o cliente para gerar o título do frete.' using errcode = 'P0001';
   end if;
 
   if v_has_movements then
@@ -478,6 +542,15 @@ begin
 
   if v_entry.entry_status not in ('pending', 'overdue') then
     raise exception 'Somente títulos em aberto podem receber pagamentos.' using errcode = 'P0001';
+  end if;
+
+  if coalesce(v_entry.paid_amount, 0) > 0
+     and not exists (
+       select 1
+       from public.financial_entry_movements m
+       where m.financial_entry_id = v_entry.id
+     ) then
+    raise exception 'Título antigo com recebimento não aceita novos movimentos.' using errcode = 'P0001';
   end if;
 
   if p_amount is null or p_amount <= 0 then
@@ -628,8 +701,7 @@ begin
   select * into v_entry
   from public.financial_entries
   where id = p_entry_id
-    and deleted_at is null
-  for update;
+    and deleted_at is null;
 
   if v_entry.id is null
      or v_entry.source_module is distinct from 'accounts_receivable'
@@ -638,6 +710,25 @@ begin
   end if;
 
   perform public.assert_receivable_actor(v_entry.company_id, 'financeiro:update');
+
+  -- Mesma ordem do trigger da viagem (viagem, depois título), para evitar deadlock.
+  if v_entry.trip_charge_key is not null then
+    perform 1
+    from public.trips t
+    where t.id = v_entry.trip_id
+      and t.company_id = v_entry.company_id
+    for update;
+  end if;
+
+  select * into v_entry
+  from public.financial_entries
+  where id = p_entry_id
+    and deleted_at is null
+  for update;
+
+  if v_entry.id is null then
+    raise exception 'Conta a receber não encontrada.' using errcode = 'P0002';
+  end if;
 
   select * into v_existing
   from public.financial_entry_movements
@@ -653,6 +744,17 @@ begin
 
   if v_entry.entry_status in ('cancelled', 'reversed') then
     raise exception 'Título cancelado não pode ser ajustado.' using errcode = 'P0001';
+  end if;
+
+  -- Título antigo quitado não tem movimentos: recalcular apagaria o recebimento.
+  if coalesce(v_entry.paid_amount, 0) > 0
+     and not exists (
+       select 1
+       from public.financial_entry_movements m
+       where m.financial_entry_id = v_entry.id
+         and m.kind in ('receipt', 'receipt_reversal')
+     ) then
+    raise exception 'Título antigo com recebimento não pode ser ajustado.' using errcode = 'P0001';
   end if;
 
   if length(trim(coalesce(p_reason, ''))) = 0 then
@@ -715,7 +817,7 @@ $$;
 -- Grants: só as RPCs de negócio ficam expostas
 -- ---------------------------------------------------------------------------
 
-revoke all on function public.request_is_service_context() from public, anon;
+revoke all on function public.request_is_service_context() from public, anon, authenticated;
 revoke all on function public.assert_receivable_actor(uuid, text) from public, anon, authenticated;
 revoke all on function public.recompute_receivable_entry(uuid) from public, anon, authenticated;
 revoke all on function public.log_receivable_movement(public.financial_entries, text, jsonb)
@@ -725,7 +827,6 @@ revoke all on function public.register_receivable_receipt(uuid, numeric, date, t
 revoke all on function public.reverse_receivable_receipt(uuid, text, text) from public, anon;
 revoke all on function public.adjust_receivable_amount(uuid, numeric, text, text) from public, anon;
 
-grant execute on function public.request_is_service_context() to authenticated;
 grant execute on function public.register_receivable_receipt(uuid, numeric, date, text, text, text)
   to authenticated;
 grant execute on function public.reverse_receivable_receipt(uuid, text, text) to authenticated;

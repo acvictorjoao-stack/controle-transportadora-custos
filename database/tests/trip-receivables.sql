@@ -457,6 +457,123 @@ select pg_temp.expect('título manual com recebimento não é cancelado direto',
     is not null);
 select pg_temp.act_as_owner();
 
+-- ---------------------------------------------------------------------------
+-- Revisão técnica do PR #13
+-- ---------------------------------------------------------------------------
+
+select pg_temp.expect('tabela de movimentos sem escrita para authenticated',
+  has_table_privilege('authenticated', 'public.financial_entry_movements', 'select')
+  and not has_table_privilege('authenticated', 'public.financial_entry_movements', 'insert')
+  and not has_table_privilege('authenticated', 'public.financial_entry_movements', 'update')
+  and not has_table_privilege('authenticated', 'public.financial_entry_movements', 'delete')
+  and not has_table_privilege('authenticated', 'public.financial_entry_movements', 'truncate'));
+select pg_temp.expect('anon sem acesso a movimentos e à view do caixa',
+  not has_table_privilege('anon', 'public.financial_entry_movements', 'select')
+  and not has_table_privilege('anon', 'public.financial_cash_flow_lines', 'select'));
+select pg_temp.expect('função de contexto não fica exposta',
+  not has_function_privilege('authenticated', 'public.request_is_service_context()', 'execute'));
+
+-- Título antigo quitado
+select pg_temp.act_as('12000000-0000-4000-8000-000000000001');
+select pg_temp.expect('título antigo quitado não é ajustado',
+  pg_temp.error_of($q$select public.adjust_receivable_amount('e0000000-0000-4000-8000-000000000002', 250, 'Teste', 'k-old1')$q$)
+    like '%Título antigo%');
+select pg_temp.act_as_owner();
+select pg_temp.expect('título antigo mantém o recebimento depois da tentativa',
+  (select entry_status = 'paid' and paid_amount = 180 and paid_at is not null and adjustment_total = 0
+   from public.financial_entries where id = 'e0000000-0000-4000-8000-000000000002'));
+
+insert into public.financial_entries (id, company_id, entry_type, entry_status, amount, paid_amount, entry_date, source_module, client)
+values ('e0000000-0000-4000-8000-000000000004', 'a0000000-0000-4000-8000-000000000001', 'revenue', 'pending', 500, 100, date '2026-10-01', 'accounts_receivable', 'Antigo parcial');
+select pg_temp.act_as('12000000-0000-4000-8000-000000000001');
+select pg_temp.expect('título antigo parcial não recebe movimento',
+  pg_temp.error_of($q$select public.register_receivable_receipt('e0000000-0000-4000-8000-000000000004', 10, date '2026-11-01', null, null, 'k-old2')$q$)
+    like '%Título antigo%');
+select pg_temp.expect('título antigo parcial não é ajustado',
+  pg_temp.error_of($q$select public.adjust_receivable_amount('e0000000-0000-4000-8000-000000000004', 600, 'Teste', 'k-old3')$q$)
+    like '%Título antigo%');
+
+-- Inserção direta
+select pg_temp.act_as_owner();
+insert into public.trips (id, company_id, trip_number, customer_id, actual_freight_value)
+values ('10000000-0000-4000-8000-00000000000b', 'a0000000-0000-4000-8000-000000000001', 'TR-KEY', 'ca000000-0000-4000-8000-000000000001', 100);
+select pg_temp.act_as('12000000-0000-4000-8000-000000000001');
+select pg_temp.expect('Financeiro não cria título com a chave da viagem',
+  pg_temp.error_of($q$
+    insert into public.financial_entries (company_id, trip_id, entry_type, entry_status, amount, source_module, trip_charge_key)
+    values ('a0000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-00000000000b', 'revenue', 'pending', 1, 'accounts_receivable', 'freight')
+  $q$) like '%controlado pela viagem%');
+select pg_temp.expect('Financeiro não cria conta a receber já quitada',
+  pg_temp.error_of($q$
+    insert into public.financial_entries (company_id, entry_type, entry_status, amount, paid_amount, source_module, client)
+    values ('a0000000-0000-4000-8000-000000000001', 'revenue', 'paid', 1, 1, 'accounts_receivable', 'X')
+  $q$) like '%registro de recebimento%');
+select pg_temp.expect('conta a receber manual pendente continua sendo criada',
+  pg_temp.error_of($q$
+    insert into public.financial_entries (company_id, entry_type, entry_status, amount, source_module, client)
+    values ('a0000000-0000-4000-8000-000000000001', 'revenue', 'pending', 1, 'accounts_receivable', 'X')
+  $q$) is null);
+select pg_temp.expect('despesa segue fora da proteção',
+  pg_temp.error_of($q$
+    insert into public.financial_entries (company_id, entry_type, entry_status, amount, source_module)
+    values ('a0000000-0000-4000-8000-000000000001', 'expense', 'paid', 1, 'accounts_payable')
+  $q$) is null);
+
+-- Estorno genérico não deixa lançamento órfão
+select pg_temp.act_as('11000000-0000-4000-8000-000000000001');
+select pg_temp.new_trip('10000000-0000-4000-8000-00000000000c', 'TR-REV', 8500);
+select pg_temp.act_as_owner();
+insert into _ids select 'title-rev', id from _title where trip_id = '10000000-0000-4000-8000-00000000000c';
+select pg_temp.act_as('12000000-0000-4000-8000-000000000001');
+select pg_temp.expect('estorno genérico de título da viagem é recusado no início',
+  pg_temp.error_of($q$
+    insert into public.financial_entries (company_id, trip_id, entry_type, entry_status, amount, reversed_entry_id, source_module, is_system_generated, entry_date)
+    values ('a0000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-00000000000c', 'reversal', 'paid', 8500, (select id from _ids where name = 'title-rev'), 'accounts_receivable', true, date '2026-11-05')
+  $q$) like '%controlado pela viagem%');
+select pg_temp.expect('estorno genérico de título manual com movimentos é recusado',
+  pg_temp.error_of($q$
+    insert into public.financial_entries (company_id, entry_type, entry_status, amount, reversed_entry_id, source_module, is_system_generated, entry_date)
+    values ('a0000000-0000-4000-8000-000000000001', 'reversal', 'paid', 900, 'e0000000-0000-4000-8000-000000000003', 'accounts_receivable', true, date '2026-11-05')
+  $q$) like '%só muda por ajuste%');
+select pg_temp.expect('estorno de conta antiga quitada segue permitido',
+  pg_temp.error_of($q$
+    insert into public.financial_entries (company_id, entry_type, entry_status, amount, reversed_entry_id, source_module, is_system_generated, entry_date)
+    values ('a0000000-0000-4000-8000-000000000001', 'reversal', 'paid', 200, 'e0000000-0000-4000-8000-000000000002', 'accounts_receivable', true, date '2026-11-05')
+  $q$) is null);
+select pg_temp.act_as_owner();
+
+-- Troca de empresa
+select pg_temp.add_member('b0000000-0000-4000-8000-000000000001', '11000000-0000-4000-8000-000000000001', 'TR Operacional B',
+  array['trips:read', 'trips:create', 'trips:update', 'customers:read']);
+select pg_temp.act_as('11000000-0000-4000-8000-000000000001');
+select pg_temp.expect('viagem com cobrança não muda de empresa',
+  pg_temp.error_of($q$
+    update public.trips
+    set company_id = 'b0000000-0000-4000-8000-000000000001', customer_id = 'cb000000-0000-4000-8000-000000000001'
+    where id = '10000000-0000-4000-8000-00000000000c'
+  $q$) like '%mudar de empresa%');
+select pg_temp.expect('viagem não perde o cliente com cobrança ativa',
+  pg_temp.error_of($q$update public.trips set customer_id = null where id = '10000000-0000-4000-8000-00000000000c'$q$)
+    like '%Informe o cliente%');
+select pg_temp.act_as_owner();
+select pg_temp.expect('cobrança continua única e na empresa original',
+  (select count(*) = 1 and bool_and(company_id = 'a0000000-0000-4000-8000-000000000001')
+   from public.financial_entries where trip_id = '10000000-0000-4000-8000-00000000000c'));
+
+-- Permissões das RPCs
+select pg_temp.act_as('11000000-0000-4000-8000-000000000001');
+select pg_temp.expect('Operacional não ajusta',
+  pg_temp.error_of($q$select public.adjust_receivable_amount((select id from _ids where name = 'title-rev'), 9000, 'x', 'k-p1')$q$)
+    like '%Sem permissão%');
+select pg_temp.expect('Operacional não estorna',
+  pg_temp.error_of($q$select public.reverse_receivable_receipt((select id from public.financial_entry_movements limit 1), 'x', 'k-p2')$q$)
+    is not null);
+select pg_temp.act_as('13000000-0000-4000-8000-000000000001');
+select pg_temp.expect('Financeiro de outra empresa não ajusta',
+  pg_temp.error_of($q$select public.adjust_receivable_amount((select id from _ids where name = 'title-rev'), 9000, 'x', 'k-p3')$q$)
+    like '%Sem permissão%');
+select pg_temp.act_as_owner();
+
 select seq, name, ok, detail from _tr_results order by seq;
 
 do $$

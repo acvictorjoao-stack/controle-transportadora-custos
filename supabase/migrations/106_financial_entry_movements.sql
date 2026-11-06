@@ -75,6 +75,10 @@ create policy financial_entry_movements_select_authorized
     )
   );
 
+-- O Supabase concede tudo por padrão a tabelas novas (pg_default_acl).
+revoke all on table public.financial_entry_movements
+  from public, anon, authenticated, service_role;
+
 grant select on public.financial_entry_movements to authenticated;
 grant select on public.financial_entry_movements to service_role;
 

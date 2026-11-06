@@ -112,7 +112,11 @@ function AccountsReceivableDetailView({
     movements.map((movement) => movement.reversesMovementId).filter(Boolean),
   );
   const canCancel = !entry.tripChargeKey && !isPartiallyReceived(entry);
-  const canAdjust = isOpenStatus(entry.entryStatus) || entry.entryStatus === 'paid';
+  const hasReceiptMovements = movements.some((movement) => movement.kind !== 'adjustment');
+  // Título antigo quitado não tem movimentos e fica fora do ajuste.
+  const canAdjust = (entry.paidAmount ?? 0) > 0
+    ? hasReceiptMovements
+    : isOpenStatus(entry.entryStatus);
 
   function handleRefresh() {
     router.refresh();
