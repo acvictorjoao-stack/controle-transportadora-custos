@@ -107,3 +107,20 @@ describe('database-error — MappedDatabaseError preserva UX', () => {
     expect(mapped.safeDiagnostic).toContain('category=unknown');
   });
 });
+
+describe('mapDatabaseError — regras de título a receber', () => {
+  it('mostra a orientação de negócio ao usuário', () => {
+    const message =
+      'Esta viagem tem recebimentos. O Financeiro precisa estornar os valores antes do cancelamento.';
+    expect(mapDatabaseError({code: 'P0001', message})).toBe(message);
+    expect(
+      mapDatabaseError({code: 'P0001', message: 'O valor excede o saldo em aberto do título.'}),
+    ).toBe('O valor excede o saldo em aberto do título.');
+  });
+
+  it('mantém o texto genérico para os demais erros do banco', () => {
+    expect(
+      mapDatabaseError({code: 'P0001', message: 'erro interno com detalhe do banco'}),
+    ).toBe('Não foi possível concluir a operação.');
+  });
+});

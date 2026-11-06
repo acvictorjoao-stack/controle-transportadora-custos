@@ -8,10 +8,16 @@ import {Modal} from '@/components/master/shared/modal';
 import {Alert, AlertDescription} from '@/components/ui/alert';
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
+import {Textarea} from '@/components/ui/textarea';
 import {useToast} from '@/contexts/feedback/toast-context';
+import {localDateIso} from '@/features/financial-dashboard/utils/dates';
+import {formatCurrencyBr} from '@/features/financial/utils/financial-format';
+import {financialInputClassName} from '@/features/financial/utils/form-styles';
+import {getReceivableBalance} from '@/features/financial/utils/receivable-balance';
 
 import {markAccountsReceivableReceivedAction} from '../actions';
-import type {AccountsReceivableEntry} from '../types';
+import {RECEIVABLE_PAYMENT_METHOD_LABELS, RECEIVABLE_PAYMENT_METHODS} from '../constants';
+import type {AccountsReceivableEntry, ReceivablePaymentMethod} from '../types';
 import type {MarkAccountsReceivableReceivedInput} from '../validation';
 import {formatCurrencyInput, maskCurrencyInput, parseCurrencyInput} from '../utils/currency';
 
@@ -23,11 +29,6 @@ export interface AccountsReceivableReceiveModalProps {
 }
 
 type FieldErrors = Partial<Record<keyof MarkAccountsReceivableReceivedInput, string>>;
-
-function toLocalDateValue(iso: string | null | undefined): string {
-  if (!iso) return new Date().toISOString().slice(0, 10);
-  return iso.slice(0, 10);
-}
 
 function AccountsReceivableReceiveModal({
   open,
@@ -41,8 +42,8 @@ function AccountsReceivableReceiveModal({
     <Modal
       open={open}
       onClose={onClose}
-      title="Marcar como recebido"
-      description="Informe a data e o valor recebido"
+      title="Registrar recebimento"
+      description="Recebimento parcial mantém o título aberto até a quitação"
       size="md"
     >
       {entry && (
@@ -67,10 +68,15 @@ function AccountsReceivableReceiveForm({
   onReceived: (entry: AccountsReceivableEntry) => void;
 }) {
   const toast = useToast();
-  const [paidAt, setPaidAt] = React.useState(toLocalDateValue(new Date().toISOString()));
+  const [paidAt, setPaidAt] = React.useState(() => localDateIso());
+  const balance = getReceivableBalance(entry);
   const [amountDisplay, setAmountDisplay] = React.useState(() =>
-    formatCurrencyInput(entry.amount),
+    formatCurrencyInput(balance),
   );
+  const [paymentMethod, setPaymentMethod] = React.useState<ReceivablePaymentMethod | ''>('');
+  const [notes, setNotes] = React.useState('');
+  // Mantida entre tentativas: reenviar após falha de conexão não duplica.
+  const [idempotencyKey] = React.useState(() => crypto.randomUUID());
   const [fieldErrors, setFieldErrors] = React.useState<FieldErrors>({});
   const [formError, setFormError] = React.useState<string | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
@@ -84,6 +90,9 @@ function AccountsReceivableReceiveForm({
     const result = await markAccountsReceivableReceivedAction(entry.id, {
       paidAt,
       paidAmount: parseCurrencyInput(amountDisplay),
+      paymentMethod: paymentMethod || null,
+      notes,
+      idempotencyKey,
     });
 
     if (!result.success) {
@@ -96,7 +105,7 @@ function AccountsReceivableReceiveForm({
     }
 
     onReceived(result.data);
-    toast.success('Conta marcada como recebida');
+    toast.success('Recebimento registrado com sucesso');
     onClose();
     setSubmitting(false);
   }
@@ -111,6 +120,13 @@ function AccountsReceivableReceiveForm({
 
       <p className="text-sm text-muted-foreground">
         {entry.client ?? '—'} · {entry.description ?? '—'}
+      </p>
+
+      <p className="text-sm">
+        Saldo em aberto:{' '}
+        <span className="font-financial font-semibold">
+          {formatCurrencyBr(balance, entry.currency)}
+        </span>
       </p>
 
       <FormField
@@ -144,13 +160,38 @@ function AccountsReceivableReceiveForm({
         />
       </FormField>
 
+      <FormField label="Forma de pagamento" htmlFor="ar-payment-method">
+        <select
+          id="ar-payment-method"
+          value={paymentMethod}
+          onChange={(e) => setPaymentMethod(e.target.value as ReceivablePaymentMethod | '')}
+          className={financialInputClassName}
+        >
+          <option value="">Não informada</option>
+          {RECEIVABLE_PAYMENT_METHODS.map((method) => (
+            <option key={method} value={method}>
+              {RECEIVABLE_PAYMENT_METHOD_LABELS[method]}
+            </option>
+          ))}
+        </select>
+      </FormField>
+
+      <FormField label="Observação" htmlFor="ar-receipt-notes">
+        <Textarea
+          id="ar-receipt-notes"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          rows={2}
+        />
+      </FormField>
+
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={onClose}>
           Cancelar
         </Button>
         <Button type="submit" disabled={submitting}>
           {submitting ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-          Confirmar recebimento
+          Registrar recebimento
         </Button>
       </div>
     </form>

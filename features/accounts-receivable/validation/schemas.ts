@@ -1,5 +1,7 @@
 import {z} from 'zod';
 
+import {RECEIVABLE_PAYMENT_METHODS} from '../constants';
+
 const requiredString = z
   .string()
   .trim()
@@ -43,13 +45,42 @@ export const createAccountsReceivableSchema = accountsReceivableBaseSchema;
 
 export const updateAccountsReceivableSchema = accountsReceivableBaseSchema;
 
+const idempotencyKey = z.string().uuid('Operação inválida.');
+
+const requiredReason = z.string().trim().min(3, 'Informe o motivo.');
+
 export const markAccountsReceivableReceivedSchema = z.object({
   paidAt: z.string().trim().min(1, 'Informe a data do recebimento.'),
   paidAmount: requiredAmount,
+  paymentMethod: z
+    .enum(RECEIVABLE_PAYMENT_METHODS)
+    .nullable()
+    .optional()
+    .transform((v) => v ?? null),
+  notes: z
+    .string()
+    .trim()
+    .nullish()
+    .transform((v) => (v?.length ? v : null)),
+  idempotencyKey,
+});
+
+export const reverseReceivableReceiptSchema = z.object({
+  reason: requiredReason,
+  idempotencyKey,
+});
+
+export const adjustReceivableAmountSchema = z.object({
+  newAmount: requiredAmount,
+  reason: requiredReason,
+  idempotencyKey,
 });
 
 export type CreateAccountsReceivableInput = z.infer<typeof createAccountsReceivableSchema>;
 export type UpdateAccountsReceivableInput = z.infer<typeof updateAccountsReceivableSchema>;
-export type MarkAccountsReceivableReceivedInput = z.infer<
+export type MarkAccountsReceivableReceivedInput = z.input<
   typeof markAccountsReceivableReceivedSchema
 >;
+export type ParsedReceiptInput = z.infer<typeof markAccountsReceivableReceivedSchema>;
+export type ReverseReceivableReceiptInput = z.infer<typeof reverseReceivableReceiptSchema>;
+export type AdjustReceivableAmountInput = z.infer<typeof adjustReceivableAmountSchema>;

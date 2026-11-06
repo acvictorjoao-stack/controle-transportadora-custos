@@ -1,6 +1,6 @@
 'use client';
 
-import {ArrowLeft, Ban, CheckCircle2, Pencil} from 'lucide-react';
+import {ArrowLeft, Ban, CheckCircle2, Pencil, Scale, Undo2} from 'lucide-react';
 import Link from 'next/link';
 import {useRouter} from 'next/navigation';
 import * as React from 'react';
@@ -33,7 +33,19 @@ import type {
   AccountsReceivableEntry,
   AccountsReceivableHistory,
 } from '../types';
+import {
+  RECEIVABLE_MOVEMENT_KIND_LABELS,
+  RECEIVABLE_PAYMENT_METHOD_LABELS,
+} from '../constants';
+import type {ReceivableMovement} from '../types';
+import {
+  getReceivableBalance,
+  getReceivableEffectiveAmount,
+  isPartiallyReceived,
+} from '@/features/financial/utils/receivable-balance';
+import {AccountsReceivableAdjustModal} from './accounts-receivable-adjust-modal';
 import {AccountsReceivableFormModal} from './accounts-receivable-form-modal';
+import {AccountsReceivableReverseModal} from './accounts-receivable-reverse-modal';
 import {AccountsReceivableReceiveModal} from './accounts-receivable-receive-modal';
 import {TabsNav} from '@/components/ui/tabs-nav';
 
@@ -46,6 +58,7 @@ export interface AccountsReceivableDetailViewProps {
 const TABS = [
   {id: 'dados', label: 'Dados Gerais'},
   {id: 'financeiro', label: 'Financeiro'},
+  {id: 'recebimentos', label: 'Recebimentos'},
   {id: 'historico', label: 'Histórico'},
 ] as const;
 
@@ -92,7 +105,14 @@ function AccountsReceivableDetailView({
   const [activeTab, setActiveTab] = React.useState<TabId>('dados');
   const [modalOpen, setModalOpen] = React.useState(false);
   const [receiveModalOpen, setReceiveModalOpen] = React.useState(false);
-  const {entry, history} = data;
+  const [adjustModalOpen, setAdjustModalOpen] = React.useState(false);
+  const [reversingMovement, setReversingMovement] = React.useState<ReceivableMovement | null>(null);
+  const {entry, history, movements} = data;
+  const reversedIds = new Set(
+    movements.map((movement) => movement.reversesMovementId).filter(Boolean),
+  );
+  const canCancel = !entry.tripChargeKey && !isPartiallyReceived(entry);
+  const canAdjust = isOpenStatus(entry.entryStatus) || entry.entryStatus === 'paid';
 
   function handleRefresh() {
     router.refresh();
@@ -125,14 +145,21 @@ function AccountsReceivableDetailView({
   ];
 
   const financialRows = [
-    ['Valor previsto', formatCurrencyBr(entry.amount, entry.currency)],
+    ['Valor original', formatCurrencyBr(entry.amount, entry.currency)],
+    ['Ajustes', entry.adjustmentTotal !== 0
+      ? formatCurrencyBr(entry.adjustmentTotal, entry.currency)
+      : '—'],
+    ['Valor atual', formatCurrencyBr(getReceivableEffectiveAmount(entry), entry.currency)],
     ['Valor recebido', entry.paidAmount != null
       ? formatCurrencyBr(entry.paidAmount, entry.currency)
+      : '—'],
+    ['Saldo em aberto', isOpenStatus(entry.entryStatus)
+      ? formatCurrencyBr(getReceivableBalance(entry), entry.currency)
       : '—'],
     ['Data de emissão', formatDateBr(entry.entryDate)],
     ['Data de vencimento', formatDateBr(entry.dueDate)],
     ['Data do recebimento', entry.paidAt ? formatDateBr(entry.paidAt) : '—'],
-    ['Status', statusLabel(entry.entryStatus)],
+    ['Status', isPartiallyReceived(entry) ? 'Parcial' : statusLabel(entry.entryStatus)],
   ];
 
   const historyColumns = [
@@ -158,6 +185,57 @@ function AccountsReceivableDetailView({
     },
   ];
 
+  const movementColumns = [
+    {
+      id: 'date',
+      header: 'Data',
+      cell: (row: ReceivableMovement) => formatDateBr(row.movementDate),
+    },
+    {
+      id: 'kind',
+      header: 'Tipo',
+      cell: (row: ReceivableMovement) => RECEIVABLE_MOVEMENT_KIND_LABELS[row.kind],
+    },
+    {
+      id: 'amount',
+      header: 'Valor',
+      className: 'font-financial',
+      cell: (row: ReceivableMovement) => (
+        <span className={row.kind === 'receipt_reversal' ? 'text-destructive' : undefined}>
+          {formatCurrencyBr(row.kind === 'receipt_reversal' ? -row.amount : row.amount, entry.currency)}
+        </span>
+      ),
+    },
+    {
+      id: 'method',
+      header: 'Forma',
+      cell: (row: ReceivableMovement) =>
+        row.paymentMethod ? RECEIVABLE_PAYMENT_METHOD_LABELS[row.paymentMethod] : '—',
+    },
+    {
+      id: 'details',
+      header: 'Observação',
+      cell: (row: ReceivableMovement) => row.reason ?? row.notes ?? '—',
+    },
+    {
+      id: 'user',
+      header: 'Responsável',
+      cell: (row: ReceivableMovement) => row.createdByName ?? '—',
+    },
+    {
+      id: 'actions',
+      header: '',
+      className: 'w-28',
+      cell: (row: ReceivableMovement) =>
+        row.kind === 'receipt' && !reversedIds.has(row.id) ? (
+          <Button size="sm" variant="ghost" onClick={() => setReversingMovement(row)}>
+            <Undo2 className="size-4" />
+            Estornar
+          </Button>
+        ) : null,
+    },
+  ];
+
   return (
     <PageTemplate
       title={entry.description ?? entry.client ?? 'Conta a receber'}
@@ -179,24 +257,40 @@ function AccountsReceivableDetailView({
               </Button>
               <Button size="sm" onClick={() => setReceiveModalOpen(true)}>
                 <CheckCircle2 className="size-4" />
-                Marcar como recebido
+                Registrar recebimento
               </Button>
-              <Button size="sm" variant="destructive" onClick={() => handleCancel(entry)}>
-                <Ban className="size-4" />
-                Cancelar
-              </Button>
+              {canCancel && (
+                <Button size="sm" variant="destructive" onClick={() => handleCancel(entry)}>
+                  <Ban className="size-4" />
+                  Cancelar
+                </Button>
+              )}
             </>
+          )}
+          {canAdjust && (
+            <Button size="sm" variant="outline" onClick={() => setAdjustModalOpen(true)}>
+              <Scale className="size-4" />
+              Ajustar valor
+            </Button>
           )}
         </div>
       }
     >
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <Badge variant={statusBadgeVariant(entry.entryStatus)}>
-          {statusLabel(entry.entryStatus)}
+          {isPartiallyReceived(entry) ? 'Parcial' : statusLabel(entry.entryStatus)}
         </Badge>
         <span className="text-sm text-muted-foreground">
-          {formatCurrencyBr(entry.amount, entry.currency)}
+          {formatCurrencyBr(getReceivableEffectiveAmount(entry), entry.currency)}
         </span>
+        {entry.tripChargeKey && entry.tripId ? (
+          <Link
+            href={ROUTES.viagemDetail(entry.tripId)}
+            className="text-sm font-medium text-primary hover:underline"
+          >
+            Viagem {entry.tripNumber ?? ''}
+          </Link>
+        ) : null}
       </div>
 
       <TabsNav items={TABS} value={activeTab} onChange={setActiveTab} className="mb-4" />
@@ -241,6 +335,18 @@ function AccountsReceivableDetailView({
         </Card>
       )}
 
+      {activeTab === 'recebimentos' && (
+        <TableContainer>
+          <DataTable
+            columns={movementColumns}
+            data={movements}
+            getRowKey={(row) => row.id}
+            emptyTitle="Nenhum recebimento"
+            emptyDescription="Os recebimentos, estornos e ajustes aparecerão aqui."
+          />
+        </TableContainer>
+      )}
+
       {activeTab === 'historico' && (
         <Card>
           <CardHeader>
@@ -267,6 +373,20 @@ function AccountsReceivableDetailView({
         categories={categories}
         costCenters={costCenters}
         onSaved={handleRefresh}
+      />
+
+      <AccountsReceivableAdjustModal
+        open={adjustModalOpen}
+        entry={entry}
+        onClose={() => setAdjustModalOpen(false)}
+        onAdjusted={handleRefresh}
+      />
+
+      <AccountsReceivableReverseModal
+        entryId={entry.id}
+        movement={reversingMovement}
+        onClose={() => setReversingMovement(null)}
+        onReversed={handleRefresh}
       />
 
       <AccountsReceivableReceiveModal
