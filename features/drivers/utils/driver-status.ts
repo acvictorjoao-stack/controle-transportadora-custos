@@ -1,4 +1,5 @@
 import {digitsOnly} from '@/features/master/companies/utils/format';
+import {addCivilDays, formatDate, toCivilDate, todayCivilDate} from '@/lib/formatting/date';
 
 import type {DriverOperationalStatus} from '../types';
 
@@ -15,21 +16,25 @@ export function getDriverOperationalStatusVariant(
   }
 }
 
-export function isCnhExpired(expiresAt: string | null): boolean {
-  if (!expiresAt) return false;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return new Date(expiresAt) < today;
+/**
+ * Vencida a partir do dia seguinte à validade, no fuso de negócio.
+ * Compara datas civis (YYYY-MM-DD) para servidor e navegador concordarem.
+ */
+export function isCnhExpired(expiresAt: string | null, now: Date = new Date()): boolean {
+  const expiry = toCivilDate(expiresAt);
+  if (!expiry) return false;
+  return expiry < todayCivilDate(now);
 }
 
-export function isCnhExpiring(expiresAt: string | null, days = 30): boolean {
-  if (!expiresAt) return false;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const limit = new Date(today);
-  limit.setDate(limit.getDate() + days);
-  const expiry = new Date(expiresAt);
-  return expiry >= today && expiry <= limit;
+export function isCnhExpiring(
+  expiresAt: string | null,
+  days = 30,
+  now: Date = new Date(),
+): boolean {
+  const expiry = toCivilDate(expiresAt);
+  if (!expiry) return false;
+  const today = todayCivilDate(now);
+  return expiry >= today && expiry <= addCivilDays(today, days);
 }
 
 export function formatCpf(value: string): string {
@@ -117,6 +122,5 @@ export function buildEmergencyContact(name: string | null | undefined, phone: st
 }
 
 export function formatDateBr(value: string | null): string {
-  if (!value) return '—';
-  return new Date(value).toLocaleDateString('pt-BR');
+  return formatDate(value);
 }

@@ -4,6 +4,7 @@ import {
   mapDatabaseError,
   toMappedDatabaseError,
 } from '@/features/master/companies/utils/database-error';
+import {addCivilDays, todayCivilDate} from '@/lib/formatting/date';
 
 import {
   DRIVER_BRANCH_EMBED,
@@ -126,16 +127,15 @@ export async function listDrivers(
     query = query.eq('contract_type', filters.contractType);
   }
 
+  // Mesmo critério de isCnhExpired/isCnhExpiring: hoje no fuso de negócio.
   if (filters.cnhExpired) {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayCivilDate();
     query = query.not('license_expires_at', 'is', null).lt('license_expires_at', today);
   } else if (filters.cnhExpiring) {
-    const today = new Date();
-    const limit = new Date(today);
-    limit.setDate(limit.getDate() + 30);
+    const today = todayCivilDate();
     query = query
-      .gte('license_expires_at', today.toISOString().slice(0, 10))
-      .lte('license_expires_at', limit.toISOString().slice(0, 10));
+      .gte('license_expires_at', today)
+      .lte('license_expires_at', addCivilDays(today, 30));
   }
 
   if (filters.earPending) {

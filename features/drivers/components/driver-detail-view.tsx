@@ -38,6 +38,7 @@ import {
 import {DriverFileUpload} from './driver-file-upload';
 import {DriverFormModal} from './driver-form-modal';
 import {TabsNav} from '@/components/ui/tabs-nav';
+import {formatDateTime} from '@/lib/formatting/date';
 
 export interface DriverDetailViewProps {
   companyId: string;
@@ -59,10 +60,6 @@ const TABS = [
 ] as const;
 
 type TabId = (typeof TABS)[number]['id'];
-
-function formatDateTime(value: string) {
-  return new Date(value).toLocaleString('pt-BR');
-}
 
 function DriverDetailView({companyId, data, branches}: DriverDetailViewProps) {
   const router = useRouter();
@@ -343,7 +340,7 @@ function DriverDetailView({companyId, data, branches}: DriverDetailViewProps) {
         <TableContainer>
           <DataTable
             columns={[
-              {id: 'date', header: 'Data', cell: (row) => new Date(row.date).toLocaleDateString('pt-BR')},
+              {id: 'date', header: 'Data', cell: (row) => formatDateBr(row.date)},
               {id: 'category', header: 'Categoria', cell: (row) => row.category},
               {id: 'description', header: 'Descrição', cell: (row) => row.description ?? '—'},
               {
