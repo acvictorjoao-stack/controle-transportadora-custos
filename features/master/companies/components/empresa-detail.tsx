@@ -52,6 +52,7 @@ import type {CompanyDetail, CompanyAdmin, CompanyBranchSummary, CompanyMemberSum
 import type {UpdateCompanyInput} from '../validation';
 import {getDisplayName, slugify} from '../utils/format';
 import {ProvisionAdminModal} from './provision-admin-modal';
+import {formatDateTime} from '@/lib/formatting/date';
 
 export interface EmpresaDetailProps {
   company: CompanyDetail;
@@ -572,7 +573,7 @@ function EmpresaDetail({
                       </td>
                       <td className="py-2.5 text-muted-foreground">
                         {member.lastLoginAt
-                          ? new Date(member.lastLoginAt).toLocaleString('pt-BR')
+                          ? formatDateTime(member.lastLoginAt)
                           : 'Nunca'}
                       </td>
                     </tr>
@@ -749,11 +750,11 @@ function EmpresaDetail({
               {company.phone && <DetailRow label="Telefone" value={company.phone} />}
               <DetailRow
                 label="Criada em"
-                value={new Date(company.createdAt).toLocaleString('pt-BR')}
+                value={formatDateTime(company.createdAt)}
               />
               <DetailRow
                 label="Atualizada em"
-                value={new Date(company.updatedAt).toLocaleString('pt-BR')}
+                value={formatDateTime(company.updatedAt)}
               />
             </CardContent>
           </Card>
@@ -772,7 +773,7 @@ function EmpresaDetail({
                     label="Último login"
                     value={
                       company.admin.lastLoginAt
-                        ? new Date(company.admin.lastLoginAt).toLocaleString('pt-BR')
+                        ? formatDateTime(company.admin.lastLoginAt)
                         : 'Nunca'
                     }
                   />
@@ -799,7 +800,7 @@ function EmpresaDetail({
                 label="Data"
                 value={
                   company.provisionedAt
-                    ? new Date(company.provisionedAt).toLocaleString('pt-BR')
+                    ? formatDateTime(company.provisionedAt)
                     : '—'
                 }
               />
@@ -814,7 +815,7 @@ function EmpresaDetail({
                       <li key={`${entry.at}-${entry.status}`} className="rounded-md border border-border p-2">
                         <p className="font-medium">
                           {PROVISION_STATUS_LABELS[entry.status]} ·{' '}
-                          {new Date(entry.at).toLocaleString('pt-BR')}
+                          {formatDateTime(entry.at)}
                         </p>
                         {entry.message && (
                           <p className="text-xs text-muted-foreground">{entry.message}</p>

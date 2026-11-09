@@ -30,6 +30,7 @@ import type {
 import {getPlanLabel, type PlanCatalogItem} from '@/features/master/plans';
 
 import {NovaEmpresaModal} from './nova-empresa-modal';
+import {formatDate} from '@/lib/formatting/date';
 
 export interface EmpresasListProps {
   initialData: PaginatedCompanies | null;
@@ -255,7 +256,7 @@ function EmpresasList({
       id: 'createdAt',
       header: 'Cadastro',
       cell: (row: CompanyListItem) =>
-        new Date(row.createdAt).toLocaleDateString('pt-BR'),
+        formatDate(row.createdAt),
     },
   ];
 

@@ -15,6 +15,7 @@ import {
   resolveOperationPaymentType,
   upsertFinancialEntryFromOperation,
 } from './operation-financial.service';
+import {toCivilDate, todayCivilDate} from '@/lib/formatting/date';
 
 async function resolveTireIdForMaintenance(
   supabase: SupabaseClient,
@@ -159,7 +160,7 @@ export async function onTireCostUpdated(
       sourceId: tire.id,
       paymentType,
       amount: accumulatedCost,
-      entryDate: tire.purchaseDate?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
+      entryDate: toCivilDate(tire.purchaseDate) ?? todayCivilDate(),
       dueDate: tire.paymentDueDate,
       installmentCount: tire.installmentCount,
       installmentIntervalDays: tire.installmentIntervalDays,

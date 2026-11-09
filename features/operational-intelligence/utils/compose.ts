@@ -17,6 +17,7 @@ import type {
   RouteOperationalRow,
   TimelineEvent,
 } from '../types';
+import {startOfBusinessDay} from '@/lib/formatting/date';
 
 export const IN_PROGRESS_STATUSES: TripStatus[] = [
   'loading',
@@ -174,13 +175,10 @@ export function buildChartDayKeys(
   now: Date,
   period?: OperationalPeriodRange,
 ): string[] {
+  const today = startOfBusinessDay(now);
   if (period?.dateFrom || period?.dateTo) {
-    const from =
-      parseLocalDay(period.dateFrom ?? period.dateTo!) ??
-      new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const to =
-      parseLocalDay(period.dateTo ?? period.dateFrom!) ??
-      new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const from = parseLocalDay(period.dateFrom ?? period.dateTo!) ?? today;
+    const to = parseLocalDay(period.dateTo ?? period.dateFrom!) ?? today;
     const start = from.getTime() <= to.getTime() ? from : to;
     const end = from.getTime() <= to.getTime() ? to : from;
     const keys: string[] = [];
@@ -196,8 +194,8 @@ export function buildChartDayKeys(
 
   const dayKeys: string[] = [];
   for (let i = 6; i >= 0; i -= 1) {
-    const day = new Date(now);
-    day.setDate(now.getDate() - i);
+    const day = new Date(today);
+    day.setDate(today.getDate() - i);
     dayKeys.push(toLocalDayKey(day));
   }
   return dayKeys;

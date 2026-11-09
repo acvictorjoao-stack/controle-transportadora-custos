@@ -29,6 +29,7 @@ import type {
 import {ACCOUNTS_PAYABLE_STATUS_LABELS} from '@/features/financial/types/financial-entry';
 import type {CreateAccountsPayableInput} from '../validation';
 import {formatCurrencyInput, maskCurrencyInput, parseCurrencyInput} from '../utils/currency';
+import {toCivilDate} from '@/lib/formatting/date';
 
 export interface AccountsPayableFormModalProps {
   open: boolean;
@@ -42,9 +43,9 @@ export interface AccountsPayableFormModalProps {
 
 type FieldErrors = Partial<Record<keyof CreateAccountsPayableInput, string>>;
 
+/** Valor do input date: coluna `date` volta como está; `timestamptz` vira o dia no fuso de negócio. */
 function toLocalDateValue(iso: string | null | undefined): string {
-  if (!iso) return '';
-  return iso.slice(0, 10);
+  return toCivilDate(iso) ?? '';
 }
 
 function AccountsPayableFormModal({

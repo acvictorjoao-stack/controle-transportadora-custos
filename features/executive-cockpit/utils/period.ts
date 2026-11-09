@@ -2,12 +2,13 @@ import type {OperationalDreFilters} from '@/features/dre/types';
 import {toIsoDate} from '@/features/organization/dashboard/utils/period';
 
 import type {CockpitPeriodPreset} from '../types';
+import {startOfBusinessDay} from '@/lib/formatting/date';
 
 export function resolveCockpitPeriod(
   preset: CockpitPeriodPreset,
   now = new Date(),
 ): OperationalDreFilters {
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const today = startOfBusinessDay(now);
 
   if (preset === 'hoje') {
     return {dateFrom: toIsoDate(today), dateTo: toIsoDate(today)};

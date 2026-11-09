@@ -1,3 +1,5 @@
+import {formatDate, formatDateTime} from '@/lib/formatting/date';
+
 import type {TireStatus} from '../types';
 import {
   TIRE_DOCUMENT_TYPES,
@@ -68,13 +70,11 @@ export function formatCurrencyBr(value: number | null | undefined): string {
 }
 
 export function formatDateBr(value: string | null | undefined): string {
-  if (!value) return '—';
-  return new Date(value).toLocaleDateString('pt-BR');
+  return formatDate(value);
 }
 
 export function formatDateTimeBr(value: string | null | undefined): string {
-  if (!value) return '—';
-  return new Date(value).toLocaleString('pt-BR');
+  return formatDateTime(value);
 }
 
 export function formatKm(value: number | null | undefined): string {

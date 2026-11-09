@@ -5,6 +5,7 @@ import {createClient} from '@/supabase/server';
 
 import {auditLogsToCsv, exportAuditLogs} from '../queries/audit-logs';
 import type {AuditActionFilter} from '../queries/audit-logs';
+import {todayCivilDate} from '@/lib/formatting/date';
 
 export interface ExportAuditLogsInput {
   search?: string;
@@ -24,7 +25,7 @@ export async function exportAuditLogsAction(
     const supabase = await createClient();
     const items = await exportAuditLogs(supabase, input);
     const csv = auditLogsToCsv(items);
-    const date = new Date().toISOString().slice(0, 10);
+    const date = todayCivilDate();
 
     return {
       success: true,

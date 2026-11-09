@@ -17,6 +17,7 @@ import {
 } from '@/features/master/audit';
 import {exportAuditLogsAction} from '@/features/master/logs/actions/export-logs';
 import type {AuditActionFilter, PaginatedAuditLogs} from '@/features/master/logs/queries/audit-logs';
+import {formatDateTime} from '@/lib/formatting/date';
 
 export interface AuditLogsListProps {
   initialData: PaginatedAuditLogs | null;
@@ -26,10 +27,6 @@ export interface AuditLogsListProps {
   initialDateFrom: string;
   initialDateTo: string;
   error: string | null;
-}
-
-function formatDateTime(value: string) {
-  return new Date(value).toLocaleString('pt-BR');
 }
 
 function buildListUrl(options: {

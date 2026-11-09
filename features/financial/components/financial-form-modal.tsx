@@ -30,6 +30,7 @@ import {
 } from '../types/financial-entry';
 import type {CreateFinancialEntryInput} from '../validation';
 import {financialInputClassName} from '../utils/form-styles';
+import {toCivilDate} from '@/lib/formatting/date';
 
 export interface FinancialFormModalProps {
   open: boolean;
@@ -46,9 +47,9 @@ export interface FinancialFormModalProps {
 
 type FieldErrors = Partial<Record<keyof CreateFinancialEntryInput, string>>;
 
+/** Valor do input date: coluna `date` volta como está; `timestamptz` vira o dia no fuso de negócio. */
 function toLocalDateValue(iso: string | null | undefined): string {
-  if (!iso) return '';
-  return iso.slice(0, 10);
+  return toCivilDate(iso) ?? '';
 }
 
 function FinancialFormModal({

@@ -27,6 +27,7 @@ import {
 import type {RouteFormOption} from './route-form-modal';
 import {RouteFormModal} from './route-form-modal';
 import {TabsNav} from '@/components/ui/tabs-nav';
+import {formatDateTime} from '@/lib/formatting/date';
 
 export interface RouteDetailViewProps {
   data: RouteDetailData;
@@ -41,10 +42,6 @@ const TABS = [
 ] as const;
 
 type TabId = (typeof TABS)[number]['id'];
-
-function formatDateTime(value: string) {
-  return new Date(value).toLocaleString('pt-BR');
-}
 
 function RouteDetailView({data, customers, branches}: RouteDetailViewProps) {
   const router = useRouter();

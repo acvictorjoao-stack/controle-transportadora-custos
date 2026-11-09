@@ -14,6 +14,7 @@ import {markAccountsPayablePaidAction} from '../actions';
 import type {AccountsPayableEntry} from '../types';
 import type {MarkAccountsPayablePaidInput} from '../validation';
 import {formatCurrencyInput, maskCurrencyInput, parseCurrencyInput} from '../utils/currency';
+import {toCivilDate, todayCivilDate} from '@/lib/formatting/date';
 
 export interface AccountsPayablePayModalProps {
   open: boolean;
@@ -24,9 +25,9 @@ export interface AccountsPayablePayModalProps {
 
 type FieldErrors = Partial<Record<keyof MarkAccountsPayablePaidInput, string>>;
 
+/** Sem data, sugere hoje no fuso de negócio (em UTC, após 21h viraria amanhã). */
 function toLocalDateValue(iso: string | null | undefined): string {
-  if (!iso) return new Date().toISOString().slice(0, 10);
-  return iso.slice(0, 10);
+  return toCivilDate(iso) ?? todayCivilDate();
 }
 
 function AccountsPayablePayModal({

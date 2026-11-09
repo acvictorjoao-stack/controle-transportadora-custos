@@ -2,12 +2,14 @@ import type {SupabaseClient} from '@supabase/supabase-js';
 
 import {DEFAULT_PLAN_SLUG} from '@/features/master/plans';
 import {readPlanSlugFromSettings} from '@/features/master/companies/utils/format';
+import {civilDateStartUtcIso} from '@/features/dre/utils/completed-at-period-bounds';
+import {todayCivilDate} from '@/lib/formatting/date';
 
 import type {MasterDashboardStats, RecentSignupItem} from '../types';
 
+/** Início do mês corrente no fuso de negócio (o servidor roda em UTC). */
 function startOfCurrentMonthIso(): string {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  return civilDateStartUtcIso(`${todayCivilDate().slice(0, 8)}01`);
 }
 
 export async function getMasterDashboardStats(

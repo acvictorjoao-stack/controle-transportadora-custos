@@ -1,3 +1,5 @@
+import {todayCivilDate} from '@/lib/formatting/date';
+
 const COMPETENCE_MONTH_PATTERN = /^(\d{4})-(\d{2})$/;
 const COMPETENCE_DATE_PATTERN = /^(\d{4})-(\d{2})-\d{2}$/;
 
@@ -47,7 +49,5 @@ export function competenceEndDate(value: string): string {
 
 /** Competência atual, pronta para o input type=month. */
 export function currentCompetenceMonthInput(now: Date = new Date()): string {
-  const year = now.getFullYear();
-  const month = now.getMonth() + 1;
-  return `${year}-${String(month).padStart(2, '0')}`;
+  return todayCivilDate(now).slice(0, 7);
 }

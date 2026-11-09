@@ -196,7 +196,7 @@ describe('operational intelligence compose', () => {
   });
 
   it('keeps last-7-day chart axis without explicit period', () => {
-    const keys = buildChartDayKeys(new Date(2026, 6, 27));
+    const keys = buildChartDayKeys(new Date('2026-07-27T15:00:00Z')); // 12:00 em Brasília
     expect(keys).toHaveLength(7);
     expect(keys[0]).toBe('2026-07-21');
     expect(keys[6]).toBe('2026-07-27');

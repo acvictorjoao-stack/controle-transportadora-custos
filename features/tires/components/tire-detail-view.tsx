@@ -46,6 +46,7 @@ import {TIRE_NATIVE_SELECT_CLASS} from '../utils/form-styles';
 import {TireFileUpload} from './tire-file-upload';
 import {TireFormModal} from './tire-form-modal';
 import {TabsNav} from '@/components/ui/tabs-nav';
+import {dateTimeInputToIso, toDateTimeInputValue} from '@/lib/formatting/date';
 
 export interface TireDetailViewProps {
   companyId: string;
@@ -88,7 +89,7 @@ function TireDetailView({companyId, data, branches, vehicles, suppliers: initial
     treadDepthMm: '',
     pressurePsi: '',
     wearLevel: '' as string,
-    inspectedAt: new Date().toISOString().slice(0, 16),
+    inspectedAt: toDateTimeInputValue(new Date()),
     responsible: '',
   });
   const [recapForm, setRecapForm] = React.useState({
@@ -97,7 +98,7 @@ function TireDetailView({companyId, data, branches, vehicles, suppliers: initial
     recapNumber: '',
     amount: '',
     odometerKm: '',
-    recappedAt: new Date().toISOString().slice(0, 16),
+    recappedAt: toDateTimeInputValue(new Date()),
     warranty: '',
   });
   const [formLoading, setFormLoading] = React.useState(false);
@@ -136,7 +137,7 @@ function TireDetailView({companyId, data, branches, vehicles, suppliers: initial
       treadDepthMm: Number(inspectionForm.treadDepthMm) || null,
       pressurePsi: Number(inspectionForm.pressurePsi) || null,
       wearLevel: (inspectionForm.wearLevel || null) as 'good' | 'warning' | 'critical' | null,
-      inspectedAt: inspectionForm.inspectedAt,
+      inspectedAt: dateTimeInputToIso(inspectionForm.inspectedAt) ?? inspectionForm.inspectedAt,
       responsible: inspectionForm.responsible || null,
     });
     setFormLoading(false);
@@ -153,7 +154,7 @@ function TireDetailView({companyId, data, branches, vehicles, suppliers: initial
       recapNumber: recapForm.recapNumber || null,
       amount: Number(recapForm.amount) || null,
       odometerKm: Number(recapForm.odometerKm) || null,
-      recappedAt: recapForm.recappedAt,
+      recappedAt: dateTimeInputToIso(recapForm.recappedAt) ?? recapForm.recappedAt,
       warranty: recapForm.warranty || null,
     });
     setFormLoading(false);
