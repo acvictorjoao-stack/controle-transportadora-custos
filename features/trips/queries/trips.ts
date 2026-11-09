@@ -1,6 +1,7 @@
 import type {SupabaseClient} from '@supabase/supabase-js';
 
 import {mapDatabaseError} from '@/features/master/companies/utils/database-error';
+import {todayCivilDate} from '@/lib/formatting/date';
 import {fetchAllPagedRows} from '@/lib/supabase/fetch-all-pages';
 
 import {
@@ -1375,7 +1376,7 @@ export async function createTripExpense(
       currency: input.currency ?? 'BRL',
       description: input.description,
       notes: input.notes,
-      expense_date: input.expenseDate ?? new Date().toISOString().slice(0, 10),
+      expense_date: input.expenseDate ?? todayCivilDate(),
       receipt_url: input.receiptUrl,
       created_by: profileId,
     })
@@ -1400,7 +1401,7 @@ export async function updateTripExpense(
       currency: input.currency ?? 'BRL',
       description: input.description,
       notes: input.notes,
-      expense_date: input.expenseDate ?? new Date().toISOString().slice(0, 10),
+      expense_date: input.expenseDate ?? todayCivilDate(),
       receipt_url: input.receiptUrl,
       updated_by: profileId,
     })

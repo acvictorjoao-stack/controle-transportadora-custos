@@ -24,6 +24,8 @@ import {TRIP_EXPENSE_TYPES} from '../constants/enums';
 import {TRIP_STORAGE_BUCKET} from '../constants';
 import type {TripExpense, TripExpenseType} from '../types';
 import {TRIP_EXPENSE_TYPE_LABELS} from '../types';
+import {todayCivilDate} from '@/lib/formatting/date';
+
 import {formatDateBr} from '../utils/trip-status';
 import {TRIP_NATIVE_SELECT_CLASS} from '../utils/form-styles';
 
@@ -39,8 +41,9 @@ function formatCurrency(value: number, currency = 'BRL') {
   return value.toLocaleString('pt-BR', {style: 'currency', currency});
 }
 
+/** Data padrão da despesa: hoje no fuso de negócio (em UTC, após 21h viraria amanhã). */
 function todayIsoDate() {
-  return new Date().toISOString().slice(0, 10);
+  return todayCivilDate();
 }
 
 function expenseTypeLabel(type: string) {

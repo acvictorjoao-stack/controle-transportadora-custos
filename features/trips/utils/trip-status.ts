@@ -1,4 +1,5 @@
 import type {BadgeProps} from '@/components/ui/badge';
+import {formatDate, formatDateTime} from '@/lib/formatting/date';
 
 import type {TripStatus} from '../types';
 import {TRIP_STATUS_LABELS} from '../types';
@@ -22,13 +23,11 @@ export function getTripStatusVariant(status: TripStatus): BadgeProps['variant'] 
 }
 
 export function formatDateTimeBr(value: string | null | undefined): string {
-  if (!value) return '—';
-  return new Date(value).toLocaleString('pt-BR');
+  return formatDateTime(value);
 }
 
 export function formatDateBr(value: string | null | undefined): string {
-  if (!value) return '—';
-  return new Date(value).toLocaleDateString('pt-BR');
+  return formatDate(value);
 }
 
 export function formatDurationHours(hours: number): string {
