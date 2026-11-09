@@ -1,3 +1,5 @@
+import {formatDate, formatDateTime} from '@/lib/formatting/date';
+
 import type {FuelInconsistencyFlag} from '../types';
 
 export const FUEL_TYPE_LABELS: Record<string, string> = {
@@ -56,19 +58,11 @@ export function formatLiters(value: number): string {
 }
 
 export function formatDateBr(value: string | null): string {
-  if (!value) return '—';
-  return new Date(value).toLocaleDateString('pt-BR');
+  return formatDate(value);
 }
 
 export function formatDateTimeBr(value: string | null): string {
-  if (!value) return '—';
-  return new Date(value).toLocaleString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  return formatDateTime(value, {seconds: false});
 }
 
 export function formatKmPerLiter(value: number | null): string {
