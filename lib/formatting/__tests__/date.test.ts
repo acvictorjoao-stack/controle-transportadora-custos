@@ -7,6 +7,7 @@ import {
   formatDate,
   formatDateTime,
   formatTime,
+  hourInBusinessTimezone,
   startOfBusinessDay,
   toCivilDate,
   toDateTimeInputValue,
@@ -19,6 +20,13 @@ describe('horário, hoje e campos datetime-local no fuso de negócio', () => {
     expect(formatTime('2026-11-05T03:00:00Z')).toBe('00:00');
     expect(formatTime(null)).toBe('—');
     expect(formatTime('xyz')).toBe('—');
+  });
+
+  it('extrai a hora de Brasília para agrupamentos', () => {
+    expect(hourInBusinessTimezone('2026-11-06T02:32:00Z')).toBe(23);
+    expect(hourInBusinessTimezone('2026-11-06T03:00:00Z')).toBe(0);
+    expect(hourInBusinessTimezone(null)).toBeNull();
+    expect(hourInBusinessTimezone('xyz')).toBeNull();
   });
 
   it('parte do dia de Brasília para a aritmética de calendário', () => {

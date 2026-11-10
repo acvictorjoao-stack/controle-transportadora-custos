@@ -5,6 +5,7 @@ import type {Trip, TripOccurrence} from '@/features/trips/types';
 
 import {
   buildChartDayKeys,
+  buildOperationalCharts,
   composeOperationalIntelligence,
   isTripDelayed,
   isTripSlaMet,
@@ -237,5 +238,40 @@ describe('operational intelligence compose', () => {
     expect(payload.kpis?.[0]?.value).toBe(String(data.kpis.tripsCompletedToday));
     expect(payload.kpis?.[1]?.value).toBe(String(data.kpis.tripsDelayed));
     expect(payload.rows[0]?.name).toBe(data.branchRanking[0]?.name);
+  });
+});
+
+describe('inteligência operacional no fuso de negócio', () => {
+  // 22:30 de 05/11/2026 em Brasília = 01:30 UTC de 06/11
+  const LATE_NIGHT = new Date('2026-11-06T01:30:00Z');
+  const lateTrip = makeTrip({
+    departedAt: '2026-11-06T02:32:00Z', // 23:32 em Brasília
+    startedAt: '2026-11-06T02:32:00Z',
+    arrivedAt: '2026-11-06T02:40:00Z',
+    completedAt: '2026-11-06T02:45:00Z', // 23:45 de 05/11 em Brasília
+    plannedArrivalAt: '2026-11-06T03:30:00Z',
+    plannedCompletionAt: '2026-11-06T04:00:00Z',
+  });
+
+  it('agrupa viagens pela hora de Brasília, não pela hora UTC', () => {
+    const charts = buildOperationalCharts([lateTrip], [], LATE_NIGHT);
+    expect(charts.tripsByHour).toEqual([{key: '23', label: '23h', value: 1}]);
+  });
+
+  it('conta a conclusão no dia de Brasília', () => {
+    const charts = buildOperationalCharts([lateTrip], [], new Date('2026-11-06T02:50:00Z'));
+    expect(charts.completedDeliveries).toEqual([
+      expect.objectContaining({key: '2026-11-05', label: '05/11', value: 1}),
+    ]);
+    expect(charts.dailySla.map((point) => point.key)).toEqual(['2026-11-05']);
+  });
+
+  it('conclusão às 23:45 conta como concluída hoje em Brasília', () => {
+    const data = composeOperationalIntelligence({
+      trips: [lateTrip],
+      occurrences: [],
+      now: new Date('2026-11-06T02:50:00Z'), // 23:50 de 05/11 em Brasília
+    });
+    expect(data.kpis.tripsCompletedToday).toBe(1);
   });
 });

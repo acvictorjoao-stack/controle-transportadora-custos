@@ -141,6 +141,13 @@ export function formatTime(value: string | null | undefined): string {
   return instant ? timeFormatter.format(instant) : EMPTY;
 }
 
+/** Hora (0–23) de um instante no fuso de negócio; null se inválido. */
+export function hourInBusinessTimezone(value: string | null | undefined): number | null {
+  if (!value) return null;
+  const instant = parseInstant(value.trim());
+  return instant ? wallClockParts(instant).hour : null;
+}
+
 /**
  * Meia-noite local com o dia/mês/ano de hoje no fuso de negócio.
  * Serve de ponto de partida para aritmética de calendário com getDate/setDate:
