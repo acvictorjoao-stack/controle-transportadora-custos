@@ -10,17 +10,10 @@ import {
 import {cn} from '@/lib/utils';
 
 import type {OperationalTimelineTrip} from '../types';
+import {formatTime} from '@/lib/formatting/date';
 
 export interface OperationalTimelineProps {
   timeline: OperationalTimelineTrip | null;
-}
-
-function formatTime(iso: string | null): string {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleTimeString('pt-BR', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
 }
 
 function OperationalTimeline({timeline}: OperationalTimelineProps) {

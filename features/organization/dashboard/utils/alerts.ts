@@ -4,6 +4,7 @@ import type {MaintenanceStats} from '@/features/maintenance/types';
 
 import {classifyMarginStatus} from './margin-status';
 import type {TopCustomerRankingItem} from './rankings';
+import {todayCivilDate} from '@/lib/formatting/date';
 
 export type OperationalAlertVariant = 'warning' | 'destructive' | 'info';
 
@@ -21,12 +22,9 @@ function countDueToday(
   return upcoming.filter((row) => row.dueDate === todayIso).length;
 }
 
+/** Hoje no fuso de negócio: o servidor roda em UTC. */
 function localTodayIso(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return todayCivilDate();
 }
 
 /**

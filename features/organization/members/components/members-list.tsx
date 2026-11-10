@@ -32,6 +32,7 @@ import type {
 } from '../types';
 import {MemberCredentialsSuccess} from './member-credentials-success';
 import {MemberFormModal} from './member-form-modal';
+import {formatDateTime} from '@/lib/formatting/date';
 
 export interface MembersListProps {
   initialData: PaginatedCompanyMembers;
@@ -41,11 +42,6 @@ export interface MembersListProps {
   /** members:invite ou members:write — criar/editar/status/reset */
   canManage: boolean;
   error: string | null;
-}
-
-function formatDateTime(value: string | null) {
-  if (!value) return '—';
-  return new Date(value).toLocaleString('pt-BR');
 }
 
 function buildListUrl(options: {

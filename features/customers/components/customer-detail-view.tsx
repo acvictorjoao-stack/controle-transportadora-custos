@@ -69,6 +69,7 @@ import {ContractFormModal} from './contract-form-modal';
 import {CustomerFileUpload} from './customer-file-upload';
 import {CustomerFormModal} from './customer-form-modal';
 import {TabsNav} from '@/components/ui/tabs-nav';
+import {formatDateTime} from '@/lib/formatting/date';
 
 export interface CustomerDetailViewProps {
   companyId: string;
@@ -90,10 +91,6 @@ const TABS = [
 ] as const;
 
 type TabId = (typeof TABS)[number]['id'];
-
-function formatDateTime(value: string) {
-  return new Date(value).toLocaleString('pt-BR');
-}
 
 function CustomerDetailView({companyId, data, branches}: CustomerDetailViewProps) {
   const router = useRouter();

@@ -68,7 +68,7 @@ describe('buildOperationalScore', () => {
 
 describe('resolveCockpitPeriod', () => {
   it('resolves hoje / semana / mes / ano', () => {
-    const now = new Date(2026, 6, 27); // Jul 27 2026
+    const now = new Date('2026-07-27T15:00:00Z'); // 27/07/2026, 12:00 em Brasília
     expect(resolveCockpitPeriod('hoje', now)).toEqual({
       dateFrom: '2026-07-27',
       dateTo: '2026-07-27',

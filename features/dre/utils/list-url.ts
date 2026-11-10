@@ -1,6 +1,7 @@
 import {ROUTES} from '@/constants/routes/paths';
 
 import type {OperationalDreFilters} from '../types';
+import {startOfBusinessDay} from '@/lib/formatting/date';
 
 const ROLLING_PERIOD_PRESETS: Record<string, number> = {
   '7d': 7,
@@ -24,10 +25,6 @@ export const NAMED_ANALYTICS_PERIOD_PRESETS = [
 export type NamedAnalyticsPeriodPresetId =
   (typeof NAMED_ANALYTICS_PERIOD_PRESETS)[number]['id'];
 
-function toUtcIsoDate(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
-
 /** Data local YYYY-MM-DD — alinhada a `currentMonthFilters`. */
 function toLocalIsoDate(date: Date): string {
   const year = date.getFullYear();
@@ -36,20 +33,15 @@ function toLocalIsoDate(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-function startOfLocalDay(now: Date): Date {
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-}
-
 /**
- * Intervalo de calendário local para presets nomeados.
- * Não altera a janela UTC rolante de `7d`/`14d`/`30d`/`90d` da DRE.
+ * Intervalo de calendário para presets nomeados, a partir de hoje no fuso de negócio.
  */
 export function resolveNamedPeriodRange(
   periodo: string,
   now: Date = new Date(),
 ): Pick<OperationalDreFilters, 'dateFrom' | 'dateTo'> | null {
   const key = periodo.toLowerCase();
-  const today = startOfLocalDay(now);
+  const today = startOfBusinessDay(now);
 
   if (key === 'hoje') {
     const iso = toLocalIsoDate(today);
@@ -116,8 +108,8 @@ export function matchNamedPeriodPreset(
 
 /**
  * Converte atalho `periodo` em intervalo de datas.
- * `7d`/`14d`/`30d`/`90d` mantêm a janela rolante histórica da DRE (UTC).
- * Presets de calendário (`hoje`, `este-mes`, …) usam data local.
+ * `7d`/`14d`/`30d`/`90d` mantêm a janela rolante histórica da DRE.
+ * Todos partem de hoje no fuso de negócio: servidor (UTC) e navegador concordam.
  */
 export function resolvePeriodPreset(
   periodo?: string,
@@ -134,12 +126,11 @@ export function resolvePeriodPreset(
   const days = ROLLING_PERIOD_PRESETS[key];
   if (!days) return named;
 
-  const to = new Date(now);
-  to.setHours(0, 0, 0, 0);
+  const to = startOfBusinessDay(now);
   const from = new Date(to);
   from.setDate(from.getDate() - (days - 1));
 
-  return {dateFrom: toUtcIsoDate(from), dateTo: toUtcIsoDate(to)};
+  return {dateFrom: toLocalIsoDate(from), dateTo: toLocalIsoDate(to)};
 }
 
 /**

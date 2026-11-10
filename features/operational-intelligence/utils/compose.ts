@@ -17,6 +17,12 @@ import type {
   RouteOperationalRow,
   TimelineEvent,
 } from '../types';
+import {
+  hourInBusinessTimezone,
+  startOfBusinessDay,
+  toCivilDate,
+  todayCivilDate,
+} from '@/lib/formatting/date';
 
 export const IN_PROGRESS_STATUSES: TripStatus[] = [
   'loading',
@@ -105,22 +111,15 @@ function average(values: number[]): number | null {
   return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
+/** Mesmo dia no fuso de negócio (o servidor roda em UTC). */
 function isSameLocalDay(iso: string | null, day: Date): boolean {
   if (!iso) return false;
-  const date = new Date(iso);
-  return (
-    date.getFullYear() === day.getFullYear() &&
-    date.getMonth() === day.getMonth() &&
-    date.getDate() === day.getDate()
-  );
+  return toCivilDate(iso) === todayCivilDate(day);
 }
 
+/** Dia YYYY-MM-DD do instante no fuso de negócio, alinhado ao eixo de `buildChartDayKeys`. */
 function localDayKey(iso: string): string {
-  const date = new Date(iso);
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+  return toCivilDate(iso) ?? '';
 }
 
 export interface OperationalPeriodRange {
@@ -174,13 +173,10 @@ export function buildChartDayKeys(
   now: Date,
   period?: OperationalPeriodRange,
 ): string[] {
+  const today = startOfBusinessDay(now);
   if (period?.dateFrom || period?.dateTo) {
-    const from =
-      parseLocalDay(period.dateFrom ?? period.dateTo!) ??
-      new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const to =
-      parseLocalDay(period.dateTo ?? period.dateFrom!) ??
-      new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const from = parseLocalDay(period.dateFrom ?? period.dateTo!) ?? today;
+    const to = parseLocalDay(period.dateTo ?? period.dateFrom!) ?? today;
     const start = from.getTime() <= to.getTime() ? from : to;
     const end = from.getTime() <= to.getTime() ? to : from;
     const keys: string[] = [];
@@ -196,8 +192,8 @@ export function buildChartDayKeys(
 
   const dayKeys: string[] = [];
   for (let i = 6; i >= 0; i -= 1) {
-    const day = new Date(now);
-    day.setDate(now.getDate() - i);
+    const day = new Date(today);
+    day.setDate(today.getDate() - i);
     dayKeys.push(toLocalDayKey(day));
   }
   return dayKeys;
@@ -599,7 +595,7 @@ export function buildOperationalCharts(
   const tripsByHour = Array.from({length: 24}, (_, hour) => {
     const count = trips.filter((trip) => {
       const stamp = trip.departedAt ?? trip.startedAt ?? trip.createdAt;
-      return new Date(stamp).getHours() === hour;
+      return hourInBusinessTimezone(stamp) === hour;
     }).length;
     return {
       key: String(hour),

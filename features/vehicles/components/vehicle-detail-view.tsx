@@ -28,6 +28,7 @@ import {formatPlate} from '../utils/vehicle-format';
 import {VehicleFileUpload} from './vehicle-file-upload';
 import {VehicleFormModal} from './vehicle-form-modal';
 import {TabsNav} from '@/components/ui/tabs-nav';
+import {formatDateTime} from '@/lib/formatting/date';
 
 export interface VehicleDetailViewProps {
   companyId: string;
@@ -48,10 +49,6 @@ const TABS = [
 ] as const;
 
 type TabId = (typeof TABS)[number]['id'];
-
-function formatDate(value: string) {
-  return new Date(value).toLocaleString('pt-BR');
-}
 
 function VehicleDetailView({companyId, data, branches}: VehicleDetailViewProps) {
   const router = useRouter();
@@ -220,7 +217,7 @@ function VehicleDetailView({companyId, data, branches}: VehicleDetailViewProps) 
               {
                 id: 'date',
                 header: 'Data',
-                cell: (row) => formatDate(row.createdAt),
+                cell: (row) => formatDateTime(row.createdAt),
               },
               {
                 id: 'action',
@@ -259,7 +256,7 @@ function VehicleDetailView({companyId, data, branches}: VehicleDetailViewProps) 
         <TableContainer>
           <DataTable
             columns={[
-              {id: 'date', header: 'Data', cell: (row) => formatDate(row.date)},
+              {id: 'date', header: 'Data', cell: (row) => formatDateTime(row.date)},
               {id: 'category', header: 'Categoria', cell: (row) => row.category},
               {id: 'description', header: 'Descrição', cell: (row) => row.description ?? '—'},
               {
@@ -282,7 +279,7 @@ function VehicleDetailView({companyId, data, branches}: VehicleDetailViewProps) 
         <TableContainer>
           <DataTable
             columns={[
-              {id: 'date', header: 'Data', cell: (row) => formatDate(row.date)},
+              {id: 'date', header: 'Data', cell: (row) => formatDateTime(row.date)},
               {
                 id: 'odometer',
                 header: 'Hodômetro',
@@ -318,7 +315,7 @@ function VehicleDetailView({companyId, data, branches}: VehicleDetailViewProps) 
                 {
                   id: 'date',
                   header: 'Enviado em',
-                  cell: (row) => formatDate(row.createdAt),
+                  cell: (row) => formatDateTime(row.createdAt),
                 },
                 {
                   id: 'link',
@@ -381,7 +378,7 @@ function VehicleDetailView({companyId, data, branches}: VehicleDetailViewProps) 
               {
                 id: 'installed',
                 header: 'Instalado em',
-                cell: (row) => formatDate(row.installedAt),
+                cell: (row) => formatDateTime(row.installedAt),
               },
               {
                 id: 'actions',

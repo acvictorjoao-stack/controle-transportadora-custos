@@ -27,6 +27,7 @@ import type {
   PaginatedFinancialEntries,
 } from '../types';
 import type {CreateFinancialEntryInput, UpdateFinancialEntryInput} from '../validation';
+import {todayCivilDate} from '@/lib/formatting/date';
 
 export interface ListFinancialEntriesOptions {
   companyId: string;
@@ -541,7 +542,7 @@ export async function reverseFinancialEntry(
       client: original.client,
       amount: original.amount,
       currency: original.currency,
-      entryDate: new Date().toISOString().slice(0, 10),
+      entryDate: todayCivilDate(),
       dueDate: null,
       notes: reason ?? null,
     },

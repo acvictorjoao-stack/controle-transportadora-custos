@@ -16,6 +16,7 @@ import {
   DEFAULT_INSTALLMENT_INTERVAL_DAYS,
   type InstallmentScheduleItem,
 } from '../utils/installment-schedule';
+import {formatDate} from '@/lib/formatting/date';
 
 export interface OperationPaymentValue {
   paymentType: OperationPaymentType;
@@ -39,11 +40,6 @@ export interface OperationPaymentFieldsProps {
 
 function formatMoney(value: number): string {
   return value.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
-}
-
-function formatDateBr(isoDate: string): string {
-  const [year, month, day] = isoDate.slice(0, 10).split('-');
-  return `${day}/${month}/${year}`;
 }
 
 function OperationPaymentFields({
@@ -214,7 +210,7 @@ function OperationPaymentFields({
                         Parcela {item.number}
                         <span className="text-muted-foreground">
                           {' '}
-                          · {formatDateBr(item.dueDate)}
+                          · {formatDate(item.dueDate)}
                         </span>
                       </span>
                       <span className="font-medium tabular-nums">

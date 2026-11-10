@@ -10,6 +10,7 @@ import {TRIP_STATUS_LABELS} from '@/features/trips/types';
 import {cn} from '@/lib/utils';
 
 import type {DrillDownBranchNode} from '../types';
+import {formatTime} from '@/lib/formatting/date';
 
 export interface OperationalDrillDownProps {
   nodes: DrillDownBranchNode[];
@@ -125,12 +126,7 @@ function OperationalDrillDown({nodes}: OperationalDrillDownProps) {
                   {trip.timeline.map((event) => (
                     <li key={event.id} className="text-sm">
                       <span className="text-muted-foreground">
-                        {event.at
-                          ? new Date(event.at).toLocaleTimeString('pt-BR', {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })
-                          : '—'}
+                        {formatTime(event.at)}
                       </span>{' '}
                       {event.label}
                     </li>

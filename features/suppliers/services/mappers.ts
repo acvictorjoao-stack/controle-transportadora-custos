@@ -6,6 +6,17 @@ import type {
   SupplierStats,
 } from '../types/supplier';
 
+/**
+ * `last_purchase_at` vem de colunas `date` (purchase_date, entry_date) que a RPC
+ * converte para timestamptz à meia-noite UTC. A parte de data é o dia da compra;
+ * formatado como instante, viraria o dia anterior em Brasília.
+ */
+function purchaseDateFromStats(value: unknown): string | null {
+  if (!value) return null;
+  const match = /^\d{4}-\d{2}-\d{2}/.exec(String(value));
+  return match ? match[0] : null;
+}
+
 export function mapSupplierRow(row: SupplierRow): Supplier {
   const categories = Array.isArray(row.categories) ? row.categories : [];
   return {
@@ -61,7 +72,7 @@ export function mapSupplierStats(raw: Record<string, unknown> | null | undefined
     paidPayables: Number(stats.paid_payables ?? 0),
     openInstallments: Number(stats.open_installments ?? 0),
     paidInstallments: Number(stats.paid_installments ?? 0),
-    lastPurchaseAt: stats.last_purchase_at ? String(stats.last_purchase_at) : null,
+    lastPurchaseAt: purchaseDateFromStats(stats.last_purchase_at),
     lastFuelAt: stats.last_fuel_at ? String(stats.last_fuel_at) : null,
     lastMaintenanceAt: stats.last_maintenance_at ? String(stats.last_maintenance_at) : null,
     maintenanceCount: Number(stats.maintenance_count ?? 0),

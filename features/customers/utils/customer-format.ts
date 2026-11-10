@@ -1,4 +1,10 @@
 import {digitsOnly, formatTaxId} from '@/features/master/companies/utils/format';
+import {
+  addCivilDays,
+  formatDate,
+  toCivilDate,
+  todayCivilDate,
+} from '@/lib/formatting/date';
 
 import type {CustomerContractStatus, CustomerStatus} from '../types';
 
@@ -63,11 +69,7 @@ export function formatCurrency(value: number | null, currency = 'BRL'): string {
 }
 
 export function formatDateBr(value: string | null): string {
-  if (!value) return '—';
-  const date = value.slice(0, 10);
-  const [y, m, d] = date.split('-');
-  if (!y || !m || !d) return value;
-  return `${d}/${m}/${y}`;
+  return formatDate(value);
 }
 
 export function getCustomerStatusVariant(
@@ -102,20 +104,20 @@ export function getContractStatusVariant(
   }
 }
 
-export function isContractExpiring(endsAt: string | null, days = 30): boolean {
-  if (!endsAt) return false;
-  const end = new Date(endsAt.slice(0, 10));
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const limit = new Date(today);
-  limit.setDate(limit.getDate() + days);
-  return end >= today && end <= limit;
+/** Compara datas civis no fuso de negócio: servidor (UTC) e navegador concordam. */
+export function isContractExpiring(
+  endsAt: string | null,
+  days = 30,
+  now: Date = new Date(),
+): boolean {
+  const end = toCivilDate(endsAt);
+  if (!end) return false;
+  const today = todayCivilDate(now);
+  return end >= today && end <= addCivilDays(today, days);
 }
 
-export function isContractExpired(endsAt: string | null): boolean {
-  if (!endsAt) return false;
-  const end = new Date(endsAt.slice(0, 10));
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return end < today;
+export function isContractExpired(endsAt: string | null, now: Date = new Date()): boolean {
+  const end = toCivilDate(endsAt);
+  if (!end) return false;
+  return end < todayCivilDate(now);
 }

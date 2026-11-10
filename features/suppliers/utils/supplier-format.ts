@@ -1,4 +1,5 @@
 import {digitsOnly} from '@/features/master/companies/utils/format';
+import {formatDate} from '@/lib/formatting/date';
 
 import type {SupplierCategory} from '../types';
 import {SUPPLIER_CATEGORY_LABELS} from '../types';
@@ -41,10 +42,7 @@ export function formatCurrency(value: number): string {
 }
 
 export function formatDateBr(value: string | null | undefined): string {
-  if (!value) return '—';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleDateString('pt-BR');
+  return formatDate(value);
 }
 
 export function formatCategories(categories: SupplierCategory[]): string {

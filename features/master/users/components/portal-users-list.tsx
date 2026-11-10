@@ -40,6 +40,7 @@ import {PORTAL_ROLE_LABELS, PORTAL_ROLES, type PortalRole} from '@/lib/auth/perm
 
 import {PortalUserCredentialsSuccess} from './portal-user-credentials-success';
 import {PortalUserFormModal} from './portal-user-form-modal';
+import {formatDate, formatDateTime} from '@/lib/formatting/date';
 
 export interface PortalUsersListProps {
   initialData: PaginatedPortalUsers | null;
@@ -49,11 +50,6 @@ export interface PortalUsersListProps {
   initialStatus: PortalUserStatusFilter;
   currentProfileId: string | null;
   error: string | null;
-}
-
-function formatDateTime(value: string | null) {
-  if (!value) return '—';
-  return new Date(value).toLocaleString('pt-BR');
 }
 
 function buildListUrl(options: {
@@ -250,7 +246,7 @@ function PortalUsersList({
       id: 'createdAt',
       header: 'Criação',
       cell: (row: (typeof items)[number]) =>
-        new Date(row.createdAt).toLocaleDateString('pt-BR'),
+        formatDate(row.createdAt),
     },
     {
       id: 'actions',

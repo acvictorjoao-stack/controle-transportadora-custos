@@ -113,3 +113,86 @@ export function formatDateTime(
     options.seconds === false ? dateTimeWithoutSecondsFormatter : dateTimeFormatter;
   return formatter.format(instant);
 }
+
+const timeFormatter = new Intl.DateTimeFormat('pt-BR', {
+  timeZone: BUSINESS_TIMEZONE,
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+});
+
+const wallClockFormatter = new Intl.DateTimeFormat('en-US', {
+  timeZone: BUSINESS_TIMEZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hourCycle: 'h23',
+});
+
+const DATE_TIME_INPUT_PATTERN = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/;
+
+/** HH:mm no fuso de negócio. */
+export function formatTime(value: string | null | undefined): string {
+  if (!value) return EMPTY;
+  const instant = parseInstant(value.trim());
+  return instant ? timeFormatter.format(instant) : EMPTY;
+}
+
+/** Hora (0–23) de um instante no fuso de negócio; null se inválido. */
+export function hourInBusinessTimezone(value: string | null | undefined): number | null {
+  if (!value) return null;
+  const instant = parseInstant(value.trim());
+  return instant ? wallClockParts(instant).hour : null;
+}
+
+/**
+ * Meia-noite local com o dia/mês/ano de hoje no fuso de negócio.
+ * Serve de ponto de partida para aritmética de calendário com getDate/setDate:
+ * servidor (UTC) e navegador chegam ao mesmo "hoje".
+ */
+export function startOfBusinessDay(now: Date = new Date()): Date {
+  const [year, month, day] = todayCivilDate(now).split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function wallClockParts(instant: Date) {
+  const map: Record<string, number> = {};
+  for (const part of wallClockFormatter.formatToParts(instant)) {
+    if (part.type !== 'literal') map[part.type] = Number(part.value);
+  }
+  return map as Record<'year' | 'month' | 'day' | 'hour' | 'minute' | 'second', number>;
+}
+
+/** Valor para `<input type="datetime-local">` (YYYY-MM-DDTHH:mm) no fuso de negócio. */
+export function toDateTimeInputValue(value: string | Date | null | undefined): string {
+  if (!value) return '';
+  const instant = value instanceof Date ? value : parseInstant(value.trim());
+  if (!instant || Number.isNaN(instant.getTime())) return '';
+  const p = wallClockParts(instant);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${p.year}-${pad(p.month)}-${pad(p.day)}T${pad(p.hour)}:${pad(p.minute)}`;
+}
+
+/**
+ * Converte o valor de `<input type="datetime-local">`, lido como horário do
+ * fuso de negócio, em instante ISO (UTC). Sem isso o Postgres grava a hora
+ * digitada como se fosse UTC.
+ */
+export function dateTimeInputToIso(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const match = DATE_TIME_INPUT_PATTERN.exec(value.trim());
+  if (!match) return null;
+  const [, y, mo, d, h, mi] = match.map(Number);
+  const desired = Date.UTC(y, mo - 1, d, h, mi);
+  let utcMs = desired;
+  // Duas passadas convergem o offset do fuso (inclusive em horário de verão).
+  for (let i = 0; i < 2; i += 1) {
+    const p = wallClockParts(new Date(utcMs));
+    const shown = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second);
+    utcMs += desired - shown;
+  }
+  return new Date(utcMs).toISOString();
+}

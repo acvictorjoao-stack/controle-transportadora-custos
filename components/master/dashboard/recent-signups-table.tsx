@@ -8,6 +8,7 @@ import {ENTITY_STATUS_LABELS} from '@/features/master/companies/constants';
 import {getDisplayName} from '@/features/master/companies/utils/format';
 import type {RecentSignupItem} from '@/features/master/dashboard';
 import {getPlanLabel, type PlanCatalogItem} from '@/features/master/plans';
+import {formatDate} from '@/lib/formatting/date';
 
 export interface RecentSignupsTableProps {
   signups: RecentSignupItem[];
@@ -63,7 +64,7 @@ function RecentSignupsTable({signups, plans}: RecentSignupsTableProps) {
       header: 'Cadastro',
       cell: (row: RecentSignupItem) => (
         <span className="text-muted-foreground">
-          {new Date(row.createdAt).toLocaleDateString('pt-BR')}
+          {formatDate(row.createdAt)}
         </span>
       ),
     },

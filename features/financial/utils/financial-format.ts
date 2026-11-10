@@ -1,3 +1,5 @@
+import {formatDate, formatDateTime} from '@/lib/formatting/date';
+
 export function formatCurrencyBr(value: number, currency = 'BRL'): string {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
@@ -6,14 +8,11 @@ export function formatCurrencyBr(value: number, currency = 'BRL'): string {
 }
 
 export function formatDateBr(value: string | null): string {
-  if (!value) return '—';
-  const date = value.includes('T') ? new Date(value) : new Date(`${value}T12:00:00`);
-  return date.toLocaleDateString('pt-BR');
+  return formatDate(value);
 }
 
 export function formatDateTimeBr(value: string | null): string {
-  if (!value) return '—';
-  return new Date(value).toLocaleString('pt-BR');
+  return formatDateTime(value);
 }
 
 export function formatPercent(value: number): string {

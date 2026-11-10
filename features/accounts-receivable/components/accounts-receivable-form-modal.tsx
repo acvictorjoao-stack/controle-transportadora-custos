@@ -26,6 +26,7 @@ import type {
 } from '../types';
 import type {CreateAccountsReceivableInput} from '../validation';
 import {formatCurrencyInput, maskCurrencyInput, parseCurrencyInput} from '../utils/currency';
+import {toCivilDate} from '@/lib/formatting/date';
 
 export interface AccountsReceivableFormModalProps {
   open: boolean;
@@ -38,9 +39,9 @@ export interface AccountsReceivableFormModalProps {
 
 type FieldErrors = Partial<Record<keyof CreateAccountsReceivableInput, string>>;
 
+/** Valor do input date: coluna `date` volta como está; `timestamptz` vira o dia no fuso de negócio. */
 function toLocalDateValue(iso: string | null | undefined): string {
-  if (!iso) return '';
-  return iso.slice(0, 10);
+  return toCivilDate(iso) ?? '';
 }
 
 function AccountsReceivableFormModal({

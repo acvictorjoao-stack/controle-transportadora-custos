@@ -3,6 +3,7 @@ import type {
   OperationalDreFilterOptions,
   OperationalDreFilters,
 } from '@/features/dre/types';
+import {startOfBusinessDay} from '@/lib/formatting/date';
 
 export type ExecutiveDashboardSearchParams = {
   empresa?: string;
@@ -25,9 +26,8 @@ export function toIsoDate(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-/** Período padrão: mês corrente. */
-export function currentMonthFilters(): OperationalDreFilters {
-  const now = new Date();
+/** Período padrão: mês corrente no fuso de negócio. */
+export function currentMonthFilters(now: Date = startOfBusinessDay()): OperationalDreFilters {
   const from = new Date(now.getFullYear(), now.getMonth(), 1);
   const to = new Date(now.getFullYear(), now.getMonth() + 1, 0);
   return {
