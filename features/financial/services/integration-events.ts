@@ -62,7 +62,8 @@ export async function onFuelRecordCreated(
       sourceId: record.id,
       paymentType,
       amount: record.totalAmount,
-      entryDate: record.fueledAt.slice(0, 10),
+      // Dia em Brasília: `fueled_at` é timestamptz; o corte UTC viraria o dia seguinte após 21h.
+      entryDate: toCivilDate(record.fueledAt) ?? record.fueledAt.slice(0, 10),
       dueDate: record.paymentDueDate,
       installmentCount: record.installmentCount,
       installmentIntervalDays: record.installmentIntervalDays,
@@ -101,7 +102,9 @@ export async function onMaintenanceRecordCreated(
   if (amount <= 0) return;
 
   const paymentType = resolveOperationPaymentType(record.paymentType);
-  const entryDate = (record.completedAt ?? record.openedAt).slice(0, 10);
+  const occurredAt = record.completedAt ?? record.openedAt;
+  // Dia em Brasília, como no abastecimento.
+  const entryDate = toCivilDate(occurredAt) ?? occurredAt.slice(0, 10);
   const tireId =
     record.maintenanceType === 'tires'
       ? await resolveTireIdForMaintenance(supabase, companyId, record.id)
