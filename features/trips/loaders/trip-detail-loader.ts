@@ -12,6 +12,7 @@ import {
   listTripStops,
   getTripChecklist,
 } from '../queries/trips';
+import {getTripFinancialSummary} from '../queries/trip-financial-summary';
 import type {Trip, TripDetailData} from '../types';
 import {
   emptyTripIntegrationSections,
@@ -114,6 +115,7 @@ export async function composeTripDetail(
     locations,
     integrations,
     receivables,
+    financialSummary,
   ] = await Promise.all([
     loadSectionSafe('history', () => listTripHistory(supabase, companyId, tripId), []),
     loadSectionSafe('documents', () => listTripDocuments(supabase, companyId, tripId), []),
@@ -128,6 +130,11 @@ export async function composeTripDetail(
     loadSectionSafe('locations', () => listTripLocations(supabase, companyId, tripId), []),
     loadIntegrationSections(supabase, companyId, tripId),
     loadSectionSafe('receivables', () => listTripReceivables(supabase, companyId, tripId), []),
+    loadSectionSafe(
+      'financialSummary',
+      () => getTripFinancialSummary(supabase, companyId, tripId),
+      null,
+    ),
   ]);
 
   return {
@@ -141,6 +148,7 @@ export async function composeTripDetail(
     locations,
     timeline: buildTimeline(trip, history),
     receivables,
+    financialSummary,
     ...integrations,
   };
 }

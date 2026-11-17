@@ -31,7 +31,6 @@ import {
   findPaidEntriesWithoutMovement,
   findTripDivergences,
   roundMoney,
-  runFase1Invariants,
   summarizeLegacyAdvances,
   summarizeMoneyWithoutAccount,
   summarizeTripExpenses,
@@ -44,6 +43,11 @@ import {
   type TripExpenseRow,
   type TripRow,
 } from '../features/financial/consistency/fase1-consistency';
+import {
+  computeTripFinancialSummaries,
+  runAllFase1Invariants,
+  type TripSummaryRow,
+} from '../features/financial/consistency/trip-summary';
 import {createReadOnlyFetch} from '../features/financial/consistency/read-only-fetch';
 
 const PAGE_SIZE = 1000;
@@ -143,7 +147,9 @@ async function main(): Promise<void> {
     ),
     '106 financial_entry_movements': await probe(reader, 'financial_entry_movements', 'id, kind'),
     '108 financial_cash_flow_lines': await probe(reader, 'financial_cash_flow_lines', 'line_id'),
+    '110 trip_financial_summary': await probe(reader, 'trip_financial_summary', 'trip_id, result'),
   };
+  const has110 = migrationState['110 trip_financial_summary'] === 'presente';
   const has105 = migrationState['105 financial_entries.trip_charge_key/adjustment_total'] === 'presente';
   const has106 = migrationState['106 financial_entry_movements'] === 'presente';
 
@@ -206,7 +212,23 @@ async function main(): Promise<void> {
     fuelRecords,
     maintenanceRecords,
   });
-  const invariants = runFase1Invariants({trips, expenses, entries, movements});
+  // I1: com a migration 110, compara a view real com a DRE; sem ela, o espelho
+  // em TypeScript mostra o que a tela vai exibir depois da migration.
+  const summaries: TripSummaryRow[] = has110
+    ? await readAll<TripSummaryRow>(
+        reader,
+        'trip_financial_summary',
+        'trip_id, trip_number, freight_amount, direct_costs, fuel_costs, maintenance_costs, tire_costs, other_costs, result, advances_total, unposted_trip_expenses_amount, unposted_trip_expenses_count',
+      )
+    : computeTripFinancialSummaries({trips, expenses, entries, categories});
+  const invariants = runAllFase1Invariants({
+    trips,
+    expenses,
+    entries,
+    movements,
+    categories,
+    summaries,
+  });
 
   // Fluxo de Caixa como a tela calcula hoje (resumo sem saldo inicial).
   const cashLines = await readAll<{
@@ -241,7 +263,7 @@ async function main(): Promise<void> {
     ``,
     `Totais lidos: ${liveTrips.length} viagens ativas (${trips.length} no total), ${expenses.length} despesas de viagem, ${entries.length} lançamentos, ${movements.length} movimentos, ${fuelRecords.length} abastecimentos, ${maintenanceRecords.length} manutenções.`,
     ``,
-    `## Estado das migrations 105 a 108`,
+    `## Estado das migrations 105 a 110`,
     table(['Objeto', 'Situação'], Object.entries(migrationState)),
     `## RLS (chave anônima, sem sessão)`,
     table(['Tabela', 'Resultado'], Object.entries(rls)),
@@ -318,6 +340,23 @@ async function main(): Promise<void> {
         ['Saldo Atual (sem saldo inicial)', brl(roundMoney(received - paid))],
         ['Linhas ignoradas pelo resumo (por tipo)', [...ignoredTypes.entries()].map(([type, count]) => `${type}: ${count}`).join(', ') || '—'],
       ],
+    ),
+    `### Resultado da viagem pela fonte única (Etapa 1)`,
+    has110
+      ? 'Lido da view `trip_financial_summary` (migration 110 aplicada).'
+      : `Migration 110 ainda não aplicada: valores do espelho em TypeScript da view, iguais à DRE por construção.`,
+    ``,
+    table(
+      ['Viagem', 'Frete', 'Custo direto', 'Resultado', 'Aba fora do financeiro'],
+      summaries
+        .filter((row) => toNumber(row.unposted_trip_expenses_amount) !== 0 || toNumber(row.direct_costs) !== 0)
+        .map((row) => [
+          row.trip_number ?? row.trip_id,
+          brl(toNumber(row.freight_amount)),
+          brl(toNumber(row.direct_costs)),
+          brl(toNumber(row.result)),
+          `${brl(toNumber(row.unposted_trip_expenses_amount))} (${row.unposted_trip_expenses_count})`,
+        ]),
     ),
     `## 8. Datas de lançamento de abastecimento e manutenção`,
     table(

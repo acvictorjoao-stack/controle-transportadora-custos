@@ -11,6 +11,7 @@ import type {
   TRIP_STATUSES,
 } from '../constants/enums';
 import type {TripIntegrationSections} from './integrations';
+import type {TripFinancialSummary} from './trip-financial-summary';
 
 export type TripStatus = (typeof TRIP_STATUSES)[number];
 export type SimpleTripStatus = (typeof SIMPLE_TRIP_STATUSES)[number];
@@ -429,6 +430,8 @@ export interface TripDetailData extends TripIntegrationSections {
   timeline: TripTimelineEntry[];
   /** Títulos da viagem; vazio para quem não tem acesso ao financeiro. */
   receivables: FinancialEntry[];
+  /** Resultado da viagem (`trip_financial_summary`); null se a view falhar. */
+  financialSummary: TripFinancialSummary | null;
 }
 
 export const TRIP_STATUS_LABELS: Record<TripStatus, string> = {

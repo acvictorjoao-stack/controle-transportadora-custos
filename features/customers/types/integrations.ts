@@ -58,7 +58,8 @@ export interface CustomerTripRecord {
   departedAt: string | null;
   contractedFreightValue: number | null;
   actualFreightValue: number | null;
-  freightMargin: number | null;
+  /** Frete − custos da viagem (`trip_financial_summary`); null sem acesso ao financeiro. */
+  result: number | null;
 }
 
 export interface CustomerFinancialRecord {

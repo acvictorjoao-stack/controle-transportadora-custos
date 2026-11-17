@@ -519,7 +519,7 @@ function CustomerDetailView({companyId, data, branches}: CustomerDetailViewProps
               {id: 'route', header: 'Rota', cell: (row) => `${(row as CustomerTripRecord).origin ?? '—'} → ${(row as CustomerTripRecord).destination ?? '—'}`},
               {id: 'contracted', header: 'Contratado', cell: (row) => formatCurrency((row as CustomerTripRecord).contractedFreightValue)},
               {id: 'actual', header: 'Realizado', cell: (row) => formatCurrency((row as CustomerTripRecord).actualFreightValue)},
-              {id: 'margin', header: 'Margem', cell: (row) => formatCurrency((row as CustomerTripRecord).freightMargin)},
+              {id: 'result', header: 'Resultado', cell: (row) => formatCurrency((row as CustomerTripRecord).result)},
             ]}
             data={trips}
             emptyTitle="Nenhuma viagem vinculada."

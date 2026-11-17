@@ -223,16 +223,13 @@ export async function onTripCompleted(
         ? getTripFreightValue(trip)
         : metadataRevenue;
 
-  const freightMargin =
-    trip.contractedFreightValue !== null && trip.actualFreightValue !== null
-      ? trip.actualFreightValue - trip.contractedFreightValue
-      : revenue - totalExpenses;
-
+  // Fase 1: o resultado da viagem vem de trip_financial_summary (mesma conta
+  // da DRE). trips.freight_margin deixou de ser gravado: era um retrato tirado
+  // só na conclusão, que ficava velho quando um custo chegava depois.
   await supabase
     .from('trips')
     .update({
       actual_freight_value: trip.actualFreightValue ?? revenue,
-      freight_margin: freightMargin,
       metadata: {
         ...(trip.metadata ?? {}),
         profitability: {

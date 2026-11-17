@@ -277,7 +277,7 @@ describe('invariantes da Fase 1', () => {
   it('falham no estado atual, como esperado', () => {
     const results = runFase1Invariants(currentState);
     const failing = Object.fromEntries(results.map((result) => [result.id, result.violations.length]));
-    expect(failing).toEqual({I1: 1, 'I3/I4': 2, I5: 0, I6: 1, I8: 0, I9: 0});
+    expect(failing).toEqual({I3b: 1, 'I3/I4': 2, I5: 0, I6: 1, I8: 0, I9: 0});
   });
 
   /**
@@ -346,7 +346,7 @@ describe('invariantes da Fase 1', () => {
     expect(checkAdvanceNotInDre([entry({id: 'adv', entry_type: 'advance'})]).violations).toEqual([]);
   });
 
-  it('I1 compara tela e DRE só quando divergem', () => {
+  it('I3b compara aba Despesas e DRE só quando divergem', () => {
     expect(checkTripResultMatchesDre([trip()], [expense()], [entry()]).violations).toEqual([
       'V1: aba Despesas 300 × DRE 0',
     ]);

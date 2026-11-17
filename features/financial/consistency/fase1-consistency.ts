@@ -742,9 +742,9 @@ export function checkAdvanceNotInDre(entries: FinancialEntryRow[]): InvariantRes
 }
 
 /**
- * I1: por viagem, o total das despesas da aba (sem adiantamento) é o mesmo
- * custo `trip_expense` que a DRE enxerga. Com isso e com a tela lendo o
- * resumo da viagem (Etapa 1), viagem e DRE mostram o mesmo resultado.
+ * I3b (Etapa 2): por viagem, o total das despesas da aba (sem adiantamento) é
+ * o mesmo custo `trip_expense` que a DRE enxerga. Junto com a I1 (resumo da
+ * viagem = DRE, Etapa 1), a aba Despesas também passa a bater com a DRE.
  */
 export function checkTripResultMatchesDre(
   trips: TripRow[],
@@ -771,8 +771,8 @@ export function checkTripResultMatchesDre(
     }
   }
   return {
-    id: 'I1',
-    description: 'Despesas da viagem iguais ao custo de viagem na DRE',
+    id: 'I3b',
+    description: 'Despesas da aba iguais ao custo de despesas de viagem na DRE',
     stage: 2,
     violations,
   };
