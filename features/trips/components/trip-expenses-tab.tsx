@@ -1,11 +1,12 @@
 'use client';
 
-import {ExternalLink, Loader2, Pencil, Trash2, Upload, X} from 'lucide-react';
+import {AlertTriangle, CheckCircle2, ExternalLink, Info, Loader2, Pencil, Trash2, Upload, X} from 'lucide-react';
 import * as React from 'react';
 
 import {DataTable} from '@/components/data-display/data-table';
 import {TableContainer} from '@/components/data-display/table-container';
 import {Alert, AlertDescription} from '@/components/ui/alert';
+import {Badge} from '@/components/ui/badge';
 import {Button} from '@/components/ui/button';
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
 import {Input} from '@/components/ui/input';
@@ -20,14 +21,40 @@ import {
   deleteTripExpenseAction,
   updateTripExpenseAction,
 } from '../actions';
-import {TRIP_EXPENSE_TYPES} from '../constants/enums';
+import {TRIP_EXPENSE_PAID_BY, TRIP_EXPENSE_TYPES} from '../constants/enums';
 import {TRIP_STORAGE_BUCKET} from '../constants';
-import type {TripExpense, TripExpenseType} from '../types';
-import {TRIP_EXPENSE_TYPE_LABELS} from '../types';
+import type {TripExpense, TripExpensePaidBy, TripExpensePaymentMethod, TripExpenseType} from '../types';
+import {
+  TRIP_EXPENSE_PAID_BY_LABELS,
+  TRIP_EXPENSE_PAYMENT_METHOD_LABELS,
+  TRIP_EXPENSE_TYPE_LABELS,
+} from '../types';
 import {todayCivilDate} from '@/lib/formatting/date';
 
 import {formatDateBr} from '../utils/trip-status';
 import {TRIP_NATIVE_SELECT_CLASS} from '../utils/form-styles';
+import {
+  EMPTY_PAYMENT_FORM,
+  canLeavePaidByEmpty,
+  changePaidBy,
+  changePaymentMethod,
+  describePaymentEffect,
+  expenseTypeOptions,
+  paymentFormFromExpense,
+  paymentMethodOptions,
+  paymentPayload,
+  showsDueDate,
+  showsPaymentMethod,
+  validatePaymentForm,
+  type TripExpensePaymentFormState,
+} from '../utils/trip-expense-form';
+import {
+  SETTLED_EXPENSE_MESSAGE,
+  describeTripExpenseDeletion,
+  resolveTripExpenseStatus,
+  type TripExpenseEntryRef,
+  type TripExpenseStatus,
+} from '../utils/trip-expense-status';
 
 const ACCEPTED_RECEIPT_TYPES = [
   'image/jpeg',
@@ -36,6 +63,8 @@ const ACCEPTED_RECEIPT_TYPES = [
   'application/pdf',
 ];
 const MAX_RECEIPT_SIZE = 10 * 1024 * 1024;
+
+type FieldErrors = Partial<Record<'paidBy' | 'paymentMethod' | 'dueDate' | 'amount', string>>;
 
 function formatCurrency(value: number, currency = 'BRL') {
   return value.toLocaleString('pt-BR', {style: 'currency', currency});
@@ -50,10 +79,27 @@ function expenseTypeLabel(type: string) {
   return TRIP_EXPENSE_TYPE_LABELS[type as TripExpenseType] ?? type;
 }
 
+function FieldError({message}: {message?: string}) {
+  if (!message) return null;
+  return <p className="text-xs text-destructive">{message}</p>;
+}
+
+function StatusBadge({status}: {status: TripExpenseStatus}) {
+  return (
+    <Badge variant={status.tone} title={status.hint}>
+      {status.label}
+    </Badge>
+  );
+}
+
 export interface TripExpensesTabProps {
   companyId: string;
   tripId: string;
   expenses: TripExpense[];
+  /** Lançamentos das despesas (origem trip_expense); vazio sem acesso ao financeiro. */
+  entries: TripExpenseEntryRef[];
+  /** Falso quando o usuário não tem financeiro:read. */
+  financialVisible: boolean;
   onSaved: () => void;
 }
 
@@ -61,47 +107,74 @@ function TripExpensesTab({
   companyId,
   tripId,
   expenses,
+  entries,
+  financialVisible,
   onSaved,
 }: TripExpensesTabProps) {
   const confirm = useConfirm();
-  const [editingId, setEditingId] = React.useState<string | null>(null);
+  const [editing, setEditing] = React.useState<TripExpense | null>(null);
   const [type, setType] = React.useState<TripExpenseType>('toll');
   const [amount, setAmount] = React.useState('');
   const [expenseDate, setExpenseDate] = React.useState(todayIsoDate);
   const [description, setDescription] = React.useState('');
   const [notes, setNotes] = React.useState('');
   const [receiptUrl, setReceiptUrl] = React.useState<string | null>(null);
+  const [payment, setPayment] = React.useState<TripExpensePaymentFormState>(EMPTY_PAYMENT_FORM);
+  const [fieldErrors, setFieldErrors] = React.useState<FieldErrors>({});
   const [saving, setSaving] = React.useState(false);
   const [uploading, setUploading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [success, setSuccess] = React.useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
+  const statusById = React.useMemo(
+    () =>
+      new Map(
+        expenses.map((expense) => [
+          expense.id,
+          resolveTripExpenseStatus({expense, entries, financialVisible}),
+        ]),
+      ),
+    [expenses, entries, financialVisible],
+  );
+
   const total = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const notIntegrated = expenses.filter(
+    (expense) => statusById.get(expense.id)?.key === 'not_integrated',
+  );
+  const editingStatus = editing ? statusById.get(editing.id) : undefined;
+  const paymentLocked = Boolean(editingStatus?.settledByFinance);
+  const allowEmptyPaidBy = canLeavePaidByEmpty(editing);
+  const effect = describePaymentEffect(payment, type);
 
   function resetForm() {
-    setEditingId(null);
+    setEditing(null);
     setType('toll');
     setAmount('');
     setExpenseDate(todayIsoDate());
     setDescription('');
     setNotes('');
     setReceiptUrl(null);
+    setPayment(EMPTY_PAYMENT_FORM);
+    setFieldErrors({});
     setError(null);
   }
 
   function startEdit(expense: TripExpense) {
-    setEditingId(expense.id);
+    setEditing(expense);
+    // Tipo fora da lista atual (registro muito antigo) cai em "Outros", como antes.
     setType(
-      TRIP_EXPENSE_TYPES.includes(expense.expenseType as TripExpenseType)
-        ? (expense.expenseType as TripExpenseType)
-        : 'other',
+      TRIP_EXPENSE_TYPES.includes(expense.expenseType) ? expense.expenseType : 'other',
     );
     setAmount(String(expense.amount));
     setExpenseDate(expense.expenseDate.slice(0, 10));
     setDescription(expense.description ?? '');
     setNotes(expense.notes ?? '');
     setReceiptUrl(expense.receiptUrl);
+    setPayment(paymentFormFromExpense(expense));
+    setFieldErrors({});
     setError(null);
+    setSuccess(null);
   }
 
   async function handleReceiptUpload(event: React.ChangeEvent<HTMLInputElement>) {
@@ -142,9 +215,17 @@ function TripExpensesTab({
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
-    setSaving(true);
     setError(null);
+    setSuccess(null);
 
+    const issues = paymentLocked ? [] : validatePaymentForm(payment, editing);
+    const nextErrors: FieldErrors = {};
+    for (const issue of issues) nextErrors[issue.field] = issue.message;
+    if (!amount || Number(amount) <= 0) nextErrors.amount = 'Informe um valor maior que zero.';
+    setFieldErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return;
+
+    setSaving(true);
     const payload = {
       tripId,
       expenseType: type,
@@ -153,27 +234,40 @@ function TripExpensesTab({
       description: description || null,
       notes: notes || null,
       receiptUrl,
+      // Pagamento travado (já pago pelo Financeiro): nada é reenviado.
+      ...(paymentLocked ? {} : paymentPayload(payment)),
     };
 
-    const result = editingId
-      ? await updateTripExpenseAction({...payload, id: editingId})
+    const result = editing
+      ? await updateTripExpenseAction({...payload, id: editing.id})
       : await createTripExpenseAction(payload);
 
     setSaving(false);
 
     if (!result.success) {
       setError(result.error);
+      if (result.fieldErrors) setFieldErrors(result.fieldErrors as FieldErrors);
       return;
     }
 
+    const message = editing ? 'Despesa atualizada.' : 'Despesa registrada.';
     resetForm();
+    setSuccess(message);
     onSaved();
   }
 
   async function handleDelete(expense: TripExpense) {
+    setError(null);
+    setSuccess(null);
+    const status = statusById.get(expense.id);
+    if (status?.settledByFinance) {
+      setError(SETTLED_EXPENSE_MESSAGE);
+      return;
+    }
+
     const confirmed = await confirm({
       title: MSG.deleteConfirmTitle,
-      description: MSG.deleteConfirmDescription,
+      description: status ? describeTripExpenseDeletion(status) : MSG.deleteConfirmDescription,
       confirmLabel: MSG.deleteConfirmLabel,
       variant: 'destructive',
     });
@@ -189,32 +283,53 @@ function TripExpensesTab({
       return;
     }
 
-    if (editingId === expense.id) resetForm();
+    if (editing?.id === expense.id) resetForm();
+    setSuccess('Despesa excluída.');
     onSaved();
   }
 
   return (
     <div className="space-y-4">
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">Total de despesas</CardTitle>
-        </CardHeader>
-        <CardContent className="text-2xl font-semibold">
-          {formatCurrency(total)}
-        </CardContent>
-      </Card>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Total de despesas da aba</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-semibold">{formatCurrency(total)}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {expenses.length} despesa(s) registrada(s)
+            </p>
+          </CardContent>
+        </Card>
+        {notIntegrated.length > 0 && (
+          <Alert variant="warning" className="h-full">
+            <AlertTriangle />
+            <AlertDescription>
+              {notIntegrated.length} despesa(s) sem &quot;quem pagou&quot; ainda estão fora do
+              financeiro, do resultado e da DRE. Edite e informe quem pagou.
+            </AlertDescription>
+          </Alert>
+        )}
+      </div>
 
       <Card>
         <CardHeader>
           <CardTitle className="text-base">
-            {editingId ? 'Editar despesa' : 'Registrar despesa'}
+            {editing ? 'Editar despesa' : 'Registrar despesa'}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-3">
+          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             {error && (
               <Alert variant="destructive">
                 <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            {success && !error && (
+              <Alert variant="success">
+                <CheckCircle2 />
+                <AlertDescription>{success}</AlertDescription>
               </Alert>
             )}
 
@@ -230,7 +345,7 @@ function TripExpensesTab({
                   className={TRIP_NATIVE_SELECT_CLASS}
                   required
                 >
-                  {TRIP_EXPENSE_TYPES.map((item) => (
+                  {expenseTypeOptions(editing?.expenseType ?? null).map((item) => (
                     <option key={item} value={item}>
                       {TRIP_EXPENSE_TYPE_LABELS[item]}
                     </option>
@@ -249,8 +364,11 @@ function TripExpensesTab({
                   placeholder="0,00"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
+                  disabled={paymentLocked}
+                  aria-invalid={Boolean(fieldErrors.amount)}
                   required
                 />
+                <FieldError message={fieldErrors.amount} />
               </div>
               <div className="space-y-1">
                 <label className="text-xs text-muted-foreground" htmlFor="expense-date">
@@ -276,6 +394,105 @@ function TripExpensesTab({
                 />
               </div>
             </div>
+
+            <fieldset className="space-y-3 rounded-lg border border-border p-3">
+              <legend className="px-1 text-xs font-medium text-muted-foreground">Pagamento</legend>
+
+              {paymentLocked && (
+                <Alert variant="info">
+                  <Info />
+                  <AlertDescription>{SETTLED_EXPENSE_MESSAGE}</AlertDescription>
+                </Alert>
+              )}
+
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground" htmlFor="expense-paid-by">
+                    Quem pagou
+                  </label>
+                  <select
+                    id="expense-paid-by"
+                    value={payment.paidBy}
+                    onChange={(e) => {
+                      setPayment(changePaidBy(payment, e.target.value as TripExpensePaidBy | ''));
+                      setFieldErrors({});
+                    }}
+                    className={TRIP_NATIVE_SELECT_CLASS}
+                    disabled={paymentLocked}
+                    aria-invalid={Boolean(fieldErrors.paidBy)}
+                  >
+                    <option value="" disabled={!allowEmptyPaidBy}>
+                      {allowEmptyPaidBy ? 'Não informado' : 'Selecione'}
+                    </option>
+                    {TRIP_EXPENSE_PAID_BY.map((item) => (
+                      <option key={item} value={item}>
+                        {TRIP_EXPENSE_PAID_BY_LABELS[item]}
+                      </option>
+                    ))}
+                  </select>
+                  <FieldError message={fieldErrors.paidBy} />
+                </div>
+
+                {showsPaymentMethod(payment) && (
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground" htmlFor="expense-payment-method">
+                      Forma de pagamento
+                    </label>
+                    <select
+                      id="expense-payment-method"
+                      value={payment.paymentMethod}
+                      onChange={(e) => {
+                        setPayment(
+                          changePaymentMethod(payment, e.target.value as TripExpensePaymentMethod | ''),
+                        );
+                        setFieldErrors((current) => ({...current, paymentMethod: undefined, dueDate: undefined}));
+                      }}
+                      className={TRIP_NATIVE_SELECT_CLASS}
+                      disabled={paymentLocked}
+                      aria-invalid={Boolean(fieldErrors.paymentMethod)}
+                    >
+                      <option value="" disabled>
+                        Selecione
+                      </option>
+                      {paymentMethodOptions(payment.paidBy).map((item) => (
+                        <option key={item} value={item}>
+                          {TRIP_EXPENSE_PAYMENT_METHOD_LABELS[item]}
+                        </option>
+                      ))}
+                    </select>
+                    <FieldError message={fieldErrors.paymentMethod} />
+                  </div>
+                )}
+
+                {showsDueDate(payment) && (
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground" htmlFor="expense-due-date">
+                      Vencimento
+                    </label>
+                    <Input
+                      id="expense-due-date"
+                      type="date"
+                      value={payment.dueDate}
+                      onChange={(e) => {
+                        setPayment({...payment, dueDate: e.target.value});
+                        setFieldErrors((current) => ({...current, dueDate: undefined}));
+                      }}
+                      disabled={paymentLocked}
+                      aria-invalid={Boolean(fieldErrors.dueDate)}
+                      required
+                    />
+                    <FieldError message={fieldErrors.dueDate} />
+                  </div>
+                )}
+              </div>
+
+              {effect && !paymentLocked && (
+                <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                  <Info className="mt-0.5 size-3.5 shrink-0" />
+                  {effect}
+                </p>
+              )}
+            </fieldset>
 
             <div className="space-y-1">
               <label className="text-xs text-muted-foreground" htmlFor="expense-notes">
@@ -339,9 +556,9 @@ function TripExpensesTab({
             <div className="flex flex-wrap gap-2">
               <Button type="submit" disabled={saving || uploading}>
                 {saving ? <Loader2 className="size-4 animate-spin" /> : null}
-                {editingId ? 'Salvar alterações' : 'Registrar'}
+                {editing ? 'Salvar alterações' : 'Registrar'}
               </Button>
-              {editingId && (
+              {editing && (
                 <Button type="button" variant="outline" onClick={resetForm}>
                   Cancelar
                 </Button>
@@ -360,14 +577,50 @@ function TripExpensesTab({
               cell: (row) => expenseTypeLabel(row.expenseType),
             },
             {
+              id: 'description',
+              header: 'Descrição',
+              className: 'max-w-[16rem] truncate',
+              cell: (row) => row.description ?? '—',
+            },
+            {
               id: 'amount',
               header: 'Valor',
+              className: 'whitespace-nowrap',
               cell: (row) => formatCurrency(row.amount, row.currency),
             },
             {
               id: 'date',
               header: 'Data',
+              className: 'whitespace-nowrap',
               cell: (row) => formatDateBr(row.expenseDate),
+            },
+            {
+              id: 'paidBy',
+              header: 'Quem pagou',
+              cell: (row) =>
+                row.paidBy ? (
+                  <div className="leading-tight">
+                    <p>{TRIP_EXPENSE_PAID_BY_LABELS[row.paidBy]}</p>
+                    {row.paymentMethod && (
+                      <p className="text-xs text-muted-foreground">
+                        {TRIP_EXPENSE_PAYMENT_METHOD_LABELS[row.paymentMethod]}
+                        {row.paymentMethod === 'supplier_credit' && row.dueDate
+                          ? ` · vence ${formatDateBr(row.dueDate)}`
+                          : ''}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <span className="text-muted-foreground">Não informado</span>
+                ),
+            },
+            {
+              id: 'status',
+              header: 'Situação financeira',
+              cell: (row) => {
+                const status = statusById.get(row.id);
+                return status ? <StatusBadge status={status} /> : null;
+              },
             },
             {
               id: 'actions',
@@ -379,6 +632,7 @@ function TripExpensesTab({
                     type="button"
                     variant="ghost"
                     size="sm"
+                    aria-label="Editar despesa"
                     onClick={() => startEdit(row)}
                   >
                     <Pencil className="size-4" />
@@ -387,6 +641,7 @@ function TripExpensesTab({
                     type="button"
                     variant="ghost"
                     size="sm"
+                    aria-label="Excluir despesa"
                     onClick={() => handleDelete(row)}
                   >
                     <Trash2 className="size-4" />

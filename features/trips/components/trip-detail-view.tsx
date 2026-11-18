@@ -283,6 +283,8 @@ function TripDetailView({
           companyId={companyId}
           tripId={trip.id}
           expenses={data.expenses}
+          entries={data.expenseEntries}
+          financialVisible={data.financialSummary?.financialVisible ?? false}
           onSaved={handleRefresh}
         />
       )}

@@ -1,3 +1,7 @@
+import {AlertTriangle, Info} from 'lucide-react';
+import type * as React from 'react';
+
+import {Alert, AlertDescription} from '@/components/ui/alert';
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
 
 import type {TripFinancialSummary} from '../types/trip-financial-summary';
@@ -7,15 +11,42 @@ function formatMoney(value: number) {
   return value.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
 }
 
+function formatPercent(value: number) {
+  return `${value.toLocaleString('pt-BR', {maximumFractionDigits: 1})}%`;
+}
+
 export interface TripResultCardsProps {
   summary: TripFinancialSummary | null;
   /** Frete do cadastro, usado só quando o resumo não está disponível. */
   fallbackFreight: number;
 }
 
+function MetricCard({
+  title,
+  children,
+  footnote,
+}: {
+  title: string;
+  children: React.ReactNode;
+  footnote?: React.ReactNode;
+}) {
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {children}
+        {footnote ? <div className="mt-1 text-xs text-muted-foreground">{footnote}</div> : null}
+      </CardContent>
+    </Card>
+  );
+}
+
 /**
- * Frete, custo direto e resultado da viagem, lidos de `trip_financial_summary`
- * — a mesma conta da DRE.
+ * Frete, custos, despesas de viagem, resultado e margem, lidos de
+ * `trip_financial_summary` — a mesma conta da DRE. Cada custo aparece num só
+ * grupo: despesas da aba não entram de novo em combustível, manutenção ou pneus.
  */
 export function TripResultCards({summary, fallbackFreight}: TripResultCardsProps) {
   const view = buildTripResultView(summary, fallbackFreight);
@@ -27,65 +58,79 @@ export function TripResultCards({summary, fallbackFreight}: TripResultCardsProps
         ? 'Indisponível no momento'
         : null;
 
+  const unavailable = <p className="text-sm text-muted-foreground">{unavailableText}</p>;
+
   return (
-    <div className="space-y-2">
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Frete</CardTitle>
-          </CardHeader>
-          <CardContent className="text-2xl font-semibold">{formatMoney(view.freight)}</CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Custos da viagem</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {view.state === 'ready' ? (
-              <>
-                <p className="text-2xl font-semibold">{formatMoney(view.directCosts)}</p>
-                {view.costLines.length > 0 && (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {view.costLines
-                      .map((line) => `${line.label} ${formatMoney(line.amount)}`)
-                      .join(' · ')}
-                  </p>
-                )}
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">{unavailableText}</p>
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Resultado</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {view.state === 'ready' ? (
-              <>
-                <p
-                  className={`text-2xl font-semibold ${view.result < 0 ? 'text-destructive' : ''}`}
-                >
-                  {formatMoney(view.result)}
-                </p>
-                {view.marginPercent !== null && (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Margem {view.marginPercent.toLocaleString('pt-BR', {maximumFractionDigits: 1})}%
-                  </p>
-                )}
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">{unavailableText}</p>
-            )}
-          </CardContent>
-        </Card>
+    <div className="space-y-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <MetricCard title="Frete">
+          <p className="text-2xl font-semibold">{formatMoney(view.freight)}</p>
+        </MetricCard>
+
+        <MetricCard
+          title="Custos operacionais"
+          footnote={
+            view.state === 'ready' && view.operationalLines.length > 0
+              ? view.operationalLines.map((line) => `${line.label} ${formatMoney(line.amount)}`).join(' · ')
+              : undefined
+          }
+        >
+          {view.state === 'ready' ? (
+            <p className="text-2xl font-semibold">{formatMoney(view.operationalCosts)}</p>
+          ) : (
+            unavailable
+          )}
+        </MetricCard>
+
+        <MetricCard
+          title="Despesas de viagem"
+          footnote={view.state === 'ready' ? 'Pedágio, alimentação e outras da aba Despesas' : undefined}
+        >
+          {view.state === 'ready' ? (
+            <p className="text-2xl font-semibold">{formatMoney(view.tripExpenseCosts)}</p>
+          ) : (
+            unavailable
+          )}
+        </MetricCard>
+
+        <MetricCard title="Resultado">
+          {view.state === 'ready' ? (
+            <p className={`text-2xl font-semibold ${view.result < 0 ? 'text-destructive' : ''}`}>
+              {formatMoney(view.result)}
+            </p>
+          ) : (
+            unavailable
+          )}
+        </MetricCard>
+
+        <MetricCard title="Margem">
+          {view.state === 'ready' ? (
+            <p
+              className={`text-2xl font-semibold ${
+                view.marginPercent !== null && view.marginPercent < 0 ? 'text-destructive' : ''
+              }`}
+            >
+              {view.marginPercent === null ? '—' : formatPercent(view.marginPercent)}
+            </p>
+          ) : (
+            unavailable
+          )}
+        </MetricCard>
       </div>
+
       {view.state === 'ready' && view.unpostedNotice && (
-        <p className="text-sm text-amber-700 dark:text-amber-400">{view.unpostedNotice}</p>
+        <Alert variant="warning">
+          <AlertTriangle />
+          <AlertDescription>
+            {view.unpostedNotice} Abra a aba Despesas e informe quem pagou.
+          </AlertDescription>
+        </Alert>
       )}
       {view.state === 'ready' && view.advanceNotice && (
-        <p className="text-sm text-muted-foreground">{view.advanceNotice}</p>
+        <p className="flex items-start gap-1.5 text-sm text-muted-foreground">
+          <Info className="mt-0.5 size-4 shrink-0" />
+          {view.advanceNotice}
+        </p>
       )}
     </div>
   );

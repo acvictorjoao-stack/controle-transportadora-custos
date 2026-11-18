@@ -41,6 +41,7 @@ import type {
 } from '../types';
 import {buildAccountsPayableListUrl} from '../utils/list-url';
 import {
+  canCancelAccountsPayableEntry,
   formatAccountsPayableOrigin,
   getAccountsPayableOriginHref,
   isManualAccountsPayableEntry,
@@ -310,9 +311,11 @@ function AccountsPayableList({
                 >
                   <CheckCircle2 className="size-4" /> Marcar como pago
                 </RowActionsMenuItem>
-                <RowActionsMenuItem destructive onClick={() => handleCancel(row)}>
-                  <Ban className="size-4" /> Cancelar
-                </RowActionsMenuItem>
+                {canCancelAccountsPayableEntry(row) && (
+                  <RowActionsMenuItem destructive onClick={() => handleCancel(row)}>
+                    <Ban className="size-4" /> Cancelar
+                  </RowActionsMenuItem>
+                )}
               </>
             )}
             {canEdit && (

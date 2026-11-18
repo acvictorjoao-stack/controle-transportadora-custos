@@ -19,14 +19,44 @@ export function isManualAccountsPayableEntry(entry: Pick<FinancialEntry, 'source
   return entry.sourceModule === ACCOUNTS_PAYABLE_SOURCE_MODULE && !entry.isSystemGenerated;
 }
 
+/**
+ * Detalhe da origem "despesa de viagem" (migration 111): quem pagou e como o
+ * lançamento nasce. Lê só o que o gatilho gravou em metadata.
+ */
+export function describeTripExpenseOrigin(
+  entry: Pick<FinancialEntry, 'sourceModule'> & {metadata?: Record<string, unknown> | null},
+): string | null {
+  if (entry.sourceModule !== 'trip_expense') return null;
+  const paidBy = entry.metadata?.paid_by;
+  const method = entry.metadata?.payment_method;
+  const treatment = entry.metadata?.treatment;
+  if (treatment === 'paid_by_advance') return 'Paga com adiantamento';
+  if (method === 'supplier_credit') return 'Compra a prazo';
+  if (treatment === 'payable' && paidBy === 'driver') return 'Reembolso ao motorista';
+  if (treatment === 'payable' && paidBy === 'aggregate') return 'Reembolso ao agregado';
+  if (treatment === 'paid') return 'Paga pela empresa';
+  return null;
+}
+
+/** Cancelar ou excluir só pela despesa, na viagem (proteção da migration 111). */
+export function canCancelAccountsPayableEntry(entry: Pick<FinancialEntry, 'sourceModule'>): boolean {
+  return entry.sourceModule !== 'trip_expense';
+}
+
 export function formatAccountsPayableOrigin(
   entry: Pick<
     FinancialEntry,
     'sourceModule' | 'sourceId' | 'referenceNumber' | 'fuelRecordId'
   > &
-    Partial<Pick<FinancialEntry, 'installmentNumber' | 'installmentTotal'>>,
+    Partial<Pick<FinancialEntry, 'installmentNumber' | 'installmentTotal' | 'metadata'>>,
 ): string {
   const moduleKey = entry.sourceModule ?? ACCOUNTS_PAYABLE_SOURCE_MODULE;
+  const tripExpenseDetail = describeTripExpenseOrigin(entry);
+  if (tripExpenseDetail) {
+    const icon = OPERATION_SOURCE_ICONS.trip_expense;
+    const ref = entry.referenceNumber ? ` · Viagem ${entry.referenceNumber}` : '';
+    return `${icon} Despesa de viagem · ${tripExpenseDetail}${ref}`;
+  }
   const icon = OPERATION_SOURCE_ICONS[moduleKey] ?? '📄';
   const label = OPERATION_SOURCE_LABELS[moduleKey] ?? 'Manual';
 

@@ -14,6 +14,7 @@ import type {
 } from '../constants/enums';
 import type {TripIntegrationSections} from './integrations';
 import type {TripFinancialSummary} from './trip-financial-summary';
+import type {TripExpenseEntryRef} from '../utils/trip-expense-status';
 
 export type TripStatus = (typeof TRIP_STATUSES)[number];
 export type SimpleTripStatus = (typeof SIMPLE_TRIP_STATUSES)[number];
@@ -445,6 +446,8 @@ export interface TripDetailData extends TripIntegrationSections {
   receivables: FinancialEntry[];
   /** Resultado da viagem (`trip_financial_summary`); null se a view falhar. */
   financialSummary: TripFinancialSummary | null;
+  /** Lançamentos das despesas da aba (origem trip_expense); vazio sem financeiro:read. */
+  expenseEntries: TripExpenseEntryRef[];
 }
 
 export const TRIP_STATUS_LABELS: Record<TripStatus, string> = {
@@ -515,11 +518,11 @@ export const TRIP_EXPENSE_PAID_BY_LABELS: Record<TripExpensePaidBy, string> = {
 export const TRIP_EXPENSE_PAYMENT_METHOD_LABELS: Record<TripExpensePaymentMethod, string> = {
   bank_account: 'Conta bancária',
   corporate_card: 'Cartão corporativo',
-  toll_tag: 'Tag de pedágio',
-  cash: 'Dinheiro do caixa',
+  toll_tag: 'TAG de pedágio',
+  cash: 'Dinheiro',
   not_informed: 'Não informado',
-  supplier_credit: 'A prazo (fornecedor)',
-  own_money: 'Dinheiro próprio (reembolso)',
+  supplier_credit: 'Compra a prazo',
+  own_money: 'Dinheiro próprio (reembolsar)',
   driver_advance: 'Adiantamento da viagem',
 };
 

@@ -12,6 +12,11 @@ export type TripResultView =
       state: 'ready';
       freight: number;
       directCosts: number;
+      /** Custo direto sem as despesas da aba: combustível, manutenção, pneus e outros. */
+      operationalCosts: number;
+      operationalLines: TripResultCostLine[];
+      /** Despesas da aba já no financeiro (grupo próprio, como na DRE). */
+      tripExpenseCosts: number;
       result: number;
       marginPercent: number | null;
       costLines: TripResultCostLine[];
@@ -51,6 +56,10 @@ export function buildTripResultView(
     {label: 'Outros', amount: summary.otherCosts},
   ].filter((line): line is TripResultCostLine => line.amount !== null && line.amount !== 0);
 
+  const tripExpenseCosts = summary.tripExpenseCosts ?? 0;
+  const operationalLines = costLines.filter((line) => line.label !== 'Despesas de viagem');
+  const operationalCosts = Math.round((summary.directCosts - tripExpenseCosts) * 100) / 100;
+
   const unpostedCount = summary.unpostedTripExpensesCount ?? 0;
   const unpostedNotice =
     unpostedCount > 0
@@ -68,6 +77,9 @@ export function buildTripResultView(
     state: 'ready',
     freight: summary.freightAmount,
     directCosts: summary.directCosts,
+    operationalCosts,
+    operationalLines,
+    tripExpenseCosts,
     result: summary.result,
     marginPercent: summary.marginPercent,
     costLines,
