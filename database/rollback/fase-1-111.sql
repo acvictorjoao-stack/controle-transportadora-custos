@@ -1,0 +1,202 @@
+-- FleetControl — Reversão da migration 111 (Fase 1, Etapa 2)
+-- NÃO é migration: fica fora de supabase/migrations e só roda por decisão explícita.
+--
+-- Antes de executar:
+--   1. Reverta o código publicado que preenche paid_by (Etapa 2.2/2.3).
+--   2. Avalie os lançamentos já criados pela sincronização (origem trip_expense).
+--      Eles NÃO são apagados aqui: continuam como custo da viagem e da DRE.
+--      Se for preciso tirá-los, faça um estorno controlado, um a um, e só nos
+--      que não tiverem pagamento ou movimento posterior.
+--
+-- O que esta reversão faz:
+--   - remove a sincronização despesa -> lançamento e a proteção do lançamento;
+--   - devolve trip_financial_summary à versão da 110 (sem trip_expense_costs).
+--
+-- O que ela mantém, de propósito:
+--   - as colunas paid_by, payment_method e due_date de trip_expenses e suas
+--     restrições: apagá-las perderia o que os usuários informaram. Para
+--     removê-las, use o bloco comentado no fim, depois de exportar os valores.
+
+begin;
+
+drop trigger if exists trip_expenses_sync_financial_entry on public.trip_expenses;
+drop trigger if exists trip_expenses_close_financial_entry on public.trip_expenses;
+drop trigger if exists financial_entries_guard_trip_expense on public.financial_entries;
+
+drop function if exists public.sync_trip_expense_entry();
+drop function if exists public.close_trip_expense_entry_on_delete();
+drop function if exists public.guard_trip_expense_entry();
+drop function if exists public.close_trip_expense_entry(uuid, uuid);
+drop function if exists public.request_is_hml_company_reset();
+drop function if exists public.trip_expense_financial_treatment(text, text);
+drop function if exists public.trip_expense_category_slug(public.trip_expense_type);
+drop function if exists public.trip_expense_type_label(public.trip_expense_type);
+
+-- create or replace não remove coluna: a view volta à 110 por drop + create.
+drop view if exists public.trip_financial_summary;
+
+create view public.trip_financial_summary
+with (security_invoker = true)
+as
+select
+  t.id as trip_id,
+  t.company_id,
+  t.trip_number,
+  t.trip_status,
+  t.completed_at,
+  round(coalesce(t.actual_freight_value, t.contracted_freight_value, 0)::numeric, 2)
+    as freight_amount,
+  case when vis.visible then costs.direct_costs end as direct_costs,
+  case when vis.visible then costs.fuel_costs end as fuel_costs,
+  case when vis.visible then costs.maintenance_costs end as maintenance_costs,
+  case when vis.visible then costs.tire_costs end as tire_costs,
+  case when vis.visible then
+    costs.direct_costs - costs.fuel_costs - costs.maintenance_costs - costs.tire_costs
+  end as other_costs,
+  case when vis.visible then costs.direct_cost_entries end as direct_cost_entries,
+  case when vis.visible then
+    round(coalesce(t.actual_freight_value, t.contracted_freight_value, 0)::numeric, 2)
+      - costs.direct_costs
+  end as result,
+  case
+    when vis.visible
+      and coalesce(t.actual_freight_value, t.contracted_freight_value, 0) > 0 then round(
+      (
+        (coalesce(t.actual_freight_value, t.contracted_freight_value, 0) - costs.direct_costs)
+        / coalesce(t.actual_freight_value, t.contracted_freight_value, 0)
+      ) * 100,
+      2
+    )
+  end as margin_percent,
+  case when vis.visible then costs.advances_total end as advances_total,
+  case when vis.visible then costs.reimbursements_total end as reimbursements_total,
+  case when vis.visible then aba.unposted_trip_expenses_amount end
+    as unposted_trip_expenses_amount,
+  case when vis.visible then aba.unposted_trip_expenses_count end
+    as unposted_trip_expenses_count,
+  aba.legacy_advance_expenses_amount,
+  aba.legacy_advance_expenses_count,
+  case when vis.visible then charge.receivable_entry_id end as receivable_entry_id,
+  case when vis.visible then charge.receivable_status end as receivable_status,
+  case when vis.visible then charge.receivable_amount end as receivable_amount,
+  case when vis.visible then charge.receivable_received end as receivable_received,
+  case
+    when vis.visible and charge.receivable_entry_id is not null
+      then charge.receivable_amount - charge.receivable_received
+  end as receivable_balance,
+  vis.visible as financial_visible
+from public.trips t
+cross join lateral (
+  select coalesce(
+    public.has_company_permission(t.company_id, 'financeiro:read')
+    or public.is_company_super_admin(t.company_id)
+    or (select r.rolbypassrls from pg_catalog.pg_roles r where r.rolname = current_user),
+    false
+  ) as visible
+) vis
+cross join lateral (
+  select
+    coalesce(round(sum(fe.amount) filter (where fe.entry_type = 'expense'), 2), 0)
+      as direct_costs,
+    coalesce(round(sum(fe.amount) filter (
+      where fe.entry_type = 'expense'
+        and (fc.slug = 'combustivel' or fe.fuel_record_id is not null)
+    ), 2), 0) as fuel_costs,
+    coalesce(round(sum(fe.amount) filter (
+      where fe.entry_type = 'expense'
+        and not (fc.slug is not distinct from 'combustivel' or fe.fuel_record_id is not null)
+        and (fc.slug = 'manutencao' or fe.maintenance_record_id is not null)
+    ), 2), 0) as maintenance_costs,
+    coalesce(round(sum(fe.amount) filter (
+      where fe.entry_type = 'expense'
+        and not (fc.slug is not distinct from 'combustivel' or fe.fuel_record_id is not null)
+        and not (fc.slug is not distinct from 'manutencao' or fe.maintenance_record_id is not null)
+        and (fc.slug = 'pneus' or fe.tire_id is not null)
+    ), 2), 0) as tire_costs,
+    count(*) filter (where fe.entry_type = 'expense')::integer as direct_cost_entries,
+    coalesce(round(sum(fe.amount) filter (where fe.entry_type = 'advance'), 2), 0)
+      as advances_total,
+    coalesce(round(sum(fe.amount) filter (where fe.entry_type = 'reimbursement'), 2), 0)
+      as reimbursements_total
+  from public.financial_entries fe
+  left join public.financial_categories fc on fc.id = fe.category_id
+  where fe.company_id = t.company_id
+    and fe.trip_id = t.id
+    and fe.deleted_at is null
+    and fe.entry_status not in ('cancelled', 'reversed')
+    and fe.entry_type in ('expense', 'advance', 'reimbursement')
+) costs
+cross join lateral (
+  select
+    coalesce(round(sum(te.amount) filter (
+      where te.expense_type <> 'advance'
+        and not exists (
+          select 1
+          from public.financial_entries posted
+          where posted.company_id = te.company_id
+            and posted.source_module = 'trip_expense'
+            and posted.source_id = te.id
+            and posted.deleted_at is null
+            and posted.entry_status not in ('cancelled', 'reversed')
+            and posted.entry_type <> 'reversal'
+        )
+    ), 2), 0) as unposted_trip_expenses_amount,
+    count(*) filter (
+      where te.expense_type <> 'advance'
+        and not exists (
+          select 1
+          from public.financial_entries posted
+          where posted.company_id = te.company_id
+            and posted.source_module = 'trip_expense'
+            and posted.source_id = te.id
+            and posted.deleted_at is null
+            and posted.entry_status not in ('cancelled', 'reversed')
+            and posted.entry_type <> 'reversal'
+        )
+    )::integer as unposted_trip_expenses_count,
+    coalesce(round(sum(te.amount) filter (where te.expense_type = 'advance'), 2), 0)
+      as legacy_advance_expenses_amount,
+    count(*) filter (where te.expense_type = 'advance')::integer
+      as legacy_advance_expenses_count
+  from public.trip_expenses te
+  where te.company_id = t.company_id
+    and te.trip_id = t.id
+    and te.deleted_at is null
+) aba
+left join lateral (
+  select
+    fe.id as receivable_entry_id,
+    fe.entry_status as receivable_status,
+    round((fe.amount + coalesce(fe.adjustment_total, 0))::numeric, 2) as receivable_amount,
+    round(coalesce(fe.paid_amount, 0)::numeric, 2) as receivable_received
+  from public.financial_entries fe
+  where fe.company_id = t.company_id
+    and fe.trip_id = t.id
+    and fe.trip_charge_key = 'freight'
+    and fe.deleted_at is null
+    and fe.entry_status not in ('cancelled', 'reversed')
+  order by fe.created_at
+  limit 1
+) charge on true
+where t.deleted_at is null;
+
+comment on view public.trip_financial_summary is
+  'Fase 1: resultado da viagem = frete − custo direto em financial_entries (mesma regra da DRE). Adiantamento fica fora do custo.';
+
+revoke all on table public.trip_financial_summary
+  from public, anon, authenticated, service_role;
+
+grant select on public.trip_financial_summary to authenticated;
+grant select on public.trip_financial_summary to service_role;
+
+commit;
+
+-- Remoção opcional das colunas (perde o que foi informado):
+-- alter table public.trip_expenses
+--   drop constraint if exists trip_expenses_supplier_credit_requires_due_date,
+--   drop constraint if exists trip_expenses_payment_combination_check,
+--   drop constraint if exists trip_expenses_payment_method_check,
+--   drop constraint if exists trip_expenses_paid_by_check,
+--   drop column if exists due_date,
+--   drop column if exists payment_method,
+--   drop column if exists paid_by;
