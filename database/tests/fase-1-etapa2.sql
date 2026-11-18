@@ -394,6 +394,39 @@ select pg_temp.expect('view: sem financeiro:read os custos continuam NULL',
 select pg_temp.act_as_owner();
 
 -- ---------------------------------------------------------------------------
+-- Caixa x DRE (get_financial_stats): adiantamento não é segunda saída
+-- ---------------------------------------------------------------------------
+-- Empresa B já tem 70 pagos pela empresa (2e..09). Acrescenta: 60 pagos com
+-- adiantamento, 200 de reembolso ao motorista e 150 a prazo.
+
+select pg_temp.act_as('e2300000-0000-4000-8000-000000000001');
+insert into public.trip_expenses (id, company_id, trip_id, expense_type, amount, expense_date, paid_by, payment_method, due_date)
+values
+  ('2e000000-0000-4000-8000-0000000000b1', '2b000000-0000-4000-8000-000000000001',
+   '2d000000-0000-4000-8000-000000000002', 'food', 60, date '2026-11-02', 'driver', 'driver_advance', null),
+  ('2e000000-0000-4000-8000-0000000000b2', '2b000000-0000-4000-8000-000000000001',
+   '2d000000-0000-4000-8000-000000000002', 'lodging', 200, date '2026-11-02', 'driver', 'own_money', null),
+  ('2e000000-0000-4000-8000-0000000000b3', '2b000000-0000-4000-8000-000000000001',
+   '2d000000-0000-4000-8000-000000000002', 'other', 150, date '2026-11-02', 'company', 'supplier_credit', date '2026-12-02');
+select pg_temp.act_as_owner();
+
+select pg_temp.expect('stats: todas as despesas de viagem são custo, uma vez (DRE)',
+  (public.get_financial_stats('2b000000-0000-4000-8000-000000000001') ->> 'expenses')::numeric = 480
+  and (public.get_financial_stats('2b000000-0000-4000-8000-000000000001') ->> 'balance')::numeric = -480);
+select pg_temp.expect('stats: caixa conta só o pago pela empresa; adiantamento não é segunda saída',
+  (public.get_financial_stats('2b000000-0000-4000-8000-000000000001') ->> 'cash_flow')::numeric = -70);
+
+-- O Financeiro paga o reembolso: o mesmo lançamento entra no caixa, sem segundo custo.
+update public.financial_entries
+set entry_status = 'paid', paid_amount = 200, paid_at = timestamptz '2026-11-06 12:00+00'
+where source_id = '2e000000-0000-4000-8000-0000000000b2' and entry_type = 'expense';
+select pg_temp.expect('stats: reembolso pago entra no caixa e o custo não muda',
+  (public.get_financial_stats('2b000000-0000-4000-8000-000000000001') ->> 'cash_flow')::numeric = -270
+  and (public.get_financial_stats('2b000000-0000-4000-8000-000000000001') ->> 'expenses')::numeric = 480);
+select pg_temp.expect('stats: compra a prazo fica fora do caixa até ser paga',
+  (select entry_status = 'pending' from pg_temp.entry_of('2e000000-0000-4000-8000-0000000000b3')));
+
+-- ---------------------------------------------------------------------------
 -- Exclusão física e reset da empresa de teste (RPCs 103/104)
 -- ---------------------------------------------------------------------------
 

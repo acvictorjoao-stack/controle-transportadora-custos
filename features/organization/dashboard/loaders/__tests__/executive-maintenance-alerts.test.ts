@@ -239,6 +239,7 @@ function makeDre(): OperationalDreData {
     costsOnlyMode: false,
     revenues: {freightRevenue: 1000, totalRevenue: 1000},
     costs: {
+      tripExpenses: 0,
       fuel: 100,
       maintenance: 50,
       tires: 0,

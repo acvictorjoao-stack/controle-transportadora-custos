@@ -8,6 +8,7 @@ import {
   type TripFinancialBreakdownSourceRow,
   type TripFinancialCostCategory,
 } from '../types/trip-financial-breakdown';
+import {TRIP_EXPENSE_SOURCE_MODULE} from '../constants/operation-financial';
 import {
   resolveTripFinancialOriginHref,
   resolveTripFinancialOriginLabel,
@@ -33,6 +34,9 @@ function isActiveEntry(row: TripFinancialBreakdownSourceRow): boolean {
 export function categorizeTripFinancialExpense(
   row: TripFinancialBreakdownSourceRow,
 ): TripFinancialCostCategory {
+  // Despesa da aba da viagem: grupo próprio, como na DRE (`categorizeExpense`).
+  if (row.sourceModule === TRIP_EXPENSE_SOURCE_MODULE) return 'despesas_viagem';
+
   const slug = row.categorySlug?.toLowerCase() ?? null;
 
   if (slug === 'combustivel' || row.fuelRecordId || row.sourceModule === 'fuel') {

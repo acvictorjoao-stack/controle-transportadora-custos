@@ -17,6 +17,11 @@ export interface TripFinancialSummary {
   tireCosts: number | null;
   otherCosts: number | null;
   directCostEntries: number | null;
+  /**
+   * Despesas da aba da viagem já no financeiro (migration 111). Nulo sem acesso
+   * ao financeiro e enquanto a 111 não existir no banco (view da 110).
+   */
+  tripExpenseCosts: number | null;
   /** Frete − custo direto. */
   result: number | null;
   marginPercent: number | null;
@@ -64,4 +69,6 @@ export interface TripFinancialSummaryRow {
   receivable_received: number | string | null;
   receivable_balance: number | string | null;
   financial_visible: boolean | null;
+  /** Coluna acrescentada no fim da view pela migration 111. */
+  trip_expense_costs?: number | string | null;
 }

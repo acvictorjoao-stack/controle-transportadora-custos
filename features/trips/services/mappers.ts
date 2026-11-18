@@ -226,6 +226,9 @@ export function mapTripExpenseRow(row: TripExpenseRow): TripExpense {
     notes: row.notes ?? null,
     expenseDate: row.expense_date,
     receiptUrl: buildStorageFileUrl(TRIP_STORAGE_BUCKET, row.receipt_url),
+    paidBy: row.paid_by ?? null,
+    paymentMethod: row.payment_method ?? null,
+    dueDate: row.due_date ?? null,
     createdAt: row.created_at,
   };
 }

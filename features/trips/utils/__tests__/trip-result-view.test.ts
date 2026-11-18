@@ -16,6 +16,7 @@ function summary(overrides: Partial<TripFinancialSummary> = {}): TripFinancialSu
     tireCosts: 0,
     otherCosts: 300,
     directCostEntries: 2,
+    tripExpenseCosts: 0,
     result: 7700,
     marginPercent: 77,
     advancesTotal: 0,

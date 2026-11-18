@@ -2,6 +2,7 @@ import type {SupabaseClient} from '@supabase/supabase-js';
 
 import {ACCOUNTS_PAYABLE_SOURCE_MODULE} from '@/features/accounts-payable/constants';
 import {ACCOUNTS_RECEIVABLE_SOURCE_MODULE} from '@/features/accounts-receivable/constants';
+import {TRIP_EXPENSE_SOURCE_MODULE} from '@/features/financial/constants/operation-financial';
 import {listFinancialEntriesByIds} from '@/features/financial/queries';
 import type {
   FinancialEntryStatus,
@@ -88,6 +89,40 @@ function sumSigned(rows: CashFlowLineRow[]): number {
   return rows.reduce((sum, row) => sum + signedLineAmount(row), 0);
 }
 
+/**
+ * Gasto da viagem pago com adiantamento do motorista não é uma segunda saída de
+ * caixa: o dinheiro saiu no adiantamento (Fase 1, D6/D8). Esses lançamentos (e
+ * os estornos deles) ficam fora do caixa; continuam no custo da viagem e da DRE.
+ */
+async function excludeAdvanceConsumption(
+  supabase: SupabaseClient,
+  companyId: string,
+  rows: CashFlowLineRow[],
+): Promise<CashFlowLineRow[]> {
+  if (!rows.some((row) => row.source_module === TRIP_EXPENSE_SOURCE_MODULE)) return rows;
+
+  const {data: consumed, error} = await supabase
+    .from('financial_entries')
+    .select('id')
+    .eq('company_id', companyId)
+    .eq('source_module', TRIP_EXPENSE_SOURCE_MODULE)
+    .eq('metadata->>treatment', 'paid_by_advance');
+  if (error) throw postgrestError(error);
+
+  const excluded = new Set((consumed ?? []).map((row) => row.id as string));
+  if (excluded.size === 0) return rows;
+
+  const {data: reversals, error: reversalError} = await supabase
+    .from('financial_entries')
+    .select('id')
+    .eq('company_id', companyId)
+    .in('reversed_entry_id', [...excluded]);
+  if (reversalError) throw postgrestError(reversalError);
+  for (const row of reversals ?? []) excluded.add(row.id as string);
+
+  return rows.filter((row) => !excluded.has(row.financial_entry_id));
+}
+
 async function fetchLineRows(
   supabase: SupabaseClient,
   companyId: string,
@@ -97,7 +132,7 @@ async function fetchLineRows(
   const resolved = resolveListFilters(filters);
   const term = sanitizeSearchTerm(search ?? '');
 
-  return fetchAllPagedRows<CashFlowLineRow>(
+  const rows = await fetchAllPagedRows<CashFlowLineRow>(
     async (from, to) => {
       let query = supabase
         .from(CASH_FLOW_VIEW)
@@ -135,6 +170,8 @@ async function fetchLineRows(
     },
     {mapError: postgrestError},
   );
+
+  return excludeAdvanceConsumption(supabase, companyId, rows);
 }
 
 export async function getCashFlowSummary(

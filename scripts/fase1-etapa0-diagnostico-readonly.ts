@@ -148,8 +148,10 @@ async function main(): Promise<void> {
     '106 financial_entry_movements': await probe(reader, 'financial_entry_movements', 'id, kind'),
     '108 financial_cash_flow_lines': await probe(reader, 'financial_cash_flow_lines', 'line_id'),
     '110 trip_financial_summary': await probe(reader, 'trip_financial_summary', 'trip_id, result'),
+    '111 trip_expenses.paid_by / trip_expense_costs': await probe(reader, 'trip_expenses', 'paid_by, payment_method'),
   };
   const has110 = migrationState['110 trip_financial_summary'] === 'presente';
+  const has111 = migrationState['111 trip_expenses.paid_by / trip_expense_costs'] === 'presente';
   const has105 = migrationState['105 financial_entries.trip_charge_key/adjustment_total'] === 'presente';
   const has106 = migrationState['106 financial_entry_movements'] === 'presente';
 
@@ -177,7 +179,7 @@ async function main(): Promise<void> {
       readAll<TripExpenseRow>(
         reader,
         'trip_expenses',
-        'id, trip_id, expense_type, amount, expense_date, description, deleted_at',
+        `id, trip_id, expense_type, amount, expense_date, description, deleted_at${has111 ? ', paid_by, payment_method' : ''}`,
       ),
       readAll<FinancialEntryRow>(reader, 'financial_entries', entryColumns),
       has106
@@ -218,7 +220,7 @@ async function main(): Promise<void> {
     ? await readAll<TripSummaryRow>(
         reader,
         'trip_financial_summary',
-        'trip_id, trip_number, freight_amount, direct_costs, fuel_costs, maintenance_costs, tire_costs, other_costs, result, advances_total, unposted_trip_expenses_amount, unposted_trip_expenses_count',
+        `trip_id, trip_number, freight_amount, direct_costs, fuel_costs, maintenance_costs, tire_costs, other_costs, result, advances_total, unposted_trip_expenses_amount, unposted_trip_expenses_count${has111 ? ', trip_expense_costs' : ''}`,
       )
     : computeTripFinancialSummaries({trips, expenses, entries, categories});
   const invariants = runAllFase1Invariants({

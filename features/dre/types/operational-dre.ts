@@ -26,6 +26,8 @@ export interface OperationalDreRevenues {
 }
 
 export interface OperationalDreCosts {
+  /** Despesas da aba "Despesas" da viagem (origem trip_expense, Fase 1). */
+  tripExpenses: number;
   fuel: number;
   maintenance: number;
   tires: number;
@@ -71,6 +73,7 @@ export interface OperationalDreIndicators {
 
 export type OperationalDreAnalyticalCategory =
   | 'receita'
+  | 'despesas_viagem'
   | 'combustivel'
   | 'manutencao'
   | 'pneus'
@@ -151,6 +154,7 @@ export interface OperationalDreCostCenterBreakdown {
 }
 
 export type OperationalDreCostBucket =
+  | 'tripExpenses'
   | 'fuel'
   | 'maintenance'
   | 'tires'

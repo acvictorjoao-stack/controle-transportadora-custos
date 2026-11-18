@@ -5,6 +5,7 @@ import type {
   TripFinancialSummaryRow,
 } from '../types/trip-financial-summary';
 
+/** Inclui trip_expense_costs: depende da migration 111 aplicada no banco. */
 export const TRIP_FINANCIAL_SUMMARY_COLUMNS = `
   trip_id, trip_number, trip_status, completed_at,
   freight_amount, direct_costs, fuel_costs, maintenance_costs, tire_costs, other_costs,
@@ -12,7 +13,7 @@ export const TRIP_FINANCIAL_SUMMARY_COLUMNS = `
   unposted_trip_expenses_amount, unposted_trip_expenses_count,
   legacy_advance_expenses_amount, legacy_advance_expenses_count,
   receivable_entry_id, receivable_status, receivable_amount, receivable_received,
-  receivable_balance, financial_visible
+  receivable_balance, financial_visible, trip_expense_costs
 `;
 
 function money(value: number | string | null | undefined): number {
@@ -39,6 +40,7 @@ export function mapTripFinancialSummaryRow(row: TripFinancialSummaryRow): TripFi
     tireCosts: optionalMoney(row.tire_costs),
     otherCosts: optionalMoney(row.other_costs),
     directCostEntries: row.direct_cost_entries ?? null,
+    tripExpenseCosts: optionalMoney(row.trip_expense_costs),
     result: optionalMoney(row.result),
     marginPercent: optionalMoney(row.margin_percent),
     advancesTotal: optionalMoney(row.advances_total),

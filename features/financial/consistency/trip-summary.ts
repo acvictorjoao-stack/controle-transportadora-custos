@@ -11,6 +11,7 @@ import {categorizeExpense} from '@/features/dre/services/operational-dre-calcula
 import type {OperationalDreExpenseRow} from '@/features/dre/types';
 
 import {
+  expenseRequiresEntry,
   isDreTripCost,
   roundMoney,
   runFase1Invariants,
@@ -34,6 +35,8 @@ export interface TripSummaryRow {
   maintenance_costs: number | string;
   tire_costs: number | string;
   other_costs: number | string;
+  /** Migration 111 (ausente na view da 110). */
+  trip_expense_costs?: number | string | null;
   result: number | string;
   advances_total: number | string;
   unposted_trip_expenses_amount: number | string;
@@ -62,10 +65,13 @@ function toDreRow(entry: FinancialEntryRow, slugById: Map<string, string>): Oper
 
 interface DreTripCosts {
   total: number;
+  tripExpenses: number;
   fuel: number;
   maintenance: number;
   tires: number;
 }
+
+const EMPTY_COSTS: DreTripCosts = {total: 0, tripExpenses: 0, fuel: 0, maintenance: 0, tires: 0};
 
 /** Custo que a DRE vincula a cada viagem, por grupo. */
 export function dreCostsByTrip(
@@ -76,10 +82,11 @@ export function dreCostsByTrip(
   const byTrip = new Map<string, DreTripCosts>();
   for (const entry of entries) {
     if (!isDreTripCost(entry) || !entry.trip_id) continue;
-    const costs = byTrip.get(entry.trip_id) ?? {total: 0, fuel: 0, maintenance: 0, tires: 0};
+    const costs = byTrip.get(entry.trip_id) ?? {...EMPTY_COSTS};
     const amount = toNumber(entry.amount);
     costs.total += amount;
     const bucket = categorizeExpense(toDreRow(entry, slugById));
+    if (bucket === 'tripExpenses') costs.tripExpenses += amount;
     if (bucket === 'fuel') costs.fuel += amount;
     if (bucket === 'maintenance') costs.maintenance += amount;
     if (bucket === 'tires') costs.tires += amount;
@@ -117,9 +124,7 @@ export function computeTripFinancialSummaries(input: {
   }
   const unposted = new Map<string, {amount: number; count: number}>();
   for (const expense of input.expenses) {
-    if (expense.deleted_at !== null || expense.expense_type === 'advance' || posted.has(expense.id)) {
-      continue;
-    }
+    if (!expenseRequiresEntry(expense) || posted.has(expense.id)) continue;
     const current = unposted.get(expense.trip_id) ?? {amount: 0, count: 0};
     current.amount += toNumber(expense.amount);
     current.count += 1;
@@ -129,12 +134,13 @@ export function computeTripFinancialSummaries(input: {
   return input.trips
     .filter((trip) => trip.deleted_at === null)
     .map((trip) => {
-      const tripCosts = costs.get(trip.id) ?? {total: 0, fuel: 0, maintenance: 0, tires: 0};
+      const tripCosts = costs.get(trip.id) ?? EMPTY_COSTS;
       const freight = roundMoney(tripFreight(trip));
       const direct = roundMoney(tripCosts.total);
       const fuel = roundMoney(tripCosts.fuel);
       const maintenance = roundMoney(tripCosts.maintenance);
       const tires = roundMoney(tripCosts.tires);
+      const tripExpenses = roundMoney(tripCosts.tripExpenses);
       return {
         trip_id: trip.id,
         trip_number: trip.trip_number,
@@ -143,7 +149,8 @@ export function computeTripFinancialSummaries(input: {
         fuel_costs: fuel,
         maintenance_costs: maintenance,
         tire_costs: tires,
-        other_costs: roundMoney(direct - fuel - maintenance - tires),
+        other_costs: roundMoney(direct - fuel - maintenance - tires - tripExpenses),
+        trip_expense_costs: tripExpenses,
         result: roundMoney(freight - direct),
         advances_total: roundMoney(advances.get(trip.id) ?? 0),
         unposted_trip_expenses_amount: roundMoney(unposted.get(trip.id)?.amount ?? 0),
@@ -174,7 +181,7 @@ export function checkTripSummaryMatchesDre(input: {
       violations.push(`${label}: sem linha no resumo`);
       continue;
     }
-    const dre = costs.get(trip.id) ?? {total: 0, fuel: 0, maintenance: 0, tires: 0};
+    const dre = costs.get(trip.id) ?? EMPTY_COSTS;
     const freight = roundMoney(tripFreight(trip));
     const pairs: Array<[string, number, number]> = [
       ['frete', roundMoney(toNumber(summary.freight_amount)), freight],
@@ -184,6 +191,14 @@ export function checkTripSummaryMatchesDre(input: {
       ['pneus', roundMoney(toNumber(summary.tire_costs)), roundMoney(dre.tires)],
       ['resultado', roundMoney(toNumber(summary.result)), roundMoney(freight - dre.total)],
     ];
+    // View da 111 traz o grupo de despesas de viagem; a da 110, não.
+    if (summary.trip_expense_costs !== undefined && summary.trip_expense_costs !== null) {
+      pairs.push([
+        'despesas de viagem',
+        roundMoney(toNumber(summary.trip_expense_costs)),
+        roundMoney(dre.tripExpenses),
+      ]);
+    }
     for (const [name, inSummary, inDre] of pairs) {
       if (inSummary !== inDre) violations.push(`${label}: ${name} resumo ${inSummary} × DRE ${inDre}`);
     }

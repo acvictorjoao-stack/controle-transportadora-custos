@@ -17,6 +17,13 @@ export type OperationFinancialSourceModule =
  */
 export const PAYROLL_SOURCE_MODULE = 'payroll';
 
+/**
+ * Despesa da aba "Despesas" da viagem (Fase 1, migration 111). O lançamento é
+ * criado e mantido pelo gatilho do banco; fica fora de
+ * OPERATION_FINANCIAL_SOURCE_MODULES porque não passa pelo serviço operacional.
+ */
+export const TRIP_EXPENSE_SOURCE_MODULE = 'trip_expense';
+
 /** Payment settlement for operational costs. */
 export const OPERATION_PAYMENT_TYPES = ['cash', 'credit'] as const;
 
@@ -49,6 +56,7 @@ export const OPERATION_SOURCE_LABELS: Record<string, string> = {
   manual: 'Manual',
   trips: 'Viagem',
   payroll: 'Folha',
+  trip_expense: 'Despesa de viagem',
 };
 
 export const OPERATION_SOURCE_ICONS: Record<string, string> = {
@@ -61,4 +69,5 @@ export const OPERATION_SOURCE_ICONS: Record<string, string> = {
   manual: '📄',
   trips: '🗺️',
   payroll: '👤',
+  trip_expense: '🧾',
 };

@@ -7,6 +7,7 @@ import {
   DRE_COST_BUCKET_TO_ANALYTICAL,
   DRE_FINANCIAL_CATEGORY_SLUGS,
   DRE_FINANCIAL_SOURCE_MODULES,
+  DRE_TRIP_EXPENSE_SOURCE_MODULE,
 } from '../constants';
 import type {
   OperationalDreAnalyticalRow,
@@ -43,6 +44,11 @@ function percentOfRevenue(value: number, revenue: number): number | null {
  * e às linhas de Custos Financeiros / Contas Operacionais da DRE.
  */
 export function categorizeExpense(row: OperationalDreExpenseRow): OperationalDreCostBucket {
+  // Despesa da aba da viagem tem grupo próprio, antes da categoria: um pedágio,
+  // uma borracharia ou uma manutenção feita na estrada não entram de novo em
+  // combustível, manutenção ou pneus (mesma regra da view trip_financial_summary).
+  if (row.sourceModule === DRE_TRIP_EXPENSE_SOURCE_MODULE) return 'tripExpenses';
+
   const slug = row.categorySlug;
   if (slug === 'combustivel' || row.fuelRecordId) return 'fuel';
   if (slug === 'manutencao' || row.maintenanceRecordId) return 'maintenance';
@@ -77,6 +83,7 @@ export function sumFreightRevenue(trips: OperationalDreTripRow[]): number {
 
 export function aggregateCosts(expenses: OperationalDreExpenseRow[]): OperationalDreCosts {
   const costs: OperationalDreCosts = {
+    tripExpenses: 0,
     fuel: 0,
     maintenance: 0,
     tires: 0,
@@ -95,6 +102,7 @@ export function aggregateCosts(expenses: OperationalDreExpenseRow[]): Operationa
   }
 
   costs.totalOperatingCosts =
+    costs.tripExpenses +
     costs.fuel +
     costs.maintenance +
     costs.tires +
@@ -202,6 +210,7 @@ export function buildAnalyticalTable(
     category: OperationalDreAnalyticalRow['category'];
     value: number;
   }> = [
+    {category: DRE_COST_BUCKET_TO_ANALYTICAL.tripExpenses, value: costs.tripExpenses},
     {category: DRE_COST_BUCKET_TO_ANALYTICAL.fuel, value: costs.fuel},
     {category: DRE_COST_BUCKET_TO_ANALYTICAL.maintenance, value: costs.maintenance},
     {category: DRE_COST_BUCKET_TO_ANALYTICAL.tires, value: costs.tires},

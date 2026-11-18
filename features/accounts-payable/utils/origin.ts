@@ -51,7 +51,7 @@ export function getAccountsPayableOriginHref(
   entry: Pick<
     FinancialEntry,
     'sourceModule' | 'sourceId' | 'fuelRecordId' | 'maintenanceRecordId' | 'tireId'
-  >,
+  > & {tripId?: string | null},
 ): string | null {
   if (entry.fuelRecordId) return ROUTES.abastecimentoDetail(entry.fuelRecordId);
   if (entry.maintenanceRecordId) return ROUTES.manutencaoDetail(entry.maintenanceRecordId);
@@ -66,6 +66,9 @@ export function getAccountsPayableOriginHref(
       return ROUTES.manutencaoDetail(entry.sourceId);
     case 'tires':
       return ROUTES.pneuDetail(entry.sourceId);
+    case 'trip_expense':
+      // A despesa vive na aba "Despesas" da viagem.
+      return entry.tripId ? ROUTES.viagemDetail(entry.tripId) : null;
     case 'payroll':
       // A folha não tem página de detalhe: a origem é a listagem filtrável.
       return `${ROUTES.despesasDePessoal}?sourceId=${encodeURIComponent(entry.sourceId)}`;

@@ -31,6 +31,22 @@ export interface TripExpenseRow {
   expense_date: string;
   description: string | null;
   deleted_at: string | null;
+  /** Migration 111. Ausente/nulo em despesas antigas. */
+  paid_by?: string | null;
+  payment_method?: string | null;
+}
+
+/**
+ * Despesa que precisa estar no financeiro (Etapa 2): ativa, fora do tipo antigo
+ * "advance" (D14) e não paga por terceiro (D13). Despesa antiga sem "quem pagou"
+ * conta: fica pendente até o backfill (2B).
+ */
+export function expenseRequiresEntry(expense: TripExpenseRow): boolean {
+  return (
+    expense.deleted_at === null &&
+    expense.expense_type !== 'advance' &&
+    expense.paid_by !== 'third_party'
+  );
 }
 
 export interface FinancialEntryRow {
@@ -632,27 +648,46 @@ export function checkTripExpenseEntryParity(
   expenses: TripExpenseRow[],
   entries: FinancialEntryRow[],
 ): InvariantResult {
-  const linked = new Map<string, number>();
+  const linked = new Map<string, FinancialEntryRow[]>();
   for (const entry of entries) {
-    if (entry.source_module !== 'trip_expense' || !entry.source_id || !isActiveEntry(entry)) {
+    if (
+      entry.source_module !== 'trip_expense' ||
+      entry.entry_type !== 'expense' ||
+      !entry.source_id ||
+      !isActiveEntry(entry)
+    ) {
       continue;
     }
-    linked.set(entry.source_id, (linked.get(entry.source_id) ?? 0) + 1);
+    linked.set(entry.source_id, [...(linked.get(entry.source_id) ?? []), entry]);
   }
   const violations: string[] = [];
-  const activeExpenseIds = new Set<string>();
+  const requiredIds = new Set<string>();
   for (const expense of expenses) {
-    if (expense.deleted_at !== null || expense.expense_type === 'advance') continue;
-    activeExpenseIds.add(expense.id);
-    const count = linked.get(expense.id) ?? 0;
-    if (count !== 1) violations.push(`despesa ${expense.id}: ${count} lançamento(s)`);
+    if (!expenseRequiresEntry(expense)) continue;
+    requiredIds.add(expense.id);
+    const posted = linked.get(expense.id) ?? [];
+    if (posted.length !== 1) {
+      violations.push(`despesa ${expense.id}: ${posted.length} lançamento(s)`);
+      continue;
+    }
+    // I3: o lançamento tem o mesmo valor e a mesma viagem da despesa.
+    const [entry] = posted;
+    if (roundMoney(toNumber(entry.amount)) !== roundMoney(toNumber(expense.amount))) {
+      violations.push(
+        `despesa ${expense.id}: valor ${roundMoney(toNumber(expense.amount))} × lançamento ${roundMoney(toNumber(entry.amount))}`,
+      );
+    }
+    if (entry.trip_id !== expense.trip_id) {
+      violations.push(`despesa ${expense.id}: lançamento em outra viagem`);
+    }
   }
+  // I4: nenhum lançamento ativo sem despesa que o exija (excluída, terceiro, adiantamento).
   for (const sourceId of linked.keys()) {
-    if (!activeExpenseIds.has(sourceId)) violations.push(`lançamento órfão da despesa ${sourceId}`);
+    if (!requiredIds.has(sourceId)) violations.push(`lançamento órfão da despesa ${sourceId}`);
   }
   return {
     id: 'I3/I4',
-    description: 'Cada despesa de viagem ativa tem exatamente um lançamento ativo',
+    description: 'Cada despesa de viagem que é custo da empresa tem exatamente um lançamento ativo, com o mesmo valor e viagem',
     stage: 2,
     violations,
   };
@@ -753,7 +788,7 @@ export function checkTripResultMatchesDre(
 ): InvariantResult {
   const screen = new Map<string, number>();
   for (const expense of expenses) {
-    if (expense.deleted_at !== null || expense.expense_type === 'advance') continue;
+    if (!expenseRequiresEntry(expense)) continue;
     screen.set(expense.trip_id, (screen.get(expense.trip_id) ?? 0) + toNumber(expense.amount));
   }
   const dre = new Map<string, number>();

@@ -13,6 +13,7 @@ function emptyDre(overrides: Partial<OperationalDreData> = {}): OperationalDreDa
   return {
     revenues: {freightRevenue: 1000, totalRevenue: 1000},
     costs: {
+      tripExpenses: 0,
       fuel: 200,
       maintenance: 100,
       tires: 0,
@@ -71,6 +72,7 @@ describe('buildExecutiveInsights', () => {
     const insights = buildExecutiveInsights({
       dre: emptyDre({
         costs: {
+          tripExpenses: 0,
           fuel: 300,
           maintenance: 150,
           tires: 0,

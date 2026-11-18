@@ -42,7 +42,9 @@ export function buildTripResultView(
     return {state: 'unavailable', freight: summary.freightAmount};
   }
 
+  // Mesmos grupos da DRE: despesas da aba têm linha própria (migration 111).
   const costLines = [
+    {label: 'Despesas de viagem', amount: summary.tripExpenseCosts},
     {label: 'Combustível', amount: summary.fuelCosts},
     {label: 'Manutenção', amount: summary.maintenanceCosts},
     {label: 'Pneus', amount: summary.tireCosts},

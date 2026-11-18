@@ -97,9 +97,53 @@ const RECEIVABLE_BUSINESS_ERRORS = [
   'Título antigo com recebimento',
 ] as const;
 
+/**
+ * Mensagens de produto da despesa da viagem integrada ao financeiro
+ * (migration 111). Lista fechada, como a do título a receber.
+ */
+const TRIP_EXPENSE_BUSINESS_ERRORS = [
+  'O pagamento desta despesa já foi registrado no Financeiro.',
+  'Esta despesa tem movimento de caixa.',
+  'Informe quem pagou: esta despesa já está integrada ao financeiro.',
+  'Despesa de viagem não pode mudar de empresa.',
+  'Viagem não pertence a esta empresa.',
+  'Lançamentos de despesa de viagem nascem da própria despesa, na viagem.',
+  'Para estornar uma despesa de viagem, exclua ou altere a despesa na viagem.',
+  'Lançamento de despesa de viagem não pode ser excluído.',
+  'O estorno de uma despesa de viagem não pode ser alterado.',
+  'Altere a despesa na viagem: este lançamento é controlado por ela.',
+  'Este lançamento já nasce pago pela despesa da viagem.',
+  'Para cancelar, exclua ou altere a despesa na viagem.',
+] as const;
+
+/** Restrições de "quem pagou" em trip_expenses (migration 111). */
+const TRIP_EXPENSE_CHECK_MESSAGES: Array<[string, string]> = [
+  ['trip_expenses_paid_by_check', 'Quem pagou a despesa é inválido.'],
+  ['trip_expenses_payment_method_check', 'Forma de pagamento da despesa inválida.'],
+  [
+    'trip_expenses_payment_combination_check',
+    'Esta forma de pagamento não combina com quem pagou a despesa.',
+  ],
+  [
+    'trip_expenses_supplier_credit_requires_due_date',
+    'Informe o vencimento da compra a prazo.',
+  ],
+];
+
 export function mapDatabaseError(error: {code?: string; message: string}): string {
   if (RECEIVABLE_BUSINESS_ERRORS.some((text) => error.message?.startsWith(text))) {
     return error.message;
+  }
+
+  if (TRIP_EXPENSE_BUSINESS_ERRORS.some((text) => error.message?.startsWith(text))) {
+    return error.message;
+  }
+
+  if (error.code === '23514') {
+    const match = TRIP_EXPENSE_CHECK_MESSAGES.find(([constraint]) =>
+      error.message?.includes(constraint),
+    );
+    if (match) return match[1];
   }
 
   if (isUniqueViolation(error)) {

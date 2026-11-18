@@ -262,9 +262,61 @@ describe('Fase 1, Etapa 2 — teste em banco (somente local)', () => {
       'outra empresa não enxerga as despesas da empresa A',
       'view: custo de despesas de viagem e resultado batem com os lançamentos',
       'no reset, os lançamentos integrados da empresa podem ser apagados',
+      'stats: caixa conta só o pago pela empresa; adiantamento não é segunda saída',
+      'stats: reembolso pago entra no caixa e o custo não muda',
     ]) {
       expect(sql).toContain(scenario);
     }
     expect(sql.trimEnd().endsWith('rollback;')).toBe(true);
+  });
+});
+
+describe('Fase 1, Etapa 2 — get_financial_stats com a regra de caixa do adiantamento', () => {
+  const m110 = migration('110_trip_financial_summary.sql');
+  const m111 = migration('111_trip_expense_financial_sync.sql');
+  const fn110 = functionBody(m110, 'get_financial_stats');
+  const fn111 = functionBody(m111, 'get_financial_stats');
+
+  it('o caixa exclui só o gasto da viagem pago com adiantamento', () => {
+    expect(fn111).toMatch(
+      /case\n\s+when source_module = 'trip_expense'\n\s+and trip_expense_treatment = 'paid_by_advance' then 0\n\s+when entry_type in \('revenue', 'reimbursement'\) then amount\n\s+when entry_type in \('expense', 'advance'\) then -amount\n\s+else 0\n\s+end as cash_amount/,
+    );
+    expect(fn111).toMatch(/'cash_flow', coalesce\(\(\n\s+select round\(sum\(cash_amount\)::numeric, 2\)\n\s+from signed\n\s+where entry_status = 'paid'/);
+  });
+
+  it('DRE e resultado continuam iguais: o gasto com adiantamento segue custo, uma vez', () => {
+    expect(fn111).toContain("'expenses', coalesce((select round(sum(expense_amount)::numeric, 2) from signed), 0)");
+    expect(fn111).toContain("'balance', coalesce((select round(sum(result_amount)::numeric, 2) from signed), 0)");
+    expect(fn111).toContain("case when entry_type = 'expense' then amount else 0 end as expense_amount");
+    expect(fn111).not.toContain('sum(abs(signed_amount))');
+  });
+
+  it('fora a regra de caixa, a função é idêntica à da 110', () => {
+    const reverted = fn111
+      .replace("      fe.source_module,\n      fe.metadata ->> 'treatment' as trip_expense_treatment,\n", '')
+      .replace(/      -- Caixa: gasto da viagem[\s\S]*?end as cash_amount,\n/, '')
+      .replace('select round(sum(cash_amount)::numeric, 2)', 'select round(sum(signed_amount)::numeric, 2)');
+    expect(reverted).toBe(fn110);
+  });
+
+  it('mantém security invoker, search_path fixo e o mesmo contrato de saída', () => {
+    expect(fn111).toContain('security invoker\nset search_path = public');
+    const keys = (body: string) => [...body.matchAll(/^\s+'(\w+)', /gm)].map((match) => match[1]);
+    expect(keys(fn111)).toEqual(keys(fn110));
+  });
+
+  it('é a mesma regra da tela de Fluxo de Caixa', () => {
+    const cashFlow = read('features/cash-flow/queries/cash-flow.ts');
+    expect(cashFlow).toContain(".eq('source_module', TRIP_EXPENSE_SOURCE_MODULE)");
+    expect(cashFlow).toContain(".eq('metadata->>treatment', 'paid_by_advance')");
+    const treatment = read('features/trips/utils/trip-expense-payment.ts');
+    expect(treatment).toContain("if (paidBy === 'driver' && paymentMethod === 'driver_advance') return 'paid_by_advance';");
+  });
+
+  it('a reversão devolve a função da 110', () => {
+    const rollback = read('database/rollback/fase-1-111.sql');
+    expect(rollback).toContain('-- get_financial_stats como na migration 110.');
+    expect(functionBody(rollback, 'get_financial_stats')).toBe(fn110);
+    expect(rollback).not.toContain('cash_amount');
   });
 });

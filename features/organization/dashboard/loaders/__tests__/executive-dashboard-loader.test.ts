@@ -51,6 +51,7 @@ function makeDre(overrides: {
       totalRevenue: costsOnlyMode ? 0 : overrides.revenue,
     },
     costs: {
+      tripExpenses: 0,
       fuel: 0,
       maintenance: 0,
       tires: 0,

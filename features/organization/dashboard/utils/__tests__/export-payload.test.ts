@@ -67,6 +67,7 @@ function makeDre(input: {
     costsOnlyMode,
     revenues: {freightRevenue: input.revenue, totalRevenue: input.revenue},
     costs: {
+      tripExpenses: 0,
       fuel: 0,
       maintenance: 0,
       tires: 0,
