@@ -2,13 +2,8 @@ import type {SupabaseClient} from '@supabase/supabase-js';
 
 import {listTripFinancialSummaries} from '@/features/trips/queries/trip-financial-summary';
 
+import {resolveCustomerTripResult} from '../utils/customer-trip-result';
 import {registerCustomerDetailLoader} from './customer-detail-loader';
-
-function resolveVisibleResult(
-  summary: {result: number; financialVisible: boolean} | undefined,
-): number | null {
-  return summary?.financialVisible ? summary.result : null;
-}
 
 async function loadCustomerTrips(
   supabase: SupabaseClient,
@@ -47,7 +42,7 @@ async function loadCustomerTrips(
       departedAt: row.departed_at,
       contractedFreightValue: row.contracted_freight_value !== null ? Number(row.contracted_freight_value) : null,
       actualFreightValue: row.actual_freight_value !== null ? Number(row.actual_freight_value) : null,
-      result: resolveVisibleResult(summaries.get(row.id as string)),
+      result: resolveCustomerTripResult(summaries.get(row.id as string), row.trip_status as string),
     })),
   };
 }

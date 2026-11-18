@@ -1,6 +1,9 @@
 /**
  * Linha de `trip_financial_summary` (migration 110): fonte única do resultado
  * da viagem. Frete e custo direto seguem as mesmas regras da DRE.
+ *
+ * Sem acesso ao financeiro (`financialVisible = false`), custos, resultado,
+ * adiantamentos, despesas sem lançamento e título vêm `null` — nunca zero.
  */
 export interface TripFinancialSummary {
   tripId: string;
@@ -8,21 +11,21 @@ export interface TripFinancialSummary {
   tripStatus: string;
   completedAt: string | null;
   freightAmount: number;
-  directCosts: number;
-  fuelCosts: number;
-  maintenanceCosts: number;
-  tireCosts: number;
-  otherCosts: number;
-  directCostEntries: number;
+  directCosts: number | null;
+  fuelCosts: number | null;
+  maintenanceCosts: number | null;
+  tireCosts: number | null;
+  otherCosts: number | null;
+  directCostEntries: number | null;
   /** Frete − custo direto. */
-  result: number;
+  result: number | null;
   marginPercent: number | null;
   /** Adiantamentos ao motorista: caixa, nunca custo. */
-  advancesTotal: number;
-  reimbursementsTotal: number;
+  advancesTotal: number | null;
+  reimbursementsTotal: number | null;
   /** Despesas da aba ainda sem lançamento no financeiro (antes da Etapa 2). */
-  unpostedTripExpensesAmount: number;
-  unpostedTripExpensesCount: number;
+  unpostedTripExpensesAmount: number | null;
+  unpostedTripExpensesCount: number | null;
   /** Despesas antigas da aba com tipo "adiantamento" (convertidas na Etapa 4). */
   legacyAdvanceExpensesAmount: number;
   legacyAdvanceExpensesCount: number;

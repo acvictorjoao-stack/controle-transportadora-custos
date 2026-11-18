@@ -20,7 +20,12 @@
 -- em colunas próprias para a tela avisar, em vez de escondê-las.
 --
 -- financial_visible: quem não tem financeiro:read enxerga zero lançamentos
--- pela RLS; a tela usa esta coluna para não exibir um resultado incompleto.
+-- pela RLS. Para esse usuário, custos, resultado, adiantamentos, despesas da
+-- aba sem lançamento e título de frete saem NULL, e não zero: um "resultado
+-- igual ao frete" seria um número falso. Frete, viagem e despesas antigas do
+-- tipo adiantamento vêm de trips e trip_expenses, que ele já pode ler.
+-- Papéis que ignoram a RLS (service_role, postgres) já leem todos os
+-- lançamentos e por isso contam como visíveis.
 
 create or replace view public.trip_financial_summary
 with (security_invoker = true)
@@ -33,17 +38,21 @@ select
   t.completed_at,
   round(coalesce(t.actual_freight_value, t.contracted_freight_value, 0)::numeric, 2)
     as freight_amount,
-  costs.direct_costs,
-  costs.fuel_costs,
-  costs.maintenance_costs,
-  costs.tire_costs,
-  costs.direct_costs - costs.fuel_costs - costs.maintenance_costs - costs.tire_costs
-    as other_costs,
-  costs.direct_cost_entries,
-  round(coalesce(t.actual_freight_value, t.contracted_freight_value, 0)::numeric, 2)
-    - costs.direct_costs as result,
+  case when vis.visible then costs.direct_costs end as direct_costs,
+  case when vis.visible then costs.fuel_costs end as fuel_costs,
+  case when vis.visible then costs.maintenance_costs end as maintenance_costs,
+  case when vis.visible then costs.tire_costs end as tire_costs,
+  case when vis.visible then
+    costs.direct_costs - costs.fuel_costs - costs.maintenance_costs - costs.tire_costs
+  end as other_costs,
+  case when vis.visible then costs.direct_cost_entries end as direct_cost_entries,
+  case when vis.visible then
+    round(coalesce(t.actual_freight_value, t.contracted_freight_value, 0)::numeric, 2)
+      - costs.direct_costs
+  end as result,
   case
-    when coalesce(t.actual_freight_value, t.contracted_freight_value, 0) > 0 then round(
+    when vis.visible
+      and coalesce(t.actual_freight_value, t.contracted_freight_value, 0) > 0 then round(
       (
         (coalesce(t.actual_freight_value, t.contracted_freight_value, 0) - costs.direct_costs)
         / coalesce(t.actual_freight_value, t.contracted_freight_value, 0)
@@ -51,25 +60,32 @@ select
       2
     )
   end as margin_percent,
-  costs.advances_total,
-  costs.reimbursements_total,
-  aba.unposted_trip_expenses_amount,
-  aba.unposted_trip_expenses_count,
+  case when vis.visible then costs.advances_total end as advances_total,
+  case when vis.visible then costs.reimbursements_total end as reimbursements_total,
+  case when vis.visible then aba.unposted_trip_expenses_amount end
+    as unposted_trip_expenses_amount,
+  case when vis.visible then aba.unposted_trip_expenses_count end
+    as unposted_trip_expenses_count,
   aba.legacy_advance_expenses_amount,
   aba.legacy_advance_expenses_count,
-  charge.receivable_entry_id,
-  charge.receivable_status,
-  charge.receivable_amount,
-  charge.receivable_received,
+  case when vis.visible then charge.receivable_entry_id end as receivable_entry_id,
+  case when vis.visible then charge.receivable_status end as receivable_status,
+  case when vis.visible then charge.receivable_amount end as receivable_amount,
+  case when vis.visible then charge.receivable_received end as receivable_received,
   case
-    when charge.receivable_entry_id is not null
+    when vis.visible and charge.receivable_entry_id is not null
       then charge.receivable_amount - charge.receivable_received
   end as receivable_balance,
-  (
+  vis.visible as financial_visible
+from public.trips t
+cross join lateral (
+  select coalesce(
     public.has_company_permission(t.company_id, 'financeiro:read')
     or public.is_company_super_admin(t.company_id)
-  ) as financial_visible
-from public.trips t
+    or (select r.rolbypassrls from pg_catalog.pg_roles r where r.rolname = current_user),
+    false
+  ) as visible
+) vis
 cross join lateral (
   select
     coalesce(round(sum(fe.amount) filter (where fe.entry_type = 'expense'), 2), 0)

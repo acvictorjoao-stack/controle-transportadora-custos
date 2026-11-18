@@ -68,6 +68,7 @@ import type {CustomerAddressInput, CustomerContactInput} from '../validation';
 import {ContractFormModal} from './contract-form-modal';
 import {CustomerFileUpload} from './customer-file-upload';
 import {CustomerFormModal} from './customer-form-modal';
+import {formatCustomerTripResult} from '../utils/customer-trip-result';
 import {TabsNav} from '@/components/ui/tabs-nav';
 import {formatDateTime} from '@/lib/formatting/date';
 
@@ -519,7 +520,7 @@ function CustomerDetailView({companyId, data, branches}: CustomerDetailViewProps
               {id: 'route', header: 'Rota', cell: (row) => `${(row as CustomerTripRecord).origin ?? '—'} → ${(row as CustomerTripRecord).destination ?? '—'}`},
               {id: 'contracted', header: 'Contratado', cell: (row) => formatCurrency((row as CustomerTripRecord).contractedFreightValue)},
               {id: 'actual', header: 'Realizado', cell: (row) => formatCurrency((row as CustomerTripRecord).actualFreightValue)},
-              {id: 'result', header: 'Resultado', cell: (row) => formatCurrency((row as CustomerTripRecord).result)},
+              {id: 'result', header: 'Resultado', cell: (row) => formatCustomerTripResult((row as CustomerTripRecord).result, (value) => formatCurrency(value))},
             ]}
             data={trips}
             emptyTitle="Nenhuma viagem vinculada."

@@ -36,21 +36,27 @@ export function buildTripResultView(
 ): TripResultView {
   if (!summary) return {state: 'unavailable', freight: fallbackFreight};
   if (!summary.financialVisible) return {state: 'restricted', freight: summary.freightAmount};
+  // Com acesso a view sempre preenche custo e resultado; nulo aqui é dado
+  // incompleto, e a tela não troca nulo por zero.
+  if (summary.result === null || summary.directCosts === null) {
+    return {state: 'unavailable', freight: summary.freightAmount};
+  }
 
-  const costLines: TripResultCostLine[] = [
+  const costLines = [
     {label: 'Combustível', amount: summary.fuelCosts},
     {label: 'Manutenção', amount: summary.maintenanceCosts},
     {label: 'Pneus', amount: summary.tireCosts},
     {label: 'Outros', amount: summary.otherCosts},
-  ].filter((line) => line.amount !== 0);
+  ].filter((line): line is TripResultCostLine => line.amount !== null && line.amount !== 0);
 
+  const unpostedCount = summary.unpostedTripExpensesCount ?? 0;
   const unpostedNotice =
-    summary.unpostedTripExpensesCount > 0
-      ? `${formatBrl(summary.unpostedTripExpensesAmount)} em ${summary.unpostedTripExpensesCount} ` +
+    unpostedCount > 0
+      ? `${formatBrl(summary.unpostedTripExpensesAmount ?? 0)} em ${unpostedCount} ` +
         `despesa(s) da aba ainda sem lançamento no financeiro: ficam fora do resultado e da DRE.`
       : null;
 
-  const advanceTotal = summary.advancesTotal + summary.legacyAdvanceExpensesAmount;
+  const advanceTotal = (summary.advancesTotal ?? 0) + summary.legacyAdvanceExpensesAmount;
   const advanceNotice =
     advanceTotal > 0
       ? `${formatBrl(advanceTotal)} em adiantamento ao motorista: é caixa, não custo da viagem.`

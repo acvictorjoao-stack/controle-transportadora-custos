@@ -46,6 +46,40 @@ describe('trip_financial_summary — leitura', () => {
     });
   });
 
+  it('usuário com trips:read e sem financeiro:read: nulos continuam nulos, nunca zero', () => {
+    const restricted = mapTripFinancialSummaryRow({
+      ...row,
+      direct_costs: null,
+      fuel_costs: null,
+      maintenance_costs: null,
+      tire_costs: null,
+      other_costs: null,
+      direct_cost_entries: null,
+      result: null,
+      margin_percent: null,
+      advances_total: null,
+      reimbursements_total: null,
+      unposted_trip_expenses_amount: null,
+      unposted_trip_expenses_count: null,
+      financial_visible: false,
+    });
+    expect(restricted).toMatchObject({
+      freightAmount: 10000,
+      directCosts: null,
+      fuelCosts: null,
+      otherCosts: null,
+      directCostEntries: null,
+      result: null,
+      marginPercent: null,
+      advancesTotal: null,
+      unpostedTripExpensesAmount: null,
+      unpostedTripExpensesCount: null,
+      financialVisible: false,
+    });
+    // O frete vem de trips, que esse usuário já lê; ele não vira resultado.
+    expect(restricted.result).not.toBe(restricted.freightAmount);
+  });
+
   it('financial_visible nulo conta como sem acesso', () => {
     expect(mapTripFinancialSummaryRow({...row, financial_visible: null}).financialVisible).toBe(false);
   });

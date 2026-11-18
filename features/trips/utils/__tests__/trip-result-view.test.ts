@@ -58,6 +58,31 @@ describe('buildTripResultView', () => {
     expect(buildTripResultView(null, 8000)).toEqual({state: 'unavailable', freight: 8000});
   });
 
+  it('usuário com trips:read e sem financeiro:read (campos nulos da view) não vê resultado', () => {
+    const view = buildTripResultView(
+      summary({
+        financialVisible: false,
+        directCosts: null,
+        fuelCosts: null,
+        otherCosts: null,
+        result: null,
+        marginPercent: null,
+        advancesTotal: null,
+        unpostedTripExpensesAmount: null,
+        unpostedTripExpensesCount: null,
+      }),
+      0,
+    );
+    expect(view).toEqual({state: 'restricted', freight: 10000});
+  });
+
+  it('com acesso mas resultado nulo não troca nulo por zero', () => {
+    expect(buildTripResultView(summary({result: null, directCosts: null}), 0)).toEqual({
+      state: 'unavailable',
+      freight: 10000,
+    });
+  });
+
   it('sem acesso ao financeiro não mostra um resultado incompleto', () => {
     expect(buildTripResultView(summary({financialVisible: false}), 0)).toEqual({
       state: 'restricted',
