@@ -1,5 +1,8 @@
 import type {SupabaseClient} from '@supabase/supabase-js';
 
+import {listTripFinancialSummaries} from '@/features/trips/queries/trip-financial-summary';
+
+import {resolveCustomerTripResult} from '../utils/customer-trip-result';
 import {registerCustomerDetailLoader} from './customer-detail-loader';
 
 async function loadCustomerTrips(
@@ -9,12 +12,25 @@ async function loadCustomerTrips(
 ) {
   const {data} = await supabase
     .from('trips')
-    .select('id, trip_number, trip_status, origin, destination, departed_at, contracted_freight_value, actual_freight_value, freight_margin')
+    .select('id, trip_number, trip_status, origin, destination, departed_at, contracted_freight_value, actual_freight_value')
     .eq('company_id', companyId)
     .eq('customer_id', customerId)
     .is('deleted_at', null)
     .order('departed_at', {ascending: false})
     .limit(50);
+
+  // Resultado pela fonte única (mesma conta da viagem e da DRE), não pelo
+  // snapshot trips.freight_margin. Falha ou falta de acesso: sem resultado.
+  let summaries: Awaited<ReturnType<typeof listTripFinancialSummaries>> = new Map();
+  try {
+    summaries = await listTripFinancialSummaries(
+      supabase,
+      companyId,
+      (data ?? []).map((row) => row.id as string),
+    );
+  } catch (error) {
+    console.error('Falha ao carregar o resultado das viagens do cliente:', error);
+  }
 
   return {
     trips: (data ?? []).map((row) => ({
@@ -26,7 +42,7 @@ async function loadCustomerTrips(
       departedAt: row.departed_at,
       contractedFreightValue: row.contracted_freight_value !== null ? Number(row.contracted_freight_value) : null,
       actualFreightValue: row.actual_freight_value !== null ? Number(row.actual_freight_value) : null,
-      freightMargin: row.freight_margin !== null ? Number(row.freight_margin) : null,
+      result: resolveCustomerTripResult(summaries.get(row.id as string), row.trip_status as string),
     })),
   };
 }

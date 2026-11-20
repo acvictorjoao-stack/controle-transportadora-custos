@@ -48,6 +48,7 @@ import {TripFileUpload} from './trip-file-upload';
 import {TripFormModal} from './trip-form-modal';
 import {TripLifecycleCard} from './trip-lifecycle-card';
 import {TripReceivableCard} from './trip-receivable-card';
+import {TripResultCards} from './trip-result-cards';
 import {TabsNav} from '@/components/ui/tabs-nav';
 
 export interface TripDetailViewProps {
@@ -139,14 +140,6 @@ function TripDetailView({
     ['Data da viagem', formatDateTimeBr(trip.plannedDepartureAt)],
   ];
 
-  const expensesTotal = data.expenses.reduce((sum, expense) => sum + expense.amount, 0);
-  const freightValue = trip.actualFreightValue ?? trip.contractedFreightValue ?? 0;
-  const operationalResult = freightValue - expensesTotal;
-
-  function formatMoney(value: number) {
-    return value.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
-  }
-
   return (
     <PageTemplate
       title={trip.tripNumber}
@@ -175,36 +168,10 @@ function TripDetailView({
 
       {activeTab === 'resumo' && (
         <div className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Frete</CardTitle>
-              </CardHeader>
-              <CardContent className="text-2xl font-semibold">
-                {formatMoney(freightValue)}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Despesas</CardTitle>
-              </CardHeader>
-              <CardContent className="text-2xl font-semibold">
-                {formatMoney(expensesTotal)}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Resultado</CardTitle>
-              </CardHeader>
-              <CardContent
-                className={`text-2xl font-semibold ${
-                  operationalResult < 0 ? 'text-destructive' : ''
-                }`}
-              >
-                {formatMoney(operationalResult)}
-              </CardContent>
-            </Card>
-          </div>
+          <TripResultCards
+            summary={data.financialSummary}
+            fallbackFreight={trip.actualFreightValue ?? trip.contractedFreightValue ?? 0}
+          />
 
           <TripReceivableCard trip={trip} receivables={data.receivables} />
 
@@ -316,6 +283,8 @@ function TripDetailView({
           companyId={companyId}
           tripId={trip.id}
           expenses={data.expenses}
+          entries={data.expenseEntries}
+          financialVisible={data.financialSummary?.financialVisible ?? false}
           onSaved={handleRefresh}
         />
       )}

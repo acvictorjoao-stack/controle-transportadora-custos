@@ -137,7 +137,6 @@ function buildTripPayload(
     client_name: input.clientName,
     customer_id: input.customerId,
     actual_freight_value: input.actualFreightValue,
-    freight_margin: input.freightMargin,
     origin: input.origin,
     destination: input.destination,
     route: input.route,
@@ -1358,6 +1357,25 @@ export async function listTripExpenses(
   );
 }
 
+/**
+ * Campos de "quem pagou" (migration 111) só entram no payload quando foram
+ * enviados. Ausentes, a despesa fica como está: o lançamento financeiro é criado
+ * e mantido pelo gatilho do banco, nunca por esta aplicação.
+ */
+function tripExpensePaymentPayload(input: {
+  paidBy?: string;
+  paymentMethod?: string | null;
+  dueDate?: string | null;
+}): Record<string, unknown> {
+  const payload: Record<string, unknown> = {};
+  if (input.paidBy !== undefined) payload.paid_by = input.paidBy;
+  if (input.paymentMethod !== undefined) payload.payment_method = input.paymentMethod;
+  if (input.dueDate !== undefined) payload.due_date = input.dueDate;
+  // Terceiro não tem instrumento: limpa o que houver para atender à restrição.
+  if (input.paidBy === 'third_party') payload.payment_method = null;
+  return payload;
+}
+
 export async function createTripExpense(
   supabase: SupabaseClient,
   companyId: string,
@@ -1378,6 +1396,7 @@ export async function createTripExpense(
       notes: input.notes,
       expense_date: input.expenseDate ?? todayCivilDate(),
       receipt_url: input.receiptUrl,
+      ...tripExpensePaymentPayload(input),
       created_by: profileId,
     })
     .select(TRIP_EXPENSE_COLUMNS)
@@ -1403,6 +1422,7 @@ export async function updateTripExpense(
       notes: input.notes,
       expense_date: input.expenseDate ?? todayCivilDate(),
       receipt_url: input.receiptUrl,
+      ...tripExpensePaymentPayload(input),
       updated_by: profileId,
     })
     .eq('id', input.id)

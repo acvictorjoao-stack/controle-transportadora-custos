@@ -13,12 +13,16 @@ import {
   updateFinancialEntry,
 } from '@/features/financial/queries';
 import type {FinancialEntry} from '@/features/financial/types';
-import {OPERATIONAL_EXPENSE_CATEGORY_SLUGS} from '@/features/financial/constants/operation-financial';
+import {
+  OPERATIONAL_EXPENSE_CATEGORY_SLUGS,
+  TRIP_EXPENSE_SOURCE_MODULE,
+} from '@/features/financial/constants/operation-financial';
 
 import {
   ACCOUNTS_PAYABLE_PAGE_SIZE,
   ACCOUNTS_PAYABLE_SOURCE_MODULE,
   ACCOUNTS_PAYABLE_MANAGED_SOURCE_MODULES,
+  TRIP_EXPENSE_ORIGIN_ERROR,
 } from '../constants';
 import type {
   AccountsPayableDetailData,
@@ -300,6 +304,9 @@ export async function cancelAccountsPayable(
   if (entry.sourceModule === 'payroll') {
     throw new Error(PAYROLL_ORIGIN_ERROR);
   }
+  if (entry.sourceModule === TRIP_EXPENSE_SOURCE_MODULE) {
+    throw new Error(TRIP_EXPENSE_ORIGIN_ERROR);
+  }
   return cancelFinancialEntry(supabase, companyId, entryId, profileId);
 }
 
@@ -314,6 +321,9 @@ export async function deleteAccountsPayable(
   );
   if (entry.sourceModule === 'payroll') {
     throw new Error(PAYROLL_ORIGIN_ERROR);
+  }
+  if (entry.sourceModule === TRIP_EXPENSE_SOURCE_MODULE) {
+    throw new Error(TRIP_EXPENSE_ORIGIN_ERROR);
   }
   await softDeleteFinancialEntry(supabase, companyId, entryId, profileId);
 }

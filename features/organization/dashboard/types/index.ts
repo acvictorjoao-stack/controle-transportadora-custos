@@ -7,8 +7,3 @@ export type {
   DashboardKpiData,
   DashboardRankingItemData,
 } from './dashboard';
-
-export type {
-  OperationalDashboardData,
-  OperationalTripSummaryRow,
-} from './operational-dashboard';

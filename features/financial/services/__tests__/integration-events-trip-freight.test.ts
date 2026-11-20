@@ -143,6 +143,16 @@ describe('onTripCompleted — Audit #8 freight preference', () => {
     getCategoryBySlugMock.mockResolvedValue({id: 'cat-receitas'} as never);
   });
 
+  it('não grava trips.freight_margin (resultado vem de trip_financial_summary)', async () => {
+    const trip = makeTrip({actualFreightValue: 1200, contractedFreightValue: 1000});
+    const {supabase, updatePayloads} = createSupabaseMock([{entry_type: 'expense', amount: 300}]);
+
+    await onTripCompleted(supabase as never, 'company-1', trip, 'profile-1');
+
+    expect(updatePayloads).toHaveLength(1);
+    expect(updatePayloads[0]).not.toHaveProperty('freight_margin');
+  });
+
   it('actual e contracted diferentes → usa actual (alinhado a getTripFreightValue)', async () => {
     const trip = makeTrip({
       actualFreightValue: 1200,

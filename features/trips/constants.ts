@@ -47,7 +47,7 @@ export const TRIP_CHECKLIST_COLUMNS =
   'id, company_id, branch_id, trip_id, tires_ok, headlights_ok, brakes_ok, documentation_ok, fuel_ok, odometer_reading, hour_meter_reading, photo_urls, signature_url, notes, completed_at, created_at, updated_at';
 
 export const TRIP_EXPENSE_COLUMNS =
-  'id, company_id, branch_id, trip_id, expense_type, amount, currency, description, notes, expense_date, receipt_url, created_at, deleted_at';
+  'id, company_id, branch_id, trip_id, expense_type, amount, currency, description, notes, expense_date, receipt_url, paid_by, payment_method, due_date, created_at, deleted_at';
 
 export const TRIP_STOP_COLUMNS =
   'id, company_id, branch_id, trip_id, client_name, stop_date, stop_time, latitude, longitude, stopped_minutes, notes, created_at, deleted_at';

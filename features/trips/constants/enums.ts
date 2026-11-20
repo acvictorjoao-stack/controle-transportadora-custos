@@ -56,3 +56,18 @@ export const TRIP_EXPENSE_TYPES = [
   'fine',
   'other',
 ] as const;
+
+/** Quem pagou a despesa da viagem (migration 111, decisão D8). */
+export const TRIP_EXPENSE_PAID_BY = ['company', 'driver', 'aggregate', 'third_party'] as const;
+
+/** Instrumento de pagamento da despesa da viagem (migration 111, decisão D2/D8). */
+export const TRIP_EXPENSE_PAYMENT_METHODS = [
+  'bank_account',
+  'corporate_card',
+  'toll_tag',
+  'cash',
+  'not_informed',
+  'supplier_credit',
+  'own_money',
+  'driver_advance',
+] as const;

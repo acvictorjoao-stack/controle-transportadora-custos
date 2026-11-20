@@ -5,6 +5,7 @@
  */
 
 export const TRIP_FINANCIAL_COST_CATEGORIES = [
+  'despesas_viagem',
   'combustivel',
   'manutencao',
   'pneus',
@@ -20,6 +21,7 @@ export const TRIP_FINANCIAL_CATEGORY_LABELS: Record<
   TripFinancialCostCategory,
   string
 > = {
+  despesas_viagem: 'Despesas de viagem',
   combustivel: 'Combustível',
   manutencao: 'Manutenção',
   pneus: 'Pneus',
@@ -32,6 +34,7 @@ export const TRIP_FINANCIAL_CATEGORY_ICONS: Record<
   TripFinancialCostCategory,
   string
 > = {
+  despesas_viagem: '🧾',
   combustivel: '⛽',
   manutencao: '🔧',
   pneus: '🛞',

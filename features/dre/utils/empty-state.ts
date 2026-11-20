@@ -10,6 +10,7 @@ import type {
 export const EMPTY_OPERATIONAL_DRE: OperationalDreData = {
   revenues: {freightRevenue: 0, totalRevenue: 0},
   costs: {
+    tripExpenses: 0,
     fuel: 0,
     maintenance: 0,
     tires: 0,

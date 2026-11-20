@@ -177,6 +177,7 @@ function OperationalDreView({
               <CardTitle className="text-base">Custos Operacionais</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
+              <CostLine label="Despesas de viagem" value={costs.tripExpenses} />
               <CostLine label="Combustível" value={costs.fuel} />
               <CostLine label="Manutenções" value={costs.maintenance} />
               <CostLine label="Pneus" value={costs.tires} />

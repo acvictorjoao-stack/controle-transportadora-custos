@@ -1,11 +1,15 @@
 import {ACCOUNTS_PAYABLE_SOURCE_MODULE} from '@/features/accounts-payable/constants';
 import {ACCOUNTS_RECEIVABLE_SOURCE_MODULE} from '@/features/accounts-receivable/constants';
-import {OPERATION_FINANCIAL_SOURCE_MODULES} from '@/features/financial/constants/operation-financial';
+import {
+  OPERATION_FINANCIAL_SOURCE_MODULES,
+  TRIP_EXPENSE_SOURCE_MODULE,
+} from '@/features/financial/constants/operation-financial';
 
 export const CASH_FLOW_SOURCE_MODULES = [
   ACCOUNTS_PAYABLE_SOURCE_MODULE,
   ACCOUNTS_RECEIVABLE_SOURCE_MODULE,
   ...OPERATION_FINANCIAL_SOURCE_MODULES,
+  TRIP_EXPENSE_SOURCE_MODULE,
 ] as const;
 
 export const CASH_FLOW_TYPES = ['recebimento', 'pagamento'] as const;

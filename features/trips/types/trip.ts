@@ -6,17 +6,23 @@ import type {EntityStatus} from '@/features/organization/companies/types';
 import type {
   SIMPLE_TRIP_STATUSES,
   TRIP_DOCUMENT_TYPES,
+  TRIP_EXPENSE_PAID_BY,
+  TRIP_EXPENSE_PAYMENT_METHODS,
   TRIP_EXPENSE_TYPES,
   TRIP_OCCURRENCE_TYPES,
   TRIP_STATUSES,
 } from '../constants/enums';
 import type {TripIntegrationSections} from './integrations';
+import type {TripFinancialSummary} from './trip-financial-summary';
+import type {TripExpenseEntryRef} from '../utils/trip-expense-status';
 
 export type TripStatus = (typeof TRIP_STATUSES)[number];
 export type SimpleTripStatus = (typeof SIMPLE_TRIP_STATUSES)[number];
 export type TripDocumentType = (typeof TRIP_DOCUMENT_TYPES)[number];
 export type TripOccurrenceType = (typeof TRIP_OCCURRENCE_TYPES)[number];
 export type TripExpenseType = (typeof TRIP_EXPENSE_TYPES)[number];
+export type TripExpensePaidBy = (typeof TRIP_EXPENSE_PAID_BY)[number];
+export type TripExpensePaymentMethod = (typeof TRIP_EXPENSE_PAYMENT_METHODS)[number];
 
 export interface TripRow {
   id: string;
@@ -293,6 +299,10 @@ export interface TripExpenseRow {
   notes: string | null;
   expense_date: string;
   receipt_url: string | null;
+  /** Migration 111. Nulo em despesas antigas (não informado, não integrado). */
+  paid_by?: TripExpensePaidBy | null;
+  payment_method?: TripExpensePaymentMethod | null;
+  due_date?: string | null;
   created_at: string;
   deleted_at: string | null;
 }
@@ -307,6 +317,11 @@ export interface TripExpense {
   notes: string | null;
   expenseDate: string;
   receiptUrl: string | null;
+  /** Quem pagou; nulo = não informado (despesa antiga, ainda fora do financeiro). */
+  paidBy: TripExpensePaidBy | null;
+  paymentMethod: TripExpensePaymentMethod | null;
+  /** Vencimento da compra a prazo. */
+  dueDate: string | null;
   createdAt: string;
 }
 
@@ -429,6 +444,10 @@ export interface TripDetailData extends TripIntegrationSections {
   timeline: TripTimelineEntry[];
   /** Títulos da viagem; vazio para quem não tem acesso ao financeiro. */
   receivables: FinancialEntry[];
+  /** Resultado da viagem (`trip_financial_summary`); null se a view falhar. */
+  financialSummary: TripFinancialSummary | null;
+  /** Lançamentos das despesas da aba (origem trip_expense); vazio sem financeiro:read. */
+  expenseEntries: TripExpenseEntryRef[];
 }
 
 export const TRIP_STATUS_LABELS: Record<TripStatus, string> = {
@@ -487,6 +506,24 @@ export const TRIP_EXPENSE_TYPE_LABELS: Record<TripExpenseType, string> = {
   advance: 'Adiantamento',
   fine: 'Multa',
   other: 'Outros',
+};
+
+export const TRIP_EXPENSE_PAID_BY_LABELS: Record<TripExpensePaidBy, string> = {
+  company: 'Empresa',
+  driver: 'Motorista',
+  aggregate: 'Agregado',
+  third_party: 'Terceiro (cliente ou embarcador)',
+};
+
+export const TRIP_EXPENSE_PAYMENT_METHOD_LABELS: Record<TripExpensePaymentMethod, string> = {
+  bank_account: 'Conta bancária',
+  corporate_card: 'Cartão corporativo',
+  toll_tag: 'TAG de pedágio',
+  cash: 'Dinheiro',
+  not_informed: 'Não informado',
+  supplier_credit: 'Compra a prazo',
+  own_money: 'Dinheiro próprio (reembolsar)',
+  driver_advance: 'Adiantamento da viagem',
 };
 
 export const TRIP_HISTORY_ACTION_LABELS: Record<string, string> = {

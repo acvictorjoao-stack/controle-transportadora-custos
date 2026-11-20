@@ -2,6 +2,8 @@
  * Extension-point types for future integrations (CRM, ERP, billing, NFe, CT-e, MDF-e, BI, IA).
  */
 
+import type {CustomerTripResult} from '../utils/customer-trip-result';
+
 export type CustomerExtensionProvider =
   | 'crm'
   | 'erp'
@@ -58,7 +60,8 @@ export interface CustomerTripRecord {
   departedAt: string | null;
   contractedFreightValue: number | null;
   actualFreightValue: number | null;
-  freightMargin: number | null;
+  /** Resultado definitivo só em viagem concluída; ver `resolveCustomerTripResult`. */
+  result: CustomerTripResult;
 }
 
 export interface CustomerFinancialRecord {

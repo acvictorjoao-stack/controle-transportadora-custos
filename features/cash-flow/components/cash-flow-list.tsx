@@ -13,6 +13,7 @@ import {PageTemplate} from '@/components/layout/page-template';
 import {Alert, AlertDescription} from '@/components/ui/alert';
 import {Badge} from '@/components/ui/badge';
 import {ROUTES} from '@/constants/routes/paths';
+import {describeTripExpenseOrigin} from '@/features/accounts-payable/utils/origin';
 import {formatCurrencyBr, formatDateBr} from '@/features/financial/utils/financial-format';
 
 import {CASH_FLOW_TYPE_LABELS} from '../constants';
@@ -105,11 +106,29 @@ function CashFlowList({
     {
       id: 'description',
       header: 'Descrição',
-      cell: (row: CashFlowLine) => (
-        <Link href={detailHref(row)} className="text-sm font-medium hover:underline">
-          {row.description ?? '—'}
-        </Link>
-      ),
+      cell: (row: CashFlowLine) => {
+        const tripExpense = describeTripExpenseOrigin(row);
+        return (
+          <div className="leading-tight">
+            <Link href={detailHref(row)} className="text-sm font-medium hover:underline">
+              {row.description ?? '—'}
+            </Link>
+            {tripExpense && (
+              <p className="text-xs text-muted-foreground">
+                Despesa de viagem · {tripExpense}
+                {row.tripId && (
+                  <>
+                    {' · '}
+                    <Link href={ROUTES.viagemDetail(row.tripId)} className="hover:underline">
+                      Abrir viagem
+                    </Link>
+                  </>
+                )}
+              </p>
+            )}
+          </div>
+        );
+      },
     },
     {
       id: 'entrada',

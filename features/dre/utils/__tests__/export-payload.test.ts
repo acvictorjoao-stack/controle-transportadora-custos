@@ -46,6 +46,7 @@ const OPTIONS: OperationalDreFilterOptions = {
 };
 
 const COSTS: OperationalDreCosts = {
+  tripExpenses: 0,
   fuel: 1200,
   maintenance: 300.5,
   tires: 0,

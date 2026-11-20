@@ -7,10 +7,13 @@ import {
   SIMPLE_TRIP_STATUSES,
   TRIP_PAYMENT_CONDITIONS,
   TRIP_DOCUMENT_TYPES,
+  TRIP_EXPENSE_PAID_BY,
+  TRIP_EXPENSE_PAYMENT_METHODS,
   TRIP_EXPENSE_TYPES,
   TRIP_OCCURRENCE_TYPES,
   TRIP_STATUSES,
 } from '../constants/enums';
+import {validateTripExpensePayment} from '../utils/trip-expense-payment';
 import {validateTripPayment} from '../utils/trip-payment';
 
 // Campos opcionais aceitam null (formulários enviam null para vazio).
@@ -95,6 +98,39 @@ export const simpleTripStatusSchema = z.enum(SIMPLE_TRIP_STATUSES);
 export const tripDocumentTypeSchema = z.enum(TRIP_DOCUMENT_TYPES);
 export const tripOccurrenceTypeSchema = z.enum(TRIP_OCCURRENCE_TYPES);
 export const tripExpenseTypeSchema = z.enum(TRIP_EXPENSE_TYPES);
+export const tripExpensePaidBySchema = z.enum(TRIP_EXPENSE_PAID_BY);
+export const tripExpensePaymentMethodSchema = z.enum(TRIP_EXPENSE_PAYMENT_METHODS);
+
+/**
+ * "Quem pagou" (migration 111). Ausente = não enviado: a despesa mantém o que
+ * tem (o formulário atual não envia estes campos e despesas antigas seguem sem
+ * "quem pagou"). Não há valor padrão: preencher sozinho mudaria o financeiro.
+ */
+const tripExpensePaymentFields = {
+  paidBy: tripExpensePaidBySchema.optional(),
+  paymentMethod: z
+    .preprocess((v) => (v === '' ? null : v), tripExpensePaymentMethodSchema.nullable())
+    .optional(),
+  dueDate: z
+    .string()
+    .trim()
+    .nullable()
+    .transform((v) => (v?.length ? v : null))
+    .optional(),
+};
+
+function refineTripExpensePayment(
+  value: {
+    paidBy?: (typeof TRIP_EXPENSE_PAID_BY)[number];
+    paymentMethod?: (typeof TRIP_EXPENSE_PAYMENT_METHODS)[number] | null;
+    dueDate?: string | null;
+  },
+  ctx: z.RefinementCtx,
+) {
+  for (const issue of validateTripExpensePayment(value)) {
+    ctx.addIssue({code: z.ZodIssueCode.custom, path: [issue.field], message: issue.message});
+  }
+}
 
 const tripBaseSchema = z.object({
   branchId: z
@@ -281,7 +317,8 @@ export const createTripExpenseSchema = z.object({
   notes: optionalString,
   expenseDate: optionalDate,
   receiptUrl: optionalReceiptPath,
-});
+  ...tripExpensePaymentFields,
+}).superRefine(refineTripExpensePayment);
 
 export const updateTripExpenseSchema = z.object({
   id: z.string().uuid(),
@@ -298,7 +335,8 @@ export const updateTripExpenseSchema = z.object({
   notes: optionalString,
   expenseDate: optionalDate,
   receiptUrl: optionalReceiptPath,
-});
+  ...tripExpensePaymentFields,
+}).superRefine(refineTripExpensePayment);
 
 export const deleteTripExpenseSchema = z.object({
   id: z.string().uuid(),

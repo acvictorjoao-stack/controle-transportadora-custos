@@ -35,6 +35,7 @@ import type {
   AccountsPayableHistory,
 } from '../types';
 import {
+  canCancelAccountsPayableEntry,
   formatAccountsPayableOrigin,
   getAccountsPayableOriginHref,
   isManualAccountsPayableEntry,
@@ -205,10 +206,12 @@ function AccountsPayableDetailView({
                 <CheckCircle2 className="size-4" />
                 Marcar como pago
               </Button>
-              <Button size="sm" variant="destructive" onClick={() => handleCancel(entry)}>
-                <Ban className="size-4" />
-                Cancelar
-              </Button>
+              {canCancelAccountsPayableEntry(entry) && (
+                <Button size="sm" variant="destructive" onClick={() => handleCancel(entry)}>
+                  <Ban className="size-4" />
+                  Cancelar
+                </Button>
+              )}
             </>
           )}
           {!isOpenStatus(entry.entryStatus) && originHref && (
