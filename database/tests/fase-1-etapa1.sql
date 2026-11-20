@@ -225,10 +225,13 @@ select pg_temp.expect('parcela 2 da mesma origem é aceita',
     insert into public.financial_entries (company_id, entry_type, entry_status, amount, source_module, source_id, installment_number)
     values ('ea000000-0000-4000-8000-000000000001', 'expense', 'pending', 1, 'fuel', 'ef000000-0000-4000-8000-000000000001', 2)
   $q$) is null);
+-- Estorno exige o lançamento original (financial_entries_reversal_requires_original, 091).
 select pg_temp.expect('estorno com a mesma origem é aceito',
   pg_temp.error_of($q$
-    insert into public.financial_entries (company_id, entry_type, entry_status, amount, source_module, source_id, installment_number)
-    values ('ea000000-0000-4000-8000-000000000001', 'reversal', 'paid', 1, 'fuel', 'ef000000-0000-4000-8000-000000000001', 1)
+    insert into public.financial_entries (company_id, entry_type, entry_status, amount, source_module, source_id, installment_number, reversed_entry_id)
+    select 'ea000000-0000-4000-8000-000000000001', 'reversal', 'paid', 1, 'fuel', 'ef000000-0000-4000-8000-000000000001', 1, fe.id
+    from public.financial_entries fe
+    where fe.source_id = 'ef000000-0000-4000-8000-000000000001' and fe.entry_type = 'expense' and fe.entry_status = 'paid'
   $q$) is null);
 select pg_temp.expect('mesma origem em outra empresa é aceita',
   pg_temp.error_of($q$

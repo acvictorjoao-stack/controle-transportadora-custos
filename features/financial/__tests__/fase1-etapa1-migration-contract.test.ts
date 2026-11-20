@@ -137,4 +137,13 @@ describe('Fase 1, Etapa 1 — teste em banco (somente local)', () => {
     expect(sql).toContain('sem financeiro, custos, resultado e margem são NULL (nunca zero nem frete)');
     expect(sql.trimEnd().endsWith('rollback;')).toBe(true);
   });
+
+  it('o estorno de teste aponta para o lançamento original (regra da migration 091)', () => {
+    const code = sql.replace(/\r\n/g, '\n');
+    const start = code.indexOf("select pg_temp.expect('estorno com a mesma origem é aceito'");
+    const end = code.indexOf('$q$) is null);', start);
+    expect(start).toBeGreaterThan(0);
+    expect(code.slice(start, end)).toContain('reversed_entry_id)');
+    expect(code.slice(start, end)).toContain("1, fe.id\n    from public.financial_entries fe");
+  });
 });
