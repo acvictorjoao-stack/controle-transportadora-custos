@@ -47,6 +47,7 @@ export const ROUTES = {
   financeiroDetail: (id: string) => `/financeiro/${id}`,
   financeiroDashboard: '/financeiro/dashboard',
   fluxoDeCaixa: '/financeiro/fluxo-de-caixa',
+  conciliacaoFinanceira: '/financeiro/conciliacao',
   contasAPagar: '/financeiro/contas-a-pagar',
   contasAPagarDetail: (id: string) => `/financeiro/contas-a-pagar/${id}`,
   contasAReceber: '/financeiro/contas-a-receber',

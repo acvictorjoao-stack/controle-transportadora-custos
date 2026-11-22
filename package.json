@@ -13,7 +13,8 @@
     "test:watch": "vitest",
     "seed:demo": "tsx scripts/seed-demo.ts",
     "seed:demo:reset": "tsx scripts/reset-demo.ts",
-    "seed:hml": "tsx scripts/seed-homologacao.ts"
+    "seed:hml": "tsx scripts/seed-homologacao.ts",
+    "reconciliation:hml": "tsx scripts/fase2-reconciliation-readonly.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",

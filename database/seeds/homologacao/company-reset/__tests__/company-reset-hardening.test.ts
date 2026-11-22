@@ -259,10 +259,22 @@ describe('company-reset — migration SQL estrutural', () => {
     // Auditoria criada pela própria migration — fora do escopo de negócio.
     covered.add(HML_COMPANY_RESET_AUDIT_TABLE);
     covered.add('hml_hard_delete_audit_events');
+    // Movimentos (106, posterior a esta migration) saem em cascata com os
+    // lançamentos: FK com on delete cascade e o gatilho somente-inclusão só
+    // barra exclusão direta (pg_trigger_depth() = 1), não a cascata.
+    const movements = readFileSync(
+      'supabase/migrations/106_financial_entry_movements.sql',
+      'utf8',
+    ).replace(/\r\n/g, '\n');
+    expect(movements).toMatch(
+      /foreign key \(company_id, financial_entry_id\)\n\s+references public\.financial_entries \(company_id, id\)\n\s+on delete cascade/,
+    );
+    expect(movements).toContain('if pg_trigger_depth() = 1 then');
+    expect(full.has('financial_entries')).toBe(true);
+    covered.add('financial_entry_movements');
 
-    for (const table of companyIdTablesFromDatabaseTypes()) {
-      expect(covered.has(table)).toBe(true);
-    }
+    const uncovered = companyIdTablesFromDatabaseTypes().filter((table) => !covered.has(table));
+    expect(uncovered).toEqual([]);
 
     for (const table of HML_COMPANY_RESET_FULL_DELETE_TABLES) {
       expect(full.has(table)).toBe(true);

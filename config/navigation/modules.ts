@@ -15,6 +15,7 @@ import {
   Route,
   Settings,
   Shield,
+  ShieldCheck,
   Truck,
   UserCog,
   Users,
@@ -262,6 +263,14 @@ export const navigationGroups: NavGroup[] = [
         href: ROUTES.fluxoDeCaixa,
         icon: Wallet,
         permission: 'financeiro_fluxo:read',
+      },
+      {
+        id: 'conciliacao-financeira',
+        title: 'Conciliação',
+        description: 'Inconsistências entre financeiro e origens',
+        href: ROUTES.conciliacaoFinanceira,
+        icon: ShieldCheck,
+        permission: 'financeiro:read',
       },
       {
         id: 'despesas-de-pessoal',

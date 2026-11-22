@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.18"
   }
   public: {
     Tables: {
@@ -658,11 +658,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "customer_contract_items_contract_id_fkey"
-            columns: ["contract_id"]
+            foreignKeyName: "customer_contract_items_contract_company_fkey"
+            columns: ["company_id", "contract_id"]
             isOneToOne: false
             referencedRelation: "customer_contracts"
-            referencedColumns: ["id"]
+            referencedColumns: ["company_id", "id"]
           },
           {
             foreignKeyName: "customer_contract_items_created_by_fkey"
@@ -1683,6 +1683,13 @@ export type Database = {
             foreignKeyName: "financial_categories_trip_id_fkey"
             columns: ["trip_id"]
             isOneToOne: false
+            referencedRelation: "trip_financial_summary"
+            referencedColumns: ["trip_id"]
+          },
+          {
+            foreignKeyName: "financial_categories_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
             referencedRelation: "trips"
             referencedColumns: ["id"]
           },
@@ -1821,6 +1828,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tires"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_cost_centers_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trip_financial_summary"
+            referencedColumns: ["trip_id"]
           },
           {
             foreignKeyName: "financial_cost_centers_trip_id_fkey"
@@ -1979,6 +1993,13 @@ export type Database = {
             foreignKeyName: "financial_documents_trip_id_fkey"
             columns: ["trip_id"]
             isOneToOne: false
+            referencedRelation: "trip_financial_summary"
+            referencedColumns: ["trip_id"]
+          },
+          {
+            foreignKeyName: "financial_documents_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
             referencedRelation: "trips"
             referencedColumns: ["id"]
           },
@@ -2000,6 +2021,7 @@ export type Database = {
       }
       financial_entries: {
         Row: {
+          adjustment_total: number
           amount: number
           analytical_center_id: string | null
           branch_id: string | null
@@ -2039,12 +2061,14 @@ export type Database = {
           supplier: string | null
           supplier_id: string | null
           tire_id: string | null
+          trip_charge_key: string | null
           trip_id: string | null
           updated_at: string
           updated_by: string | null
           vehicle_id: string | null
         }
         Insert: {
+          adjustment_total?: number
           amount: number
           analytical_center_id?: string | null
           branch_id?: string | null
@@ -2084,12 +2108,14 @@ export type Database = {
           supplier?: string | null
           supplier_id?: string | null
           tire_id?: string | null
+          trip_charge_key?: string | null
           trip_id?: string | null
           updated_at?: string
           updated_by?: string | null
           vehicle_id?: string | null
         }
         Update: {
+          adjustment_total?: number
           amount?: number
           analytical_center_id?: string | null
           branch_id?: string | null
@@ -2129,6 +2155,7 @@ export type Database = {
           supplier?: string | null
           supplier_id?: string | null
           tire_id?: string | null
+          trip_charge_key?: string | null
           trip_id?: string | null
           updated_at?: string
           updated_by?: string | null
@@ -2237,6 +2264,13 @@ export type Database = {
             foreignKeyName: "financial_entries_trip_id_fkey"
             columns: ["trip_id"]
             isOneToOne: false
+            referencedRelation: "trip_financial_summary"
+            referencedColumns: ["trip_id"]
+          },
+          {
+            foreignKeyName: "financial_entries_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
             referencedRelation: "trips"
             referencedColumns: ["id"]
           },
@@ -2252,6 +2286,83 @@ export type Database = {
             columns: ["vehicle_id"]
             isOneToOne: false
             referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financial_entry_movements: {
+        Row: {
+          amount: number
+          company_id: string
+          created_at: string
+          created_by: string | null
+          financial_entry_id: string
+          id: string
+          idempotency_key: string
+          kind: string
+          movement_date: string
+          notes: string | null
+          payment_method: string | null
+          reason: string | null
+          reverses_movement_id: string | null
+        }
+        Insert: {
+          amount: number
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          financial_entry_id: string
+          id?: string
+          idempotency_key: string
+          kind: string
+          movement_date: string
+          notes?: string | null
+          payment_method?: string | null
+          reason?: string | null
+          reverses_movement_id?: string | null
+        }
+        Update: {
+          amount?: number
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          financial_entry_id?: string
+          id?: string
+          idempotency_key?: string
+          kind?: string
+          movement_date?: string
+          notes?: string | null
+          payment_method?: string | null
+          reason?: string | null
+          reverses_movement_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_entry_movements_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_entry_movements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_entry_movements_entry_fkey"
+            columns: ["company_id", "financial_entry_id"]
+            isOneToOne: false
+            referencedRelation: "financial_entries"
+            referencedColumns: ["company_id", "id"]
+          },
+          {
+            foreignKeyName: "financial_entry_movements_reverses_movement_id_fkey"
+            columns: ["reverses_movement_id"]
+            isOneToOne: false
+            referencedRelation: "financial_entry_movements"
             referencedColumns: ["id"]
           },
         ]
@@ -2370,6 +2481,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tires"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_history_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trip_financial_summary"
+            referencedColumns: ["trip_id"]
           },
           {
             foreignKeyName: "financial_history_trip_id_fkey"
@@ -2495,6 +2613,13 @@ export type Database = {
             foreignKeyName: "fuel_documents_trip_id_fkey"
             columns: ["trip_id"]
             isOneToOne: false
+            referencedRelation: "trip_financial_summary"
+            referencedColumns: ["trip_id"]
+          },
+          {
+            foreignKeyName: "fuel_documents_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
             referencedRelation: "trips"
             referencedColumns: ["id"]
           },
@@ -2598,6 +2723,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "fuel_records"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fuel_history_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trip_financial_summary"
+            referencedColumns: ["trip_id"]
           },
           {
             foreignKeyName: "fuel_history_trip_id_fkey"
@@ -2789,6 +2921,13 @@ export type Database = {
             foreignKeyName: "fuel_records_trip_id_fkey"
             columns: ["trip_id"]
             isOneToOne: false
+            referencedRelation: "trip_financial_summary"
+            referencedColumns: ["trip_id"]
+          },
+          {
+            foreignKeyName: "fuel_records_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
             referencedRelation: "trips"
             referencedColumns: ["id"]
           },
@@ -2804,6 +2943,102 @@ export type Database = {
             columns: ["vehicle_id"]
             isOneToOne: false
             referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hml_company_reset_audit_events: {
+        Row: {
+          actor_profile_id: string | null
+          company_id: string
+          counts: Json
+          created_at: string
+          id: string
+          metadata: Json
+          result: string
+          scope: string
+        }
+        Insert: {
+          actor_profile_id?: string | null
+          company_id: string
+          counts?: Json
+          created_at?: string
+          id?: string
+          metadata?: Json
+          result: string
+          scope: string
+        }
+        Update: {
+          actor_profile_id?: string | null
+          company_id?: string
+          counts?: Json
+          created_at?: string
+          id?: string
+          metadata?: Json
+          result?: string
+          scope?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hml_company_reset_audit_events_actor_profile_id_fkey"
+            columns: ["actor_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hml_company_reset_audit_events_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hml_hard_delete_audit_events: {
+        Row: {
+          actor_profile_id: string | null
+          company_id: string
+          counts: Json
+          created_at: string
+          id: string
+          metadata: Json
+          result: string
+          scope: string
+        }
+        Insert: {
+          actor_profile_id?: string | null
+          company_id: string
+          counts?: Json
+          created_at?: string
+          id?: string
+          metadata?: Json
+          result: string
+          scope: string
+        }
+        Update: {
+          actor_profile_id?: string | null
+          company_id?: string
+          counts?: Json
+          created_at?: string
+          id?: string
+          metadata?: Json
+          result?: string
+          scope?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hml_hard_delete_audit_events_actor_profile_id_fkey"
+            columns: ["actor_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hml_hard_delete_audit_events_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]
@@ -2904,6 +3139,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "maintenance_records"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_documents_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trip_financial_summary"
+            referencedColumns: ["trip_id"]
           },
           {
             foreignKeyName: "maintenance_documents_trip_id_fkey"
@@ -3012,6 +3254,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "maintenance_records"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_history_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trip_financial_summary"
+            referencedColumns: ["trip_id"]
           },
           {
             foreignKeyName: "maintenance_history_trip_id_fkey"
@@ -3130,11 +3379,18 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "maintenance_parts_maintenance_record_id_fkey"
-            columns: ["maintenance_record_id"]
+            foreignKeyName: "maintenance_parts_record_company_fkey"
+            columns: ["company_id", "maintenance_record_id"]
             isOneToOne: false
             referencedRelation: "maintenance_records"
-            referencedColumns: ["id"]
+            referencedColumns: ["company_id", "id"]
+          },
+          {
+            foreignKeyName: "maintenance_parts_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trip_financial_summary"
+            referencedColumns: ["trip_id"]
           },
           {
             foreignKeyName: "maintenance_parts_trip_id_fkey"
@@ -3329,6 +3585,13 @@ export type Database = {
             foreignKeyName: "maintenance_records_trip_id_fkey"
             columns: ["trip_id"]
             isOneToOne: false
+            referencedRelation: "trip_financial_summary"
+            referencedColumns: ["trip_id"]
+          },
+          {
+            foreignKeyName: "maintenance_records_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
             referencedRelation: "trips"
             referencedColumns: ["id"]
           },
@@ -3460,6 +3723,13 @@ export type Database = {
             foreignKeyName: "maintenance_schedules_trip_id_fkey"
             columns: ["trip_id"]
             isOneToOne: false
+            referencedRelation: "trip_financial_summary"
+            referencedColumns: ["trip_id"]
+          },
+          {
+            foreignKeyName: "maintenance_schedules_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
             referencedRelation: "trips"
             referencedColumns: ["id"]
           },
@@ -3564,11 +3834,18 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "maintenance_services_maintenance_record_id_fkey"
-            columns: ["maintenance_record_id"]
+            foreignKeyName: "maintenance_services_record_company_fkey"
+            columns: ["company_id", "maintenance_record_id"]
             isOneToOne: false
             referencedRelation: "maintenance_records"
-            referencedColumns: ["id"]
+            referencedColumns: ["company_id", "id"]
+          },
+          {
+            foreignKeyName: "maintenance_services_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trip_financial_summary"
+            referencedColumns: ["trip_id"]
           },
           {
             foreignKeyName: "maintenance_services_trip_id_fkey"
@@ -4815,11 +5092,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "tire_inspections_tire_id_fkey"
-            columns: ["tire_id"]
+            foreignKeyName: "tire_inspections_tire_company_fkey"
+            columns: ["company_id", "tire_id"]
             isOneToOne: false
             referencedRelation: "tires"
-            referencedColumns: ["id"]
+            referencedColumns: ["company_id", "id"]
           },
           {
             foreignKeyName: "tire_inspections_updated_by_fkey"
@@ -4931,11 +5208,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "tire_movements_tire_id_fkey"
-            columns: ["tire_id"]
+            foreignKeyName: "tire_movements_tire_company_fkey"
+            columns: ["company_id", "tire_id"]
             isOneToOne: false
             referencedRelation: "tires"
-            referencedColumns: ["id"]
+            referencedColumns: ["company_id", "id"]
           },
           {
             foreignKeyName: "tire_movements_updated_by_fkey"
@@ -5054,11 +5331,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "tire_recaps_tire_id_fkey"
-            columns: ["tire_id"]
+            foreignKeyName: "tire_recaps_tire_company_fkey"
+            columns: ["company_id", "tire_id"]
             isOneToOne: false
             referencedRelation: "tires"
-            referencedColumns: ["id"]
+            referencedColumns: ["company_id", "id"]
           },
           {
             foreignKeyName: "tire_recaps_updated_by_fkey"
@@ -5357,6 +5634,13 @@ export type Database = {
             foreignKeyName: "trip_checklists_trip_id_fkey"
             columns: ["trip_id"]
             isOneToOne: false
+            referencedRelation: "trip_financial_summary"
+            referencedColumns: ["trip_id"]
+          },
+          {
+            foreignKeyName: "trip_checklists_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
             referencedRelation: "trips"
             referencedColumns: ["id"]
           },
@@ -5447,6 +5731,13 @@ export type Database = {
             foreignKeyName: "trip_documents_trip_id_fkey"
             columns: ["trip_id"]
             isOneToOne: false
+            referencedRelation: "trip_financial_summary"
+            referencedColumns: ["trip_id"]
+          },
+          {
+            foreignKeyName: "trip_documents_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
             referencedRelation: "trips"
             referencedColumns: ["id"]
           },
@@ -5469,10 +5760,13 @@ export type Database = {
           currency: string
           deleted_at: string | null
           description: string | null
+          due_date: string | null
           expense_date: string
           expense_type: Database["public"]["Enums"]["trip_expense_type"]
           id: string
           notes: string | null
+          paid_by: string | null
+          payment_method: string | null
           receipt_url: string | null
           trip_id: string
           updated_at: string
@@ -5487,10 +5781,13 @@ export type Database = {
           currency?: string
           deleted_at?: string | null
           description?: string | null
+          due_date?: string | null
           expense_date?: string
           expense_type: Database["public"]["Enums"]["trip_expense_type"]
           id?: string
           notes?: string | null
+          paid_by?: string | null
+          payment_method?: string | null
           receipt_url?: string | null
           trip_id: string
           updated_at?: string
@@ -5505,10 +5802,13 @@ export type Database = {
           currency?: string
           deleted_at?: string | null
           description?: string | null
+          due_date?: string | null
           expense_date?: string
           expense_type?: Database["public"]["Enums"]["trip_expense_type"]
           id?: string
           notes?: string | null
+          paid_by?: string | null
+          payment_method?: string | null
           receipt_url?: string | null
           trip_id?: string
           updated_at?: string
@@ -5535,6 +5835,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trip_expenses_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trip_financial_summary"
+            referencedColumns: ["trip_id"]
           },
           {
             foreignKeyName: "trip_expenses_trip_id_fkey"
@@ -5630,6 +5937,13 @@ export type Database = {
             foreignKeyName: "trip_history_trip_id_fkey"
             columns: ["trip_id"]
             isOneToOne: false
+            referencedRelation: "trip_financial_summary"
+            referencedColumns: ["trip_id"]
+          },
+          {
+            foreignKeyName: "trip_history_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
             referencedRelation: "trips"
             referencedColumns: ["id"]
           },
@@ -5717,6 +6031,13 @@ export type Database = {
             foreignKeyName: "trip_locations_trip_id_fkey"
             columns: ["trip_id"]
             isOneToOne: false
+            referencedRelation: "trip_financial_summary"
+            referencedColumns: ["trip_id"]
+          },
+          {
+            foreignKeyName: "trip_locations_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
             referencedRelation: "trips"
             referencedColumns: ["id"]
           },
@@ -5793,6 +6114,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trip_occurrences_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trip_financial_summary"
+            referencedColumns: ["trip_id"]
           },
           {
             foreignKeyName: "trip_occurrences_trip_id_fkey"
@@ -5891,6 +6219,13 @@ export type Database = {
             foreignKeyName: "trip_stops_trip_id_fkey"
             columns: ["trip_id"]
             isOneToOne: false
+            referencedRelation: "trip_financial_summary"
+            referencedColumns: ["trip_id"]
+          },
+          {
+            foreignKeyName: "trip_stops_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
             referencedRelation: "trips"
             referencedColumns: ["id"]
           },
@@ -5918,6 +6253,7 @@ export type Database = {
           contracted_freight_value: number | null
           created_at: string
           created_by: string | null
+          creation_request_id: string | null
           customer_contract_id: string | null
           customer_id: string | null
           deleted_at: string | null
@@ -5937,6 +6273,9 @@ export type Database = {
           metadata: Json
           notes: string | null
           origin: string | null
+          payment_condition: string | null
+          payment_due_date: string | null
+          payment_issue_date: string | null
           planned_arrival_at: string | null
           planned_completion_at: string | null
           planned_departure_at: string | null
@@ -5969,6 +6308,7 @@ export type Database = {
           contracted_freight_value?: number | null
           created_at?: string
           created_by?: string | null
+          creation_request_id?: string | null
           customer_contract_id?: string | null
           customer_id?: string | null
           deleted_at?: string | null
@@ -5988,6 +6328,9 @@ export type Database = {
           metadata?: Json
           notes?: string | null
           origin?: string | null
+          payment_condition?: string | null
+          payment_due_date?: string | null
+          payment_issue_date?: string | null
           planned_arrival_at?: string | null
           planned_completion_at?: string | null
           planned_departure_at?: string | null
@@ -6020,6 +6363,7 @@ export type Database = {
           contracted_freight_value?: number | null
           created_at?: string
           created_by?: string | null
+          creation_request_id?: string | null
           customer_contract_id?: string | null
           customer_id?: string | null
           deleted_at?: string | null
@@ -6039,6 +6383,9 @@ export type Database = {
           metadata?: Json
           notes?: string | null
           origin?: string | null
+          payment_condition?: string | null
+          payment_due_date?: string | null
+          payment_issue_date?: string | null
           planned_arrival_at?: string | null
           planned_completion_at?: string | null
           planned_departure_at?: string | null
@@ -6487,6 +6834,27 @@ export type Database = {
       }
     }
     Views: {
+      financial_cash_flow_lines: {
+        Row: {
+          client: string | null
+          company_id: string | null
+          deleted_at: string | null
+          description: string | null
+          due_date: string | null
+          entry_type: Database["public"]["Enums"]["financial_entry_type"] | null
+          financial_entry_id: string | null
+          line_amount: number | null
+          line_id: string | null
+          line_status:
+            | Database["public"]["Enums"]["financial_entry_status"]
+            | null
+          movement_date: string | null
+          movement_id: string | null
+          source_module: string | null
+          supplier: string | null
+        }
+        Relationships: []
+      }
       payroll_people: {
         Row: {
           active: boolean | null
@@ -6501,8 +6869,71 @@ export type Database = {
         }
         Relationships: []
       }
+      trip_financial_summary: {
+        Row: {
+          advances_total: number | null
+          company_id: string | null
+          completed_at: string | null
+          direct_cost_entries: number | null
+          direct_costs: number | null
+          financial_visible: boolean | null
+          freight_amount: number | null
+          fuel_costs: number | null
+          legacy_advance_expenses_amount: number | null
+          legacy_advance_expenses_count: number | null
+          maintenance_costs: number | null
+          margin_percent: number | null
+          other_costs: number | null
+          receivable_amount: number | null
+          receivable_balance: number | null
+          receivable_entry_id: string | null
+          receivable_received: number | null
+          receivable_status:
+            | Database["public"]["Enums"]["financial_entry_status"]
+            | null
+          reimbursements_total: number | null
+          result: number | null
+          tire_costs: number | null
+          trip_expense_costs: number | null
+          trip_id: string | null
+          trip_number: string | null
+          trip_status: Database["public"]["Enums"]["trip_status"] | null
+          unposted_trip_expenses_amount: number | null
+          unposted_trip_expenses_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trips_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
+      actor_can_manage_super_admin: {
+        Args: { p_company_id: string }
+        Returns: boolean
+      }
+      adjust_receivable_amount: {
+        Args: {
+          p_entry_id: string
+          p_idempotency_key: string
+          p_new_amount: number
+          p_reason: string
+        }
+        Returns: string
+      }
+      assert_receivable_actor: {
+        Args: { p_company_id: string; p_permission: string }
+        Returns: undefined
+      }
+      close_trip_expense_entry: {
+        Args: { p_actor: string; p_entry_id: string }
+        Returns: undefined
+      }
       company_has_active_members: {
         Args: { p_company_id: string }
         Returns: boolean
@@ -6514,6 +6945,42 @@ export type Database = {
       count_active_super_admins: {
         Args: { p_company_id: string }
         Returns: number
+      }
+      financial_reconciliation_findings: {
+        Args: {
+          p_company_id: string
+          p_from?: string
+          p_limit?: number
+          p_to?: string
+        }
+        Returns: {
+          actual: number
+          check_id: string
+          details: Json
+          entity_id: string
+          entity_type: string
+          expected: number
+          legacy: boolean
+          reference: string
+          severity: string
+        }[]
+      }
+      financial_reconciliation_in_period: {
+        Args: { p_date: string; p_from: string; p_to: string }
+        Returns: boolean
+      }
+      financial_reconciliation_ref_state: {
+        Args: { p_company_id: string; p_id: string; p_kind: string }
+        Returns: string
+      }
+      financial_reconciliation_summary: {
+        Args: { p_company_id: string; p_from?: string; p_to?: string }
+        Returns: {
+          check_id: string
+          findings: number
+          legacy_findings: number
+          severity: string
+        }[]
       }
       generate_trip_number: { Args: { p_company_id: string }; Returns: string }
       get_customer_stats: { Args: { p_company_id: string }; Returns: Json }
@@ -6543,6 +7010,14 @@ export type Database = {
         Args: { p_company_id: string; p_permission_code: string }
         Returns: boolean
       }
+      hml_hard_delete_manifest_43: {
+        Args: { p_company_id: string; p_confirm: string }
+        Returns: Json
+      }
+      hml_reset_company_business_data: {
+        Args: { p_company_id: string; p_confirm: string }
+        Returns: Json
+      }
       is_company_member: { Args: { p_company_id: string }; Returns: boolean }
       is_company_super_admin: {
         Args: { p_company_id: string }
@@ -6554,8 +7029,53 @@ export type Database = {
         Returns: boolean
       }
       is_portal_user: { Args: never; Returns: boolean }
+      lock_company_super_admin_guard: {
+        Args: { p_company_id: string }
+        Returns: undefined
+      }
+      log_receivable_movement: {
+        Args: {
+          p_action: string
+          p_changes: Json
+          p_entry: Database["public"]["Tables"]["financial_entries"]["Row"]
+        }
+        Returns: undefined
+      }
+      membership_is_active_super_admin: {
+        Args: {
+          p_deleted_at: string
+          p_role_id: string
+          p_status: Database["public"]["Enums"]["entity_status"]
+        }
+        Returns: boolean
+      }
       migrate_free_text_suppliers: { Args: never; Returns: undefined }
+      recompute_receivable_entry: {
+        Args: { p_entry_id: string }
+        Returns: undefined
+      }
       refresh_tire_metrics: { Args: { p_tire_id: string }; Returns: undefined }
+      register_receivable_receipt: {
+        Args: {
+          p_amount: number
+          p_entry_id: string
+          p_idempotency_key: string
+          p_movement_date: string
+          p_notes: string
+          p_payment_method: string
+        }
+        Returns: string
+      }
+      request_is_hml_company_reset: { Args: never; Returns: boolean }
+      request_is_service_context: { Args: never; Returns: boolean }
+      reverse_receivable_receipt: {
+        Args: {
+          p_idempotency_key: string
+          p_movement_id: string
+          p_reason: string
+        }
+        Returns: string
+      }
       seed_cost_centers_for_company: {
         Args: { p_company_id: string; p_created_by?: string }
         Returns: undefined
@@ -6571,6 +7091,23 @@ export type Database = {
       seed_positions_for_company: {
         Args: { p_company_id: string; p_created_by?: string }
         Returns: undefined
+      }
+      storage_object_company_id: { Args: { p_name: string }; Returns: string }
+      trip_expense_category_slug: {
+        Args: {
+          p_expense_type: Database["public"]["Enums"]["trip_expense_type"]
+        }
+        Returns: Database["public"]["Enums"]["financial_category_slug"]
+      }
+      trip_expense_financial_treatment: {
+        Args: { p_paid_by: string; p_payment_method: string }
+        Returns: string
+      }
+      trip_expense_type_label: {
+        Args: {
+          p_expense_type: Database["public"]["Enums"]["trip_expense_type"]
+        }
+        Returns: string
       }
       update_company_provision_status: {
         Args: {
@@ -6770,12 +7307,12 @@ export type Database = {
         | "user_role_change"
         | "user_activate"
         | "user_deactivate"
-        | "user_delete"
         | "plan_change"
         | "company_suspend"
         | "company_reactivate"
         | "settings_update"
         | "company_access"
+        | "user_delete"
       portal_role: "OWNER" | "SUPPORT" | "FINANCE"
       provider_name:
         | "openai"
@@ -6885,12 +7422,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -6914,11 +7451,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -6939,11 +7476,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -6964,11 +7501,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -6981,11 +7518,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -7206,12 +7743,12 @@ export const Constants = {
         "user_role_change",
         "user_activate",
         "user_deactivate",
-        "user_delete",
         "plan_change",
         "company_suspend",
         "company_reactivate",
         "settings_update",
         "company_access",
+        "user_delete",
       ],
       portal_role: ["OWNER", "SUPPORT", "FINANCE"],
       provider_name: [
