@@ -80,6 +80,8 @@ function TripProfitabilityPageView({
     <PageTemplate
       title="Rentabilidade por Viagem"
       description="Quanto cada viagem gera: resultado direto (só custos da viagem) e com rateio (inclui a parte do veículo por KM)."
+      // Como nas outras telas de rentabilidade: /dashboard/rentabilidade não existe (o breadcrumb automático geraria 404).
+      breadcrumbItems={[{label: 'Dashboard', href: ROUTES.dashboard}, {label: 'Rentabilidade por Viagem'}]}
     >
       {error ? (
         <Alert variant="destructive" className="mb-4">
@@ -229,7 +231,7 @@ function TripProfitabilityPageView({
                   <div className="flex flex-col items-end">
                     <span className="font-medium">{money(row.allocatedResult)}</span>
                     <span className="text-xs text-muted-foreground">
-                      {row.vehicleShare > 0 ? `+ ${money(row.vehicleShare)} do veículo` : 'sem rateio'}
+                      {row.vehicleShare >= 0.005 ? `+ ${money(row.vehicleShare)} do veículo` : 'sem rateio'}
                     </span>
                   </div>
                 ),

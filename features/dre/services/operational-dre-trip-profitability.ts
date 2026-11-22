@@ -104,10 +104,12 @@ export function buildTripProfitabilityRows(input: TripProfitabilityInput): TripP
           contractedFreightValue: trip.contractedFreightValue,
           actualFreightValue: trip.actualFreightValue,
         });
-    const directCost = round2(sumTripCosts(trip.id, scopedExpenses));
-    const allocatedCost = round2(allocatedByTrip.get(trip.id) ?? 0);
-    const directResult = costsOnlyMode ? null : round2(revenue - directCost);
-    const allocatedResult = costsOnlyMode ? null : round2(revenue - allocatedCost);
+    // Valores exatos por viagem (a tela formata); só o resumo arredonda, uma vez,
+    // para a soma bater com a DRE e os rankings (arredondar por linha somava centavos).
+    const directCost = sumTripCosts(trip.id, scopedExpenses);
+    const allocatedCost = allocatedByTrip.get(trip.id) ?? 0;
+    const directResult = costsOnlyMode ? null : revenue - directCost;
+    const allocatedResult = costsOnlyMode ? null : revenue - allocatedCost;
     const distanceKm = Number.isFinite(trip.distanceKm) ? trip.distanceKm : 0;
     return {
       id: trip.id,
@@ -122,7 +124,7 @@ export function buildTripProfitabilityRows(input: TripProfitabilityInput): TripP
       revenue,
       directCost,
       allocatedCost,
-      vehicleShare: round2(allocatedCost - directCost),
+      vehicleShare: allocatedCost - directCost,
       directResult,
       allocatedResult,
       directMarginPercent: margin(directResult, revenue),

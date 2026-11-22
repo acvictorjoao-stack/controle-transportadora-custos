@@ -119,6 +119,27 @@ describe('Fase 2.2.3 — linhas de rentabilidade por viagem', () => {
   });
 });
 
+describe('Fase 2.2.3 — arredondamento', () => {
+  it('rateio fracionado: a soma das viagens bate com a DRE (arredondar por linha somaria centavos)', () => {
+    const thirds = ['A', 'B', 'C'].map((id) =>
+      trip({id, vehicleId: 'VX', distanceKm: 1, distanceSource: 'odometer', contractedFreightValue: 10}),
+    );
+    const shared = [expense({id: 'x1', amount: 100, vehicleId: 'VX'}), expense({id: 'x2', amount: 0.05, tripId: 'A'})];
+    const fractional = buildTripProfitabilityRows({
+      trips: thirds,
+      expenses: shared,
+      allocationBaseTrips: thirds,
+      unlinkedVehicleExpenses: shared.filter((row) => row.tripId === null),
+    });
+    const dre = calculateOperationalDre(thirds, shared, {});
+    const summary = summarizeTripProfitability(fractional);
+    expect(fractional[1].allocatedCost).toBeCloseTo(100 / 3, 10);
+    expect(summary.allocatedCost).toBe(Math.round(dre.costs.allocatedOperatingCosts * 100) / 100);
+    expect(summary.allocatedCost).toBe(100.05);
+    expect(summary.allocatedResult).toBe(30 - 100.05);
+  });
+});
+
 describe('Fase 2.2.3 — resumo', () => {
   it('totais e qualidade do KM', () => {
     expect(summarizeTripProfitability(rows)).toEqual({
