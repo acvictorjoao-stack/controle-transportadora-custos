@@ -25,6 +25,12 @@ import {
   OPERATIONAL_DRE_UNASSIGNED_DIMENSION_KEY,
 } from '../services/operational-dre-by-dimension';
 import {calculateOperationalDre} from '../services';
+import {
+  buildTripProfitabilityRows,
+  summarizeTripProfitability,
+  type TripProfitabilityRow,
+  type TripProfitabilitySummary,
+} from '../services/operational-dre-trip-profitability';
 import type {
   OperationalDreByCustomerData,
   OperationalDreByDriverData,
@@ -576,5 +582,44 @@ export async function getOperationalDreFilterOptions(
       name: center.name,
       code: center.code,
     })),
+  };
+}
+
+/**
+ * Fase 2.2.3 — Rentabilidade por viagem.
+ * Mesma fonte e mesmo rateio dos rankings (`getOperationalDreBundle`): viagens
+ * do recorte com rótulos, despesas da DRE e o contexto de rateio por KM do
+ * veículo. Devolve também a DRE do recorte para atribuídos × não atribuíveis.
+ */
+export async function getOperationalDreTripProfitability(
+  supabase: SupabaseClient,
+  companyId: string,
+  filters: OperationalDreFilters = {},
+): Promise<{
+  rows: TripProfitabilityRow[];
+  summary: TripProfitabilitySummary;
+  dre: OperationalDreData;
+}> {
+  const trips = await fetchOperationalDreTripDetails(supabase, companyId, filters);
+  const [expenses, mileage] = await Promise.all([
+    fetchOperationalDreExpenses(supabase, companyId, {
+      filters,
+      tripIds: trips.map((trip) => trip.id),
+    }),
+    fetchMileageAllocationContext(supabase, companyId, trips, filters),
+  ]);
+
+  const rows = buildTripProfitabilityRows({
+    trips,
+    expenses,
+    filters,
+    allocationBaseTrips: mileage.allocationBaseTrips,
+    unlinkedVehicleExpenses: mileage.unlinkedVehicleExpenses,
+  });
+
+  return {
+    rows,
+    summary: summarizeTripProfitability(rows),
+    dre: calculateOperationalDre(trips, expenses, filters),
   };
 }

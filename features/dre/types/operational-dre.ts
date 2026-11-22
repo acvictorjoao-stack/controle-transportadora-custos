@@ -117,6 +117,8 @@ export interface OperationalDreTripRow {
   actualFreightValue: number | null;
   /** KM operacional (`resolveTripOperationalDistanceKm`) — Audit #17. */
   distanceKm: number;
+  /** Origem do KM (odômetro, planejado ou nenhum) — Fase 2.2. Ausente em fixtures antigas. */
+  distanceSource?: 'odometer' | 'planned' | 'none';
 }
 
 /** Linha bruta de despesa financeira usada pelo calculator (sem I/O). */

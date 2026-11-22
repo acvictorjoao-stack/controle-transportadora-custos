@@ -62,3 +62,19 @@ export function resolveTripOperationalDistanceKm(
   const planned = resolveTripPlannedDistanceKm(input.plannedDistanceKm);
   return planned !== null && planned > 0 ? planned : 0;
 }
+
+/** De onde veio o KM operacional (Fase 2.2: qualidade dos dados da rentabilidade). */
+export type TripDistanceSource = 'odometer' | 'planned' | 'none';
+
+/** Mesma precedência de `resolveTripOperationalDistanceKm`: odômetro > planejado > nenhum. */
+export function resolveTripDistanceSource(
+  input: TripOperationalDistanceInput,
+): TripDistanceSource {
+  const actual = computeTripActualDistanceKm(
+    input.initialOdometerKm,
+    input.finalOdometerKm,
+  );
+  if (actual !== null && actual > 0) return 'odometer';
+  const planned = resolveTripPlannedDistanceKm(input.plannedDistanceKm);
+  return planned !== null && planned > 0 ? 'planned' : 'none';
+}
