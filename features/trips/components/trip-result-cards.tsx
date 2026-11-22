@@ -109,7 +109,7 @@ export function TripResultCards({summary, fallbackFreight, allocatedViewHref = n
                   <>
                     {' '}
                     <Link href={allocatedViewHref} className="underline underline-offset-2">
-                      Ver com rateio do veículo
+                      Ver com rateio do veículo no mês
                     </Link>
                   </>
                 ) : null}

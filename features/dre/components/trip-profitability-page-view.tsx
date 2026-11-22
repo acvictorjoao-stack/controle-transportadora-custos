@@ -79,7 +79,7 @@ function TripProfitabilityPageView({
   return (
     <PageTemplate
       title="Rentabilidade por Viagem"
-      description="Quanto cada viagem gera: resultado direto (só custos da viagem) e com rateio (inclui a parte do veículo por KM)."
+      description="Quanto cada viagem gera: resultado direto (só custos da viagem) e com rateio (inclui a parte do veículo por KM). O rateio usa os custos do veículo lançados no período escolhido, divididos pelas viagens dele no mesmo período: mudar o período muda o rateio."
       // Como nas outras telas de rentabilidade: /dashboard/rentabilidade não existe (o breadcrumb automático geraria 404).
       breadcrumbItems={[{label: 'Dashboard', href: ROUTES.dashboard}, {label: 'Rentabilidade por Viagem'}]}
     >
