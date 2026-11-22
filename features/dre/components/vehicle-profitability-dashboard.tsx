@@ -37,6 +37,8 @@ import type {PeriodDelta} from '../utils/period-comparison';
 import {OperationalDreCompetenceDisclaimer} from './operational-dre-competence-disclaimer';
 import {OperationalDreCostAllocationDisclaimer} from './operational-dre-cost-allocation-disclaimer';
 import {OperationalDreCostsOnlyBanner} from './operational-dre-costs-only-banner';
+import {ProfitabilityDataNotes} from './profitability-data-notes';
+import {resolveAttributedCostsCard} from '../utils/ranking-coverage';
 import {OperationalDreFiltersBar} from './operational-dre-filters';
 import {OperationalDreVehicleCosts} from './operational-dre-vehicle-costs';
 import type {PeriodChartPoint} from './revenue-cost-profit-chart';
@@ -245,6 +247,12 @@ function VehicleProfitabilityDashboard({
     [initialFilters],
   );
 
+  const attributedCard = resolveAttributedCostsCard({
+    dre,
+    groups: byVehicle.groups,
+    filters: initialFilters,
+  });
+
   return (
     <AnalyticsShell
       filters={initialFilters}
@@ -273,6 +281,13 @@ function VehicleProfitabilityDashboard({
 
       <OperationalDreCostsOnlyBanner active={dre.costsOnlyMode} />
 
+      <ProfitabilityDataNotes
+        dre={dre}
+        groups={byVehicle.groups}
+        filters={initialFilters}
+        dimension="vehicle"
+      />
+
       <Section
         title="Indicadores"
         description="Qual veículo gera mais dinheiro no período."
@@ -286,8 +301,8 @@ function VehicleProfitabilityDashboard({
           />
           <StatCard
             title="Custos Atribuídos"
-            value={formatCurrencyBr(dre.costs.allocatedOperatingCosts)}
-            subtitle="Entram no ranking"
+            value={formatCurrencyBr(attributedCard.value)}
+            subtitle={attributedCard.subtitle}
           />
           <StatCard
             title="Não Atribuíveis"

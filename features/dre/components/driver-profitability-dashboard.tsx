@@ -41,6 +41,8 @@ import type {PeriodDelta} from '../utils/period-comparison';
 import {OperationalDreCompetenceDisclaimer} from './operational-dre-competence-disclaimer';
 import {OperationalDreCostAllocationDisclaimer} from './operational-dre-cost-allocation-disclaimer';
 import {OperationalDreCostsOnlyBanner} from './operational-dre-costs-only-banner';
+import {ProfitabilityDataNotes} from './profitability-data-notes';
+import {resolveAttributedCostsCard} from '../utils/ranking-coverage';
 import {OperationalDreDriverCosts} from './operational-dre-driver-costs';
 import {OperationalDreFiltersBar} from './operational-dre-filters';
 import type {PeriodChartPoint} from './revenue-cost-profit-chart';
@@ -297,6 +299,12 @@ function DriverProfitabilityDashboard({
     [initialFilters],
   );
 
+  const attributedCard = resolveAttributedCostsCard({
+    dre,
+    groups: byDriver.groups,
+    filters: initialFilters,
+  });
+
   return (
     <AnalyticsShell
       filters={initialFilters}
@@ -325,6 +333,13 @@ function DriverProfitabilityDashboard({
 
       <OperationalDreCostsOnlyBanner active={dre.costsOnlyMode} />
 
+      <ProfitabilityDataNotes
+        dre={dre}
+        groups={byDriver.groups}
+        filters={initialFilters}
+        dimension="driver"
+      />
+
       <Section
         title="Indicadores"
         description="Rentabilidade consolidada dos motoristas no período."
@@ -338,8 +353,8 @@ function DriverProfitabilityDashboard({
           />
           <StatCard
             title="Custos Atribuídos"
-            value={formatCurrencyBr(dre.costs.allocatedOperatingCosts)}
-            subtitle="Entram no ranking"
+            value={formatCurrencyBr(attributedCard.value)}
+            subtitle={attributedCard.subtitle}
           />
           <StatCard
             title="Não Atribuíveis"

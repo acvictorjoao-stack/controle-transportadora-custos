@@ -10,6 +10,7 @@ import type {
   OperationalDreTripRow,
 } from '../../types';
 import {PROFITABILITY_GLOSSARY, PROFITABILITY_TERMS} from '../../utils/profitability-glossary';
+import {resolveAttributedCostsCard} from '../../utils/ranking-coverage';
 import {calculateOperationalDre} from '../operational-dre-calculator';
 import {
   calculateOperationalDreByCustomer,
@@ -209,17 +210,36 @@ describe('Fase 2.2.1 — viagem: resultado direto × resultado com rateio', () =
   });
 });
 
-describe('Fase 2.2.1 — com filtro de rota', () => {
-  // Os grupos rateiam o custo do veículo por todas as viagens dele (denominador
-  // correto); o KPI "custos atribuídos" da DRE rateia só pelas viagens do recorte
-  // e fica maior que a soma do ranking. Corrigir na 2.2.4; este teste passa a
-  // "passar inesperadamente" quando for corrigido, e então vira um it normal.
-  it.fails('custos atribuídos da DRE = soma dos grupos (pendente)', () => {
-    const filters: OperationalDreFilters = {routeId: 'R1'};
-    const scopedTrips = trips.filter((row) => row.routeId === 'R1');
-    const dre = calculateOperationalDre(scopedTrips, expenses, filters);
-    const groups = calculateOperationalDreByRoute(scopedTrips, expenses, filters, new Map(), allocation);
-    expect(sum(groups.map((group) => group.totalCost))).toBe(dre.costs.allocatedOperatingCosts);
+describe('Fase 2.2.1/2.2.4 — com filtro de rota', () => {
+  // Com filtro de rota, a DRE não inclui custos sem viagem (o ledger não tem
+  // rota): os custos atribuídos da DRE ficam só com os diretos. O ranking
+  // inclui a parte rateada do veículo. Decisão da 2.2.4: a DRE não muda; nas
+  // telas de rentabilidade, o card "Custos atribuídos" segue a soma do ranking
+  // quando há filtro de dimensão (resolveAttributedCostsCard).
+  const filters: OperationalDreFilters = {routeId: 'R1'};
+  const scopedTrips = trips.filter((row) => row.routeId === 'R1');
+  const dre = calculateOperationalDre(scopedTrips, expenses, filters);
+  const groups = calculateOperationalDreByRoute(scopedTrips, expenses, filters, new Map(), allocation);
+
+  it('a DRE filtrada fica com os custos diretos (regra mantida)', () => {
+    // T1: e1 (100); T3: nada. Sem custos órfãos com filtro de rota.
+    expect(dre.costs.allocatedOperatingCosts).toBe(100);
+    expect(dre.costs.totalOperatingCosts).toBe(100);
+  });
+
+  it('o ranking inclui a parte rateada do veículo (T1 recebe 100 dos 400 de V1)', () => {
+    expect(sum(groups.map((group) => group.totalCost))).toBe(200);
+  });
+
+  it('o card da tela de rentabilidade segue o ranking com filtro e a DRE sem filtro', () => {
+    expect(resolveAttributedCostsCard({dre, groups, filters})).toEqual({
+      value: 200,
+      subtitle: 'Soma do ranking (inclui o rateio do veículo)',
+    });
+    const unfiltered = calculateOperationalDre(trips, expenses, {});
+    expect(
+      resolveAttributedCostsCard({dre: unfiltered, groups: fullGroups('route'), filters: {}}),
+    ).toEqual({value: 580, subtitle: 'Entram no ranking'});
   });
 });
 

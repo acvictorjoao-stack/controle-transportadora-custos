@@ -18,6 +18,7 @@ export type {
   OperationalDreFilters,
   OperationalDreGroupDimension,
   OperationalDreIndicators,
+  OperationalDreKmQuality,
   OperationalDreResult,
   OperationalDreRevenues,
   OperationalDreRouteGroup,

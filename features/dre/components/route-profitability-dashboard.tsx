@@ -41,6 +41,8 @@ import type {PeriodChartPoint} from './revenue-cost-profit-chart';
 import {OperationalDreCompetenceDisclaimer} from './operational-dre-competence-disclaimer';
 import {OperationalDreCostAllocationDisclaimer} from './operational-dre-cost-allocation-disclaimer';
 import {OperationalDreCostsOnlyBanner} from './operational-dre-costs-only-banner';
+import {ProfitabilityDataNotes} from './profitability-data-notes';
+import {resolveAttributedCostsCard} from '../utils/ranking-coverage';
 import {OperationalDreFiltersBar} from './operational-dre-filters';
 import {OperationalDreRouteCosts} from './operational-dre-route-costs';
 import dynamic from 'next/dynamic';
@@ -223,6 +225,12 @@ function RouteProfitabilityDashboard({
     [initialFilters],
   );
 
+  const attributedCard = resolveAttributedCostsCard({
+    dre,
+    groups: byRoute.groups,
+    filters: initialFilters,
+  });
+
   return (
     <AnalyticsShell
       filters={initialFilters}
@@ -251,6 +259,13 @@ function RouteProfitabilityDashboard({
 
       <OperationalDreCostsOnlyBanner active={dre.costsOnlyMode} />
 
+      <ProfitabilityDataNotes
+        dre={dre}
+        groups={byRoute.groups}
+        filters={initialFilters}
+        dimension="route"
+      />
+
       <Section
         title="Indicadores"
         description="Consolidado operacional das rotas no período."
@@ -263,8 +278,8 @@ function RouteProfitabilityDashboard({
           />
           <StatCard
             title="Custos Atribuídos"
-            value={formatCurrencyBr(dre.costs.allocatedOperatingCosts)}
-            subtitle="Entram no ranking"
+            value={formatCurrencyBr(attributedCard.value)}
+            subtitle={attributedCard.subtitle}
           />
           <StatCard
             title="Não Atribuíveis"
