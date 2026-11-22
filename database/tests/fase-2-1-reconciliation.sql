@@ -1,5 +1,5 @@
--- FleetControl — teste comportamental da migration 113 (Fase 2.1, reconciliação)
--- Rodar com as migrations até a 113 aplicadas, como dono do banco (SQL Editor).
+-- FleetControl — teste comportamental das migrations 113 e 114 (Fase 2.1, reconciliação)
+-- Rodar com as migrations até a 114 aplicadas, como dono do banco.
 -- Tudo roda numa transação desfeita no fim; nenhum dado permanece.
 --
 -- Monta uma empresa de teste com UM caso por verificação e confere que cada
@@ -410,6 +410,10 @@ select pg_temp.expect('Financeiro sem acesso aos módulos: nenhum órfão ou ví
   (select string_agg(format('%s %s %s', check_id, entity_id, details), ' | ')
    from public.financial_reconciliation_findings('21a00000-0000-4000-8000-000000000001')
    where check_id in ('R02', 'R04')));
+-- 114 (security definer): a cobertura não depende mais dos módulos que o usuário lê.
+select pg_temp.expect('Financeiro sem acesso aos módulos recebe a mesma lista completa',
+  (select count(*) from public.financial_reconciliation_findings('21a00000-0000-4000-8000-000000000001'))
+  = (select count(*) from _r21_findings));
 select pg_temp.expect('ref_state: id de outra empresa responde missing, sem revelar que existe',
   public.financial_reconciliation_ref_state(
     '21a00000-0000-4000-8000-000000000001', 'trip', '21bd0000-0000-4000-8000-000000000001') = 'missing'
@@ -445,19 +449,15 @@ select pg_temp.expect('anon não executa nenhuma das funções; authenticated ex
   and has_function_privilege('authenticated', 'public.financial_reconciliation_findings(uuid, date, date, integer)', 'execute')
   and has_function_privilege('authenticated', 'public.financial_reconciliation_summary(uuid, date, date)', 'execute'));
 
-select pg_temp.expect('as funções rodam com a permissão de quem consulta e não alteram dados (stable)',
-  not exists (
-    select 1 from pg_proc p
-    where p.pronamespace = 'public'::regnamespace
-      and p.proname in ('financial_reconciliation_findings', 'financial_reconciliation_summary',
-                        'financial_reconciliation_in_period')
-      and (p.prosecdef or p.provolatile = 'v'))
-  -- Única security definer: ref_state, que só responde a situação do registro.
-  and exists (
-    select 1 from pg_proc p
-    where p.pronamespace = 'public'::regnamespace
-      and p.proname = 'financial_reconciliation_ref_state'
-      and p.prosecdef and p.provolatile = 's'));
+-- 114: achados e ref_state são security definer (porta = verificação de permissão);
+-- resumo e período continuam invoker. Nenhuma pode alterar dados (stable/immutable).
+select pg_temp.expect('definer só nos achados e na ref_state; nenhuma função volátil',
+  (select string_agg(format('%s:%s:%s', p.proname, p.prosecdef, p.provolatile), ',' order by p.proname)
+   from pg_proc p
+   where p.pronamespace = 'public'::regnamespace
+     and p.proname like 'financial_reconciliation%')
+  = 'financial_reconciliation_findings:t:s,financial_reconciliation_in_period:f:i,'
+    || 'financial_reconciliation_ref_state:t:s,financial_reconciliation_summary:f:s');
 
 select seq, name, ok, detail from _r21_results order by seq;
 

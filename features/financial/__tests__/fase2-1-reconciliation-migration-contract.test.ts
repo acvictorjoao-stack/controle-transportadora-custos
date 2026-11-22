@@ -20,10 +20,10 @@ const sql = read('supabase/migrations/113_financial_reconciliation.sql');
 const code = withoutComments(sql);
 
 /** Tuplas (verificação, severidades, entidade) de cada linha de achado devolvida. */
-function emittedRows(): Array<{checkId: string; severities: string[]; entityType: string}> {
+function emittedRows(text = code): Array<{checkId: string; severities: string[]; entityType: string}> {
   const pattern =
     /'(R\d\d)'(?:::text)?,\s*(case\b[\s\S]*?\bend|'\w+'(?:::text)?),\s*'(\w+)'(?:::text)?/g;
-  return [...code.matchAll(pattern)].map((match) => ({
+  return [...text.matchAll(pattern)].map((match) => ({
     checkId: match[1],
     severities: [...match[2].matchAll(/'(\w+)'/g)]
       .map((item) => item[1])
@@ -253,5 +253,109 @@ describe('Fase 2.1 — reversão e teste em banco', () => {
     expect(test).toContain('Financeiro sem acesso aos módulos: nenhum órfão ou vínculo falso');
     expect(test).toContain('ref_state: id de outra empresa responde missing, sem revelar que existe');
     expect(test.trimEnd().endsWith('rollback;')).toBe(true);
+  });
+});
+
+describe('Fase 2.1 — migration 114 (security definer e desempenho, mesmo contrato da 113)', () => {
+  const m114 = read('supabase/migrations/114_financial_reconciliation_performance.sql');
+  const code114 = withoutComments(m114);
+  const fn114 = code114.slice(code114.indexOf('create or replace function public.financial_reconciliation_findings'));
+
+  /** Texto de cada bloco "return query" da função, sem comentários. */
+  function blocks(text: string): string[] {
+    const body = text.slice(text.indexOf('create or replace function public.financial_reconciliation_findings'));
+    return body.split('return query').slice(1).map((part) => part.slice(0, part.indexOf('limit v_limit;')));
+  }
+
+  it('só recria a função de achados, com a mesma assinatura, agora security definer', () => {
+    expect(code114.match(/create or replace function public\.\w+/g)).toEqual([
+      'create or replace function public.financial_reconciliation_findings',
+    ]);
+    expect(code114).toContain(
+      'public.financial_reconciliation_findings(\n  p_company_id uuid,\n  p_from date default null,\n  p_to date default null,\n  p_limit integer default 200\n)',
+    );
+    expect(code114.match(/security definer/g)).toHaveLength(1);
+    expect(code114).toContain('language plpgsql\nstable\nsecurity definer\nset search_path = public');
+    expect(code114).not.toMatch(/\b(insert\s+into|update\s+public\.|delete\s+from|truncate|alter\s+table|drop\s+)/i);
+  });
+
+  it('a única porta é a verificação de permissão, sem rolbypassrls (current_user seria o dono)', () => {
+    expect(code114).toContain("coalesce(public.has_company_permission(p_company_id, 'financeiro:read'), false)");
+    expect(code114).toContain('coalesce(public.is_company_super_admin(p_company_id), false)');
+    expect(code114).toContain('coalesce(public.request_is_service_context(), false)');
+    expect(code114).not.toContain('rolbypassrls');
+    expect(code114).not.toContain('current_user');
+    expect(code114).toContain("raise exception 'Sem permissão para a reconciliação financeira.' using errcode = '42501';");
+    // A verificação vem antes de qualquer leitura.
+    expect(fn114.indexOf("raise exception 'Sem permissão")).toBeLessThan(fn114.indexOf('return query'));
+    expect(code114).toContain(
+      'revoke all on function public.financial_reconciliation_findings(uuid, date, date, integer) from public, anon;',
+    );
+    expect(code114).toContain(
+      'grant execute on function public.financial_reconciliation_findings(uuid, date, date, integer) to authenticated, service_role;',
+    );
+    expect(code114).not.toMatch(/grant[^;]*to[^;]*\banon\b/i);
+  });
+
+  it('toda leitura filtra pela empresa pedida (sem RLS, este é o isolamento)', () => {
+    const reads = [...fn114.matchAll(/\b(?:from|join)\s+public\.(\w+)\s+(\w+)/g)];
+    expect(reads.length).toBeGreaterThan(40);
+    const unfiltered: string[] = [];
+    for (const read of reads) {
+      const [, table, alias] = read;
+      const rest = fn114.slice(read.index);
+      const end = rest.slice(5).search(/\bunion all\b|limit v_limit;/);
+      const statement = end > 0 ? rest.slice(0, end + 5) : rest;
+      const filtered = new RegExp(
+        String.raw`\b${alias}\.company_id\s*=|=\s*${alias}\.company_id\b`,
+      ).test(statement);
+      if (!filtered) unfiltered.push(`${table} ${alias}`);
+    }
+    // Única exceção: movimento por título já filtrado pela empresa, ligado por
+    // FK composta (company_id, financial_entry_id) — não há movimento de outra empresa.
+    expect(unfiltered).toEqual(['financial_entry_movements m']);
+    expect(fn114).toContain('select 1 from public.financial_entry_movements m\n      where m.financial_entry_id = fe.id');
+    expect(read('supabase/migrations/106_financial_entry_movements.sql')).toContain(
+      'foreign key (company_id, financial_entry_id)\n    references public.financial_entries (company_id, id)',
+    );
+  });
+
+  it('devolve as mesmas verificações, severidades e entidades da 113', () => {
+    const key = (row: {checkId: string; severities: string[]; entityType: string}) =>
+      `${row.checkId}|${row.severities.join('/')}|${row.entityType}`;
+    expect(emittedRows(code114).map(key).sort()).toEqual(emittedRows(code).map(key).sort());
+  });
+
+  it('os blocos que não mudaram ficam idênticos aos da 113', () => {
+    const old = blocks(code);
+    const next = blocks(code114);
+    expect(next).toHaveLength(old.length);
+    // Índices: 0 R01a, 1 R01b, 2 R02, 3 R03, 4 R04, 5 R05, 6 R06, 7 R07, 8 R08, 9 R09, 10 R10, 11 R14.
+    for (const index of [0, 1, 6, 7, 8, 9, 11]) {
+      expect(next[index]).toBe(old[index]);
+    }
+  });
+
+  it('R03, R05 e R10 leem os lançamentos uma vez; R02 e R04 sem a função auxiliar por linha', () => {
+    const [, , r02, r03, r04, r05, , , , , r10] = blocks(code114);
+    expect(r03).toContain('with posted as materialized (');
+    expect(r03).toContain('freight_charged as materialized (');
+    expect(r05).toContain('with fe_active as materialized (');
+    expect(r10).toContain('with revenue_by_trip as (');
+    expect(code114).not.toContain('(fe.fuel_record_id = fr.id or (fe.source_module');
+    expect(code114).not.toContain('financial_reconciliation_ref_state(');
+    expect(r02).toContain('left join public.trips x on x.id = a.trip_id and x.company_id = a.company_id');
+    // R04: mesmos casos de "origem ativa" da 111 e da ref_state.
+    expect(r04).toContain("x.paid_by not in ('company', 'driver', 'aggregate') then 'inactive'");
+    expect(r04).toContain("when x.expense_status = 'cancelled' then 'inactive'");
+  });
+
+  it('a reversão devolve a função exatamente como na 113', () => {
+    const rollback = read('database/rollback/fase-2-1-114.sql');
+    const start = sql.indexOf('create or replace function public.financial_reconciliation_findings(');
+    const end = sql.indexOf('\n', sql.indexOf("'Fase 2.1: achados da reconciliação financeira", start));
+    expect(rollback).toContain(sql.slice(start, end));
+    expect(withoutComments(rollback)).not.toMatch(/\b(insert\s+into|update\s+public\.|delete\s+from|truncate)/i);
+    expect(rollback.trimEnd().endsWith('commit;')).toBe(true);
   });
 });

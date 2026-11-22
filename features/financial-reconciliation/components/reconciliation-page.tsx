@@ -261,7 +261,10 @@ function ReconciliationPage({data, error = null}: ReconciliationPageProps) {
               {data.coverage.cashFlowLinesChecked} movimento(s) de caixa no recorte. DRE × indicadores (R11) usa sempre o acumulado da empresa.
             </p>
           ) : null}
-          <p>As verificações do lado da origem cobrem os módulos que você pode consultar.</p>
+          <p>
+            As comparações de relatório (R11 a R13) seguem as permissões do seu usuário; as demais cobrem todos os
+            módulos da empresa.
+          </p>
         </div>
       </div>
     </PageTemplate>

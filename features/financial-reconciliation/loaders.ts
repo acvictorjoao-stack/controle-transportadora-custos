@@ -24,6 +24,21 @@ function reasonOf(result: PromiseRejectedResult): string {
   return result.reason instanceof Error ? result.reason.message : String(result.reason);
 }
 
+/** Código do Postgres para "canceling statement due to statement timeout". */
+const STATEMENT_TIMEOUT = '57014';
+
+/**
+ * Mensagem para a tela e registro no log do servidor: a mensagem genérica de
+ * mapDatabaseError esconderia a causa (ex.: tempo limite de 8 s do authenticated).
+ */
+function describeDatabaseError(context: string, error: {code?: string; message: string}): string {
+  console.error(`[reconciliation] ${context}`, {code: error.code, message: error.message});
+  if (error.code === STATEMENT_TIMEOUT) {
+    return 'a consulta passou do tempo limite do banco. Recarregue a página ou escolha um período menor.';
+  }
+  return mapDatabaseError(error);
+}
+
 /**
  * Achados do banco (migration 113) e das comparações de relatório (R11–R13),
  * com a RLS de quem consulta. Uma fonte que falha não esconde a outra.
@@ -42,7 +57,7 @@ export async function getFinancialReconciliationData(
         p_limit: RECONCILIATION_FINDINGS_LIMIT,
       })
       .then(({data, error}) => {
-        if (error) throw new Error(mapDatabaseError(error));
+        if (error) throw new Error(describeDatabaseError('findings failed', error));
         return ((data ?? []) as ReconciliationFindingRow[]).map(mapReconciliationFindingRow);
       }),
     loadReconciliationReport(supabase, companyId, period),
@@ -98,7 +113,11 @@ export async function getReconciliationAlertCounts(
   const {data, error} = await supabase.rpc('financial_reconciliation_summary', {
     p_company_id: companyId,
   });
-  if (error || !data) return null;
+  if (error) {
+    describeDatabaseError('summary failed', error);
+    return null;
+  }
+  if (!data) return null;
 
   const counts: ReconciliationAlertCounts = {critical: 0, high: 0};
   for (const row of data as Array<{severity: string; findings: number; legacy_findings: number}>) {

@@ -108,6 +108,27 @@ describe('Fase 2.1.4 — dados da tela de conciliação', () => {
     expect(data.errors[0]).toMatch(/^Verificações do banco indisponíveis: /);
   });
 
+  it('tempo limite do banco (57014) vira mensagem clara e fica no log do servidor', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    loadReport.mockResolvedValue(report);
+    const {client} = rpcClient({
+      data: null,
+      error: {code: '57014', message: 'canceling statement due to statement timeout'} as never,
+    });
+
+    const data = await getFinancialReconciliationData(client, COMPANY, {});
+
+    expect(data.errors).toEqual([
+      'Verificações do banco indisponíveis: a consulta passou do tempo limite do banco. Recarregue a página ou escolha um período menor.',
+    ]);
+    expect(data.findings.map((finding) => finding.checkId)).toEqual(['R11']);
+    expect(consoleError).toHaveBeenCalledWith('[reconciliation] findings failed', {
+      code: '57014',
+      message: 'canceling statement due to statement timeout',
+    });
+    consoleError.mockRestore();
+  });
+
   it('verificação que bateu no limite é marcada como incompleta', async () => {
     loadReport.mockResolvedValue({...report, findings: []});
     const rows = Array.from({length: RECONCILIATION_FINDINGS_LIMIT}, () => row());
