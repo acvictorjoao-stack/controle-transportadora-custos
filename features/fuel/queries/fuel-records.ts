@@ -1,6 +1,7 @@
 import type {SupabaseClient} from '@supabase/supabase-js';
 
 import {mapDatabaseError} from '@/features/master/companies/utils/database-error';
+import {logError} from '@/lib/logging/error-logger';
 
 import {
   FUEL_DETAIL_COLUMNS,
@@ -351,11 +352,31 @@ export async function createFuelRecord(
   try {
     const {onFuelRecordCreated} = await import('@/features/financial/services/integration-events');
     await onFuelRecordCreated(supabase, companyId, record, profileId);
-  } catch {
-    // Financial integration must not block fuel operations
+  } catch (error) {
+    // Financial integration must not block fuel operations, but must not fail silently.
+    reportFuelFinancialSyncFailure(error, 'financialSync', companyId, record.id);
   }
 
   return record;
+}
+
+/**
+ * A sincronização com o financeiro não bloqueia o abastecimento, mas a falha
+ * fica registrada (mesmo padrão da manutenção) para a reconciliação encontrar.
+ */
+function reportFuelFinancialSyncFailure(
+  error: unknown,
+  action: 'financialSync' | 'financialDelete',
+  companyId: string,
+  fuelRecordId: string,
+): void {
+  const err = error instanceof Error ? error : new Error(String(error));
+  logError(err, `fuel.${action}:${fuelRecordId}`);
+  console.error(`[fuel] Financial ${action} failed`, {
+    companyId,
+    fuelRecordId,
+    message: err.message,
+  });
 }
 
 export async function updateFuelRecord(
@@ -396,8 +417,8 @@ export async function updateFuelRecord(
   try {
     const {onFuelRecordUpdated} = await import('@/features/financial/services/integration-events');
     await onFuelRecordUpdated(supabase, companyId, record, profileId);
-  } catch {
-    // Financial integration must not block fuel operations
+  } catch (error) {
+    reportFuelFinancialSyncFailure(error, 'financialSync', companyId, record.id);
   }
 
   return record;
@@ -414,8 +435,8 @@ export async function softDeleteFuelRecord(
       '@/features/financial/services/integration-events'
     );
     await onLinkedFinancialEntryDeleted(supabase, companyId, profileId, {fuelRecordId});
-  } catch {
-    // Financial integration must not block fuel operations
+  } catch (error) {
+    reportFuelFinancialSyncFailure(error, 'financialDelete', companyId, fuelRecordId);
   }
 
   const {error} = await supabase
