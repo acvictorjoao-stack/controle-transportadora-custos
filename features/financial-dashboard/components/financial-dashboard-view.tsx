@@ -17,6 +17,8 @@ import {
   ACCOUNTS_RECEIVABLE_STATUS_LABELS,
 } from '@/features/financial/types/financial-entry';
 import {formatCurrencyBr, formatDateBr} from '@/features/financial/utils/financial-format';
+import {ReconciliationAlert} from '@/features/financial-reconciliation/components';
+import type {ReconciliationAlertCounts} from '@/features/financial-reconciliation/types';
 import type {FinancialEntryStatus} from '@/features/financial/types';
 
 import type {
@@ -27,6 +29,8 @@ import type {
 export interface FinancialDashboardViewProps {
   data: FinancialDashboardData;
   error: string | null;
+  /** Achados atuais da conciliação (nulo sem financeiro:read ou se indisponível). */
+  reconciliation?: ReconciliationAlertCounts | null;
 }
 
 function detailHref(row: FinancialDashboardUpcomingRow): string {
@@ -70,7 +74,7 @@ function formatCount(value: number): string {
   return value.toLocaleString('pt-BR');
 }
 
-function FinancialDashboardView({data, error}: FinancialDashboardViewProps) {
+function FinancialDashboardView({data, error, reconciliation}: FinancialDashboardViewProps) {
   const {summary} = data;
 
   const columns = [
@@ -126,6 +130,7 @@ function FinancialDashboardView({data, error}: FinancialDashboardViewProps) {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
+      <ReconciliationAlert counts={reconciliation ?? null} />
 
       <div className="flex flex-col gap-6">
         <Section>

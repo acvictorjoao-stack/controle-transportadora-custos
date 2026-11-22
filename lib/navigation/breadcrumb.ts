@@ -23,6 +23,7 @@ const segmentLabels: Record<string, string> = {
   viagens: 'Viagens',
   financeiro: 'Financeiro',
   'fluxo-de-caixa': 'Fluxo de Caixa',
+  conciliacao: 'Conciliação',
   'contas-a-pagar': 'Contas a Pagar',
   'contas-a-receber': 'Contas a Receber',
   manutencao: 'Manutenções',

@@ -6946,6 +6946,42 @@ export type Database = {
         Args: { p_company_id: string }
         Returns: number
       }
+      financial_reconciliation_findings: {
+        Args: {
+          p_company_id: string
+          p_from?: string
+          p_limit?: number
+          p_to?: string
+        }
+        Returns: {
+          actual: number
+          check_id: string
+          details: Json
+          entity_id: string
+          entity_type: string
+          expected: number
+          legacy: boolean
+          reference: string
+          severity: string
+        }[]
+      }
+      financial_reconciliation_in_period: {
+        Args: { p_date: string; p_from: string; p_to: string }
+        Returns: boolean
+      }
+      financial_reconciliation_ref_state: {
+        Args: { p_company_id: string; p_id: string; p_kind: string }
+        Returns: string
+      }
+      financial_reconciliation_summary: {
+        Args: { p_company_id: string; p_from?: string; p_to?: string }
+        Returns: {
+          check_id: string
+          findings: number
+          legacy_findings: number
+          severity: string
+        }[]
+      }
       generate_trip_number: { Args: { p_company_id: string }; Returns: string }
       get_customer_stats: { Args: { p_company_id: string }; Returns: Json }
       get_driver_stats: { Args: { p_company_id: string }; Returns: Json }

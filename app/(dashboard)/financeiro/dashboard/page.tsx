@@ -4,6 +4,8 @@ import {ROUTES} from '@/constants/routes/paths';
 import {FinancialDashboardView} from '@/features/financial-dashboard/components';
 import {getFinancialDashboardData} from '@/features/financial-dashboard/queries';
 import type {FinancialDashboardData} from '@/features/financial-dashboard/types';
+import {getReconciliationAlertCounts} from '@/features/financial-reconciliation/loaders';
+import type {ReconciliationAlertCounts} from '@/features/financial-reconciliation/types';
 import {
   assertCompanyPermission,
   getCurrentCompanyId,
@@ -50,6 +52,10 @@ export default async function FinanceiroDashboardPage() {
 
   let data: FinancialDashboardData = EMPTY_DATA;
   let error: string | null = null;
+  // Selo da conciliação: só para quem tem financeiro:read (regra das funções da 113).
+  const reconciliationPromise: Promise<ReconciliationAlertCounts | null> = canReadResults[0]
+    ? getReconciliationAlertCounts(supabase, companyId).catch(() => null)
+    : Promise.resolve(null);
 
   try {
     data = await getFinancialDashboardData(supabase, companyId);
@@ -57,5 +63,7 @@ export default async function FinanceiroDashboardPage() {
     error = err instanceof Error ? err.message : 'Erro ao carregar dashboard financeiro.';
   }
 
-  return <FinancialDashboardView data={data} error={error} />;
+  const reconciliation = await reconciliationPromise;
+
+  return <FinancialDashboardView data={data} error={error} reconciliation={reconciliation} />;
 }
