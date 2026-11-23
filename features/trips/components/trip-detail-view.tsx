@@ -43,6 +43,7 @@ import {
 import {formatDateBr, formatDateTimeBr} from '../utils/trip-status';
 import {getTripRouteLabel} from '../utils/route-planning';
 import {TRIP_NATIVE_SELECT_CLASS} from '../utils/form-styles';
+import {buildAllocatedTripViewHref} from '../utils/trip-profitability-link';
 import {TripExpensesTab} from './trip-expenses-tab';
 import {TripFileUpload} from './trip-file-upload';
 import {TripFormModal} from './trip-form-modal';
@@ -171,6 +172,7 @@ function TripDetailView({
           <TripResultCards
             summary={data.financialSummary}
             fallbackFreight={trip.actualFreightValue ?? trip.contractedFreightValue ?? 0}
+            allocatedViewHref={buildAllocatedTripViewHref(trip)}
           />
 
           <TripReceivableCard trip={trip} receivables={data.receivables} />

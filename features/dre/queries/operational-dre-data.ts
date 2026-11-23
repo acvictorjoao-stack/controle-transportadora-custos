@@ -1,7 +1,10 @@
 import type {SupabaseClient} from '@supabase/supabase-js';
 
 import {mapDatabaseError} from '@/features/master/companies/utils/database-error';
-import {resolveTripOperationalDistanceKm} from '@/features/trips/utils/trip-distance';
+import {
+  resolveTripDistanceSource,
+  resolveTripOperationalDistanceKm,
+} from '@/features/trips/utils/trip-distance';
 import {formatPlate} from '@/features/vehicles/utils/vehicle-format';
 import {resolveOperationalDreExpenseDimensionFilter} from '@/features/dre/services/operational-dre-expense-scope';
 import {fetchAllPagedRows} from '@/lib/supabase/fetch-all-pages';
@@ -217,6 +220,11 @@ function mapTripRow(row: TripRawRow): OperationalDreTripRow {
     actualFreightValue:
       row.actual_freight_value !== null ? asNumber(row.actual_freight_value) : null,
     distanceKm: resolveTripOperationalDistanceKm({
+      initialOdometerKm: row.initial_odometer_km,
+      finalOdometerKm: row.final_odometer_km,
+      plannedDistanceKm: row.planned_distance_km,
+    }),
+    distanceSource: resolveTripDistanceSource({
       initialOdometerKm: row.initial_odometer_km,
       finalOdometerKm: row.final_odometer_km,
       plannedDistanceKm: row.planned_distance_km,

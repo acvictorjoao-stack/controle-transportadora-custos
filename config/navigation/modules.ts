@@ -96,6 +96,14 @@ export const navigationGroups: NavGroup[] = [
         permission: 'financeiro:read',
       },
       {
+        id: 'rentabilidade-viagem',
+        title: 'Rentabilidade por Viagem',
+        description: 'Resultado direto e com rateio de cada viagem',
+        href: ROUTES.dashboardRentabilidadeViagens,
+        icon: Route,
+        permission: 'financeiro:read',
+      },
+      {
         id: 'inteligencia-operacional',
         title: 'Inteligência Operacional',
         description: 'Insights operacionais',

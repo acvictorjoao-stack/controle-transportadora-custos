@@ -19,6 +19,7 @@ import type {
   OperationalDreExpenseRow,
   OperationalDreFilters,
   OperationalDreIndicators,
+  OperationalDreKmQuality,
   OperationalDreTripRow,
 } from '../types';
 import {expenseMatchesCompetenceScope} from './operational-dre-expense-scope';
@@ -154,6 +155,7 @@ export function buildIndicators(input: {
   vehiclesUsed: number;
   /** Audit #6 — anula ratios assimétricos (custo/receita vs volume operacional). */
   costsOnlyMode?: boolean;
+  kmQuality?: OperationalDreKmQuality;
 }): OperationalDreIndicators {
   const {
     totalRevenue,
@@ -165,7 +167,9 @@ export function buildIndicators(input: {
     routesUsed,
     vehiclesUsed,
     costsOnlyMode = false,
+    kmQuality,
   } = input;
+  const quality = kmQuality ? {kmQuality} : {};
 
   if (costsOnlyMode) {
     return {
@@ -180,6 +184,7 @@ export function buildIndicators(input: {
       customersServed,
       routesUsed,
       vehiclesUsed,
+      ...quality,
     };
   }
 
@@ -197,6 +202,7 @@ export function buildIndicators(input: {
     customersServed,
     routesUsed,
     vehiclesUsed,
+    ...quality,
   };
 }
 
@@ -249,8 +255,11 @@ export function summarizeTripDimensions(trips: OperationalDreTripRow[]): {
   customersServed: number;
   routesUsed: number;
   vehiclesUsed: number;
+  kmQuality?: OperationalDreKmQuality;
 } {
   const customers = new Set<string>();
+  const kmQuality: OperationalDreKmQuality = {odometer: 0, planned: 0, none: 0};
+  let allHaveSource = trips.length > 0;
   const routes = new Set<string>();
   const vehicles = new Set<string>();
   let totalKm = 0;
@@ -260,6 +269,8 @@ export function summarizeTripDimensions(trips: OperationalDreTripRow[]): {
     if (trip.customerId) customers.add(trip.customerId);
     if (trip.routeId) routes.add(trip.routeId);
     if (trip.vehicleId) vehicles.add(trip.vehicleId);
+    if (trip.distanceSource) kmQuality[trip.distanceSource] += 1;
+    else allHaveSource = false;
   }
 
   return {
@@ -268,6 +279,7 @@ export function summarizeTripDimensions(trips: OperationalDreTripRow[]): {
     customersServed: customers.size,
     routesUsed: routes.size,
     vehiclesUsed: vehicles.size,
+    ...(allHaveSource ? {kmQuality} : {}),
   };
 }
 

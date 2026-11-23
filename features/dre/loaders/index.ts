@@ -11,6 +11,7 @@ export {
   getOperationalDreRouteTripDetails,
   getOperationalDreVehicleTripDetails,
   fetchOperationalDreSource,
+  getOperationalDreTripProfitability,
 } from './operational-dre-loader';
 export {getCustomerProfitabilityDashboardData} from './customer-profitability-dashboard-loader';
 export {getDriverProfitabilityDashboardData} from './driver-profitability-dashboard-loader';

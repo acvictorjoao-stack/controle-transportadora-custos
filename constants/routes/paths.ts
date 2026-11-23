@@ -16,6 +16,7 @@ export const ROUTES = {
   dashboardRentabilidadeClientes: '/dashboard/rentabilidade/clientes',
   dashboardRentabilidadeVeiculos: '/dashboard/rentabilidade/veiculos',
   dashboardRentabilidadeMotoristas: '/dashboard/rentabilidade/motoristas',
+  dashboardRentabilidadeViagens: '/dashboard/rentabilidade/viagens',
   dashboardInteligencia: '/dashboard/inteligencia',
 
   // Cadastros

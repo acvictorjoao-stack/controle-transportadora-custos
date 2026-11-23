@@ -1,4 +1,5 @@
 import {AlertTriangle, Info} from 'lucide-react';
+import Link from 'next/link';
 import type * as React from 'react';
 
 import {Alert, AlertDescription} from '@/components/ui/alert';
@@ -19,6 +20,11 @@ export interface TripResultCardsProps {
   summary: TripFinancialSummary | null;
   /** Frete do cadastro, usado só quando o resumo não está disponível. */
   fallbackFreight: number;
+  /**
+   * Fase 2.2.4 — link para a Rentabilidade por Viagem, onde a viagem aparece
+   * também com o rateio dos custos do veículo por KM.
+   */
+  allocatedViewHref?: string | null;
 }
 
 function MetricCard({
@@ -48,7 +54,7 @@ function MetricCard({
  * `trip_financial_summary` — a mesma conta da DRE. Cada custo aparece num só
  * grupo: despesas da aba não entram de novo em combustível, manutenção ou pneus.
  */
-export function TripResultCards({summary, fallbackFreight}: TripResultCardsProps) {
+export function TripResultCards({summary, fallbackFreight, allocatedViewHref = null}: TripResultCardsProps) {
   const view = buildTripResultView(summary, fallbackFreight);
 
   const unavailableText =
@@ -93,7 +99,24 @@ export function TripResultCards({summary, fallbackFreight}: TripResultCardsProps
           )}
         </MetricCard>
 
-        <MetricCard title="Resultado">
+        <MetricCard
+          title="Resultado"
+          footnote={
+            view.state === 'ready' ? (
+              <>
+                Só custos lançados na viagem.
+                {allocatedViewHref ? (
+                  <>
+                    {' '}
+                    <Link href={allocatedViewHref} className="underline underline-offset-2">
+                      Ver com rateio do veículo no mês
+                    </Link>
+                  </>
+                ) : null}
+              </>
+            ) : undefined
+          }
+        >
           {view.state === 'ready' ? (
             <p className={`text-2xl font-semibold ${view.result < 0 ? 'text-destructive' : ''}`}>
               {formatMoney(view.result)}

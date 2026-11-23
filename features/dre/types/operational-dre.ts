@@ -69,6 +69,17 @@ export interface OperationalDreIndicators {
   customersServed: number;
   routesUsed: number;
   vehiclesUsed: number;
+  /**
+   * Fase 2.2.4 — de onde veio o KM das viagens (qualidade do custo/KM e do
+   * rateio). Ausente quando as viagens não trazem a origem (fixtures antigas).
+   */
+  kmQuality?: OperationalDreKmQuality;
+}
+
+export interface OperationalDreKmQuality {
+  odometer: number;
+  planned: number;
+  none: number;
 }
 
 export type OperationalDreAnalyticalCategory =
@@ -117,6 +128,8 @@ export interface OperationalDreTripRow {
   actualFreightValue: number | null;
   /** KM operacional (`resolveTripOperationalDistanceKm`) — Audit #17. */
   distanceKm: number;
+  /** Origem do KM (odômetro, planejado ou nenhum) — Fase 2.2. Ausente em fixtures antigas. */
+  distanceSource?: 'odometer' | 'planned' | 'none';
 }
 
 /** Linha bruta de despesa financeira usada pelo calculator (sem I/O). */

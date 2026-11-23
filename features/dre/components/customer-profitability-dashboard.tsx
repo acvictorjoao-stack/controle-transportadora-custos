@@ -49,6 +49,8 @@ import type {PeriodChartPoint} from './revenue-cost-profit-chart';
 import {OperationalDreCompetenceDisclaimer} from './operational-dre-competence-disclaimer';
 import {OperationalDreCostAllocationDisclaimer} from './operational-dre-cost-allocation-disclaimer';
 import {OperationalDreCostsOnlyBanner} from './operational-dre-costs-only-banner';
+import {ProfitabilityDataNotes} from './profitability-data-notes';
+import {resolveAttributedCostsCard} from '../utils/ranking-coverage';
 import {OperationalDreCustomerCosts} from './operational-dre-customer-costs';
 import {OperationalDreFiltersBar} from './operational-dre-filters';
 import dynamic from 'next/dynamic';
@@ -287,6 +289,12 @@ function CustomerProfitabilityDashboard({
     [initialFilters],
   );
 
+  const attributedCard = resolveAttributedCostsCard({
+    dre,
+    groups: byCustomer.groups,
+    filters: initialFilters,
+  });
+
   return (
     <AnalyticsShell
       filters={initialFilters}
@@ -315,6 +323,13 @@ function CustomerProfitabilityDashboard({
 
       <OperationalDreCostsOnlyBanner active={dre.costsOnlyMode} />
 
+      <ProfitabilityDataNotes
+        dre={dre}
+        groups={byCustomer.groups}
+        filters={initialFilters}
+        dimension="customer"
+      />
+
       <Section
         title="Indicadores"
         description="Quanto cada cliente realmente deixa de lucro no período."
@@ -339,8 +354,8 @@ function CustomerProfitabilityDashboard({
           />
           <StatCard
             title="Custos Atribuídos"
-            value={formatCurrencyBr(dre.costs.allocatedOperatingCosts)}
-            subtitle="Entram no ranking"
+            value={formatCurrencyBr(attributedCard.value)}
+            subtitle={attributedCard.subtitle}
           />
           <StatCard
             title="Não Atribuíveis"
