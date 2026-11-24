@@ -31,7 +31,11 @@ import {
   signOutHmlClient,
 } from '../database/seeds/homologacao/client';
 import {HML_COMPANY_SLUG} from '../database/seeds/homologacao/constants';
-import {hasHmlAuthEnv, loadLocalEnv} from '../database/seeds/homologacao/env';
+import {
+  assertHmlWriteTargetFromEnv,
+  hasHmlAuthEnv,
+  loadLocalEnv,
+} from '../database/seeds/homologacao/env';
 import {assertHmlDestructiveMembershipSuperAdmin} from '../database/seeds/homologacao/guards';
 import {
   activePlanRows,
@@ -70,6 +74,14 @@ function parseArgs(argv: string[]): {executeRequested: boolean; authorizeFlag: b
 
 async function main(): Promise<void> {
   loadLocalEnv();
+
+  // Trava de produção antes de qualquer cliente, leitura ou escrita.
+  try {
+    assertHmlWriteTargetFromEnv();
+  } catch (error) {
+    abort(error instanceof Error ? error.message : String(error));
+  }
+
   const {executeRequested, authorizeFlag} = parseArgs(process.argv.slice(2));
   const confirmEnv = process.env[HML_RECOVERY_CONFIRM_ENV]?.trim();
   const writeAuthorized =

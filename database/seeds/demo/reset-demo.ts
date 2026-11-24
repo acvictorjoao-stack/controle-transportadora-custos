@@ -2,7 +2,8 @@ import {execSync} from 'node:child_process';
 
 import type {SupabaseClient} from '@supabase/supabase-js';
 
-import {createDemoSeedClient} from './client';
+import {assertWritableLinkedProject} from '../production-guard';
+import {createDemoSeedClient, DEMO_SEED_TOOL} from './client';
 import {DEMO_COMPANY_SLUG, DEMO_SETTINGS_FLAG} from './constants';
 import {isDemoCompanyRecord} from './validators';
 
@@ -100,7 +101,9 @@ async function deleteByCompanyId(
  * Escopo estrito: somente company_id da DEMO.
  */
 function deletePayrollExpensesForDemo(companyId: string): void {
-  const sql = `select set_config('app.allow_payroll_hard_delete', 'on', true); delete from public.payroll_expenses where company_id = '${companyId}';`;
+  // `--linked` usa o projeto vinculado à CLI, que pode não ser o da URL do .env.
+  assertWritableLinkedProject(`${DEMO_SEED_TOOL} (folha via CLI --linked)`);
+  const sql =`select set_config('app.allow_payroll_hard_delete', 'on', true); delete from public.payroll_expenses where company_id = '${companyId}';`;
   try {
     execSync(`npx supabase db query --linked ${JSON.stringify(sql)}`, {
       stdio: ['ignore', 'pipe', 'pipe'],

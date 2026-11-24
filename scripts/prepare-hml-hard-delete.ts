@@ -47,12 +47,27 @@ import {
   inspectHmlEnvUrlProjectRef,
   loadLocalEnv,
 } from '../database/seeds/homologacao/env';
+import {assertWritableProjectRef} from '../database/seeds/production-guard';
 
 function main(): void {
   const argv = process.argv.slice(2);
   const executeRequested = argv.includes('--execute');
 
   loadLocalEnv();
+
+  // Trava de produção: o projeto-alvo desta ferramenta guarda dados reais.
+  // Bloqueia antes de qualquer validação, plano ou chamada.
+  try {
+    assertWritableProjectRef(HML_HARD_DELETE_PROJECT_REF, 'preparo da exclusão definitiva HML');
+  } catch (error) {
+    console.log('mode=LOCAL_PLAN');
+    console.log('ABORT production_target_blocked');
+    console.log(error instanceof Error ? error.message : String(error));
+    console.log('writes=none remoteCalls=none migrationApplied=false');
+    process.exitCode = 1;
+    return;
+  }
+
   const urlInspection = inspectHmlEnvUrlProjectRef(HML_HARD_DELETE_PROJECT_REF);
 
   // Fail-closed local: se a URL estiver configurada e o host não for o ref HML, aborta.
