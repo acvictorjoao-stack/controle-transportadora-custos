@@ -27,9 +27,51 @@
 -- Uso: executar no SQL Editor do Supabase como postgres / service_role.
 --      Recomendado fazer backup antes em ambientes compartilhados.
 --
+-- TRAVA DO PILOTO (2026-11): este arquivo apaga dados de TODAS as empresas.
+-- Ele aborta, sem apagar nada, a menos que:
+--   1. a linha de confirmação logo abaixo do `begin;` seja descomentada; e
+--   2. TODAS as empresas do banco (inclusive as excluídas) estejam na lista
+--      fixa das 5 empresas fictícias de teste.
+-- Com qualquer empresa real cadastrada, o arquivo nunca mais executa.
+-- Tudo roda numa transação: o erro da trava desfaz a transação inteira, no
+-- SQL Editor e no psql (mesmo sem ON_ERROR_STOP, o COMMIT vira ROLLBACK).
+--
 -- =============================================================================
 
 begin;
+
+-- Confirmação explícita (descomente SOMENTE se tiver certeza):
+-- select set_config('fleetcontrol.confirm_full_wipe', 'APAGAR-TODOS-OS-DADOS-FICTICIOS', true);
+
+do $$
+declare
+  v_fictitious constant uuid[] := array[
+    '8fd9ec35-68e2-4189-8b2f-bcabd0f3fbde', -- novo-teste
+    '8c8c76fc-cd4a-4d88-b573-4f21dd9457c0', -- testando
+    'fb816db7-e94c-4f82-b42e-d72d87cb8acb', -- teste
+    'f9fb4725-93dc-4a1c-8cb8-ee87ed5fcc35', -- demo-fleetcontrol-transportes
+    '451a7940-a56b-425f-ae5f-e493d536591f'  -- primeira-empresa (HML)
+  ]::uuid[];
+  v_other_companies integer;
+begin
+  if coalesce(current_setting('fleetcontrol.confirm_full_wipe', true), '')
+       <> 'APAGAR-TODOS-OS-DADOS-FICTICIOS' then
+    raise exception
+      'reset_demo_data.sql BLOQUEADO: confirmação ausente. Nada foi apagado.';
+  end if;
+
+  select count(*)
+    into v_other_companies
+    from public.companies c
+   where not (c.id = any (v_fictitious));
+
+  if v_other_companies > 0 then
+    raise exception
+      'reset_demo_data.sql BLOQUEADO: % empresa(s) fora da lista de fictícias (possíveis dados reais). Nada foi apagado.',
+      v_other_companies;
+  end if;
+end
+$$;
 
 -- ---------------------------------------------------------------------------
 -- 1. Storage — objetos operacionais (buckets permanecem)
