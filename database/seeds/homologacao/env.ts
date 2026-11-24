@@ -1,6 +1,7 @@
 import {existsSync, readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 
+import {assertWritableSupabaseUrl, projectRefFromSupabaseUrl} from '../production-guard';
 import {HML_AUTHORIZED_PROJECT_REF} from './constants';
 
 /** Carrega variáveis de .env.local para o script CLI (sem dependência extra). */
@@ -36,21 +37,22 @@ export function loadLocalEnv(): void {
 }
 
 /**
- * Extrai o project-ref do host `*.supabase.co`.
- * Retorna null para URL inválida, host inesperado ou ref ausente.
- * Nunca ecoa a URL completa.
+ * Extrai o project-ref do host `*.supabase.co` (implementação única na trava
+ * central). Retorna null para URL inválida, host inesperado ou ref ausente.
  */
-export function projectRefFromSupabaseUrl(url: string): string | null {
-  const trimmed = url.trim();
-  if (!trimmed) return null;
+export {projectRefFromSupabaseUrl};
 
-  try {
-    const host = new URL(trimmed).hostname.toLowerCase();
-    const match = /^([a-z0-9]+)\.supabase\.co$/.exec(host);
-    return match?.[1] ?? null;
-  } catch {
-    return null;
-  }
+/** Nome da ferramenta nas mensagens da trava de produção. */
+export const HML_WRITE_TOOL = 'ferramentas de homologação que gravam ou apagam';
+
+/**
+ * Trava de produção para as ferramentas de HML que gravam ou apagam: roda
+ * antes de exigir credenciais e de criar qualquer cliente. Enquanto a
+ * homologação estiver no mesmo projeto que recebe dados reais, sempre bloqueia.
+ */
+export function assertHmlWriteTargetFromEnv(): string {
+  loadLocalEnv();
+  return assertWritableSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL, HML_WRITE_TOOL);
 }
 
 /**
@@ -81,6 +83,8 @@ export function assertHmlProjectRefFromEnv(): string {
       'Abortado: NEXT_PUBLIC_SUPABASE_URL ausente; project-ref de homologação não pode ser validado.',
     );
   }
+  // Usada pelos guards destrutivos: além de ser o ref de HML, não pode ser produção.
+  assertWritableSupabaseUrl(url, HML_WRITE_TOOL);
   return assertHmlAuthorizedProjectRef(url);
 }
 
@@ -125,6 +129,10 @@ export interface HmlAuthEnv {
  */
 export function requireHmlAuthEnv(): HmlAuthEnv {
   loadLocalEnv();
+
+  // Trava de produção primeiro: nem chega a ler credenciais se o destino
+  // for o projeto com dados reais.
+  assertHmlWriteTargetFromEnv();
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();

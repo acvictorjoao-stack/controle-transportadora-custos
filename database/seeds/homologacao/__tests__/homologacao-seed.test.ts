@@ -42,6 +42,7 @@ import {
   projectRefFromSupabaseUrl,
   requireHmlAuthEnv,
 } from '../env';
+import {PRODUCTION_PROJECT_REFS, ProductionTargetBlockedError} from '../../production-guard';
 import {
   assertHmlWriteContext,
   assertUniqueHmlMembership,
@@ -677,14 +678,26 @@ describe('homologacao seed — project-ref fail-closed', () => {
     ).toBe(HML_AUTHORIZED_PROJECT_REF);
   });
 
-  it('aceita exatamente o project-ref autorizado', () => {
+  it('aceita o project-ref autorizado só para leitura; escrita bloqueada enquanto ele for produção', () => {
     const url = `https://${HML_AUTHORIZED_PROJECT_REF}.supabase.co`;
+    // Scripts só de leitura (reconciliação, diagnóstico) continuam aceitando o ref.
     expect(assertHmlAuthorizedProjectRef(url)).toBe(HML_AUTHORIZED_PROJECT_REF);
 
+    // Piloto (2026-11): o ref de HML é o projeto com dados reais. As ferramentas
+    // que gravam bloqueiam antes de devolver credenciais.
+    expect(PRODUCTION_PROJECT_REFS).toContain(HML_AUTHORIZED_PROJECT_REF);
     process.env.NEXT_PUBLIC_SUPABASE_URL = url;
-    const env = requireHmlAuthEnv();
-    expect(env.projectRef).toBe(HML_AUTHORIZED_PROJECT_REF);
-    expect(env.url).toBe(url);
+    expect(() => requireHmlAuthEnv()).toThrow(ProductionTargetBlockedError);
+    try {
+      requireHmlAuthEnv();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      expect(message).toMatch(/guarda dados reais/);
+      expect(message).not.toMatch(/https?:\/\//i);
+      expect(message).not.toMatch(/test-anon-key|test-password-value/i);
+      expect(message).not.toMatch(/hml\.admin@example\.com/i);
+    }
+    expect(() => assertHmlProjectRefFromEnv()).toThrow(ProductionTargetBlockedError);
   });
 
   it('rejeita project-ref diferente sem expor a URL', () => {
