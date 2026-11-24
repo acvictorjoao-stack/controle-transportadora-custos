@@ -3,6 +3,8 @@
  * A aplicação não deve iniciar sem essas variáveis configuradas.
  */
 
+import {assertSupabaseAccessAllowed} from './deployment-guard';
+
 const SUPABASE_ENV_KEYS = {
   url: 'NEXT_PUBLIC_SUPABASE_URL',
   anonKey: 'NEXT_PUBLIC_SUPABASE_ANON_KEY',
@@ -38,6 +40,12 @@ function readSupabaseEnv(): SupabaseEnv {
   // Acesso estático — necessário para o bundler inlinar NEXT_PUBLIC_* no client.
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+
+  // Trava de ambiente antes de devolver qualquer configuração: Preview (ou
+  // ambiente não identificado) não recebe URL/chave do banco de produção.
+  // Todos os clientes (browser, server, route handler, service role) passam
+  // por aqui; o middleware usa a mesma decisão (supabase/middleware/session.ts).
+  assertSupabaseAccessAllowed(url);
 
   const missing: string[] = [];
   const empty: string[] = [];

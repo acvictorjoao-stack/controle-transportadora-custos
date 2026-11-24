@@ -1,3 +1,4 @@
+import {SupabaseAccessBlockedError} from './deployment-guard';
 import {SupabaseEnvError} from './env';
 
 export type SupabaseErrorCode =
@@ -16,6 +17,13 @@ export class SupabaseConnectionError extends Error {
 
 export function isSupabaseEnvError(error: unknown): error is SupabaseEnvError {
   return error instanceof SupabaseEnvError;
+}
+
+/** Acesso bloqueado pela trava de ambiente (ex.: Preview apontando para produção). */
+export function isSupabaseAccessBlockedError(
+  error: unknown,
+): error is SupabaseAccessBlockedError {
+  return error instanceof SupabaseAccessBlockedError;
 }
 
 export function isSupabaseConnectionError(
@@ -44,6 +52,7 @@ export function formatSupabaseError(error: unknown): string {
  */
 export function getSupabaseErrorCode(error: unknown): SupabaseErrorCode {
   if (isSupabaseEnvError(error)) return 'CONFIG';
+  if (isSupabaseAccessBlockedError(error)) return 'CONFIG';
   if (isSupabaseConnectionError(error)) return 'CONNECTION';
   return 'UNKNOWN';
 }

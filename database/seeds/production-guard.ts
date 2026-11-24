@@ -1,6 +1,8 @@
 import {existsSync, readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 
+import {PRODUCTION_SUPABASE_PROJECT_REFS} from '../../supabase/utils/deployment-guard';
+
 /**
  * Trava central de ambiente para as ferramentas que GRAVAM ou APAGAM dados
  * (seed/reset da demo, seed/recuperação/reset/exclusão definitiva de HML).
@@ -17,10 +19,11 @@ import {resolve} from 'node:path';
  * criar qualquer cliente Supabase ou abrir qualquer conexão.
  *
  * Ferramentas só de leitura (scripts `*-readonly.ts`) não usam esta trava.
+ *
+ * A lista de projetos com dados reais é a mesma da trava do app
+ * (supabase/utils/deployment-guard.ts) — uma única fonte.
  */
-export const PRODUCTION_PROJECT_REFS: readonly string[] = Object.freeze([
-  'aobfjjaucdrwybebosxm',
-]);
+export const PRODUCTION_PROJECT_REFS: readonly string[] = PRODUCTION_SUPABASE_PROJECT_REFS;
 
 /** Arquivo em que a CLI do Supabase grava o projeto vinculado (`supabase link`). */
 export const SUPABASE_LINKED_PROJECT_REF_FILE = 'supabase/.temp/project-ref';

@@ -1,7 +1,15 @@
 import type {NextConfig} from 'next';
 
+import {resolveDeploymentEnvironment} from './supabase/utils/deployment-guard';
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  env: {
+    // Ambiente do deployment gravado no build (servidor, middleware e navegador):
+    // a trava de supabase/utils/deployment-guard.ts impede que Previews usem o
+    // banco de produção. Fora da Vercel vale 'local'.
+    FLEETCONTROL_DEPLOYMENT_ENV: resolveDeploymentEnvironment(process.env),
+  },
   eslint: {
     ignoreDuringBuilds: true,
   },
