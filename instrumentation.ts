@@ -8,8 +8,22 @@ export async function register() {
       '@/supabase/utils/env-hydrate'
     );
     const {validateSupabaseEnv} = await import('@/supabase/utils/env');
+    const {SupabaseAccessBlockedError} = await import(
+      '@/supabase/utils/deployment-guard'
+    );
 
     hydrateSupabaseEnvFromFiles();
-    validateSupabaseEnv();
+    try {
+      validateSupabaseEnv();
+    } catch (error) {
+      // Trava de ambiente (ex.: Preview apontando para produção): registra uma
+      // linha sem URL nem chaves e segue — cada acesso ao banco continua
+      // bloqueado no middleware e em getSupabaseEnv().
+      if (error instanceof SupabaseAccessBlockedError) {
+        console.error(`[fleetcontrol] ${error.message}`);
+        return;
+      }
+      throw error;
+    }
   }
 }

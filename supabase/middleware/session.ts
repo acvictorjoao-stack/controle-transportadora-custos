@@ -14,6 +14,10 @@ import {
 import {checkTenantAccess} from '@/lib/auth/tenant-access';
 import type {Database} from '@/supabase/types';
 import {
+  currentSupabaseAccessDecision,
+  describeSupabaseAccessBlock,
+} from '@/supabase/utils/deployment-guard';
+import {
   logMiddlewareStep,
   logMiddlewareStepForClient,
   logMiddlewareTotal,
@@ -46,6 +50,27 @@ function createMissingSupabaseEnvResponse(): NextResponse {
   return new NextResponse(message, {
     status: 500,
     headers: {'Content-Type': 'text/plain; charset=utf-8'},
+  });
+}
+
+/**
+ * Resposta de bloqueio quando o deployment (Preview, Development da Vercel ou
+ * ambiente não identificado) aponta para o Supabase de produção, ou não tem
+ * URL válida. Null quando o acesso é permitido. Mensagem sem URL nem chaves.
+ */
+export function createSupabaseAccessBlockedResponse(): NextResponse | null {
+  const decision = currentSupabaseAccessDecision(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  if (decision.allowed) {
+    return null;
+  }
+
+  return new NextResponse(describeSupabaseAccessBlock(decision.context, decision.reason), {
+    status: 503,
+    headers: {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Cache-Control': 'no-store',
+      'X-FleetControl-Blocked': decision.reason,
+    },
   });
 }
 
@@ -209,6 +234,14 @@ async function updateSessionInternal(
   request: NextRequest,
   timingContext: MiddlewareTimingContext,
 ) {
+  // Trava de ambiente antes de qualquer outra coisa: um Preview apontando para
+  // o banco de produção responde 503 em toda rota (páginas, Server Actions e
+  // API), sem criar cliente Supabase.
+  const accessBlock = createSupabaseAccessBlockedResponse();
+  if (accessBlock) {
+    return accessBlock;
+  }
+
   const supabaseEnv = getMiddlewareSupabaseEnv();
 
   if (!supabaseEnv) {

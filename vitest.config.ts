@@ -19,6 +19,7 @@ export default defineConfig({
       'constants/**/*.test.ts',
       'lib/formatting/**/*.test.ts',
       'database/seeds/**/*.test.ts',
+      'supabase/**/*.test.ts',
     ],
   },
 });

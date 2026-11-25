@@ -8,6 +8,10 @@ import {getSupabaseEnv} from '@/supabase/utils/env';
  * Nunca importar em Client Components.
  */
 export function createAdminClient() {
+  // Primeiro a trava de ambiente (dentro de getSupabaseEnv): um Preview não
+  // chega nem a ler a service role se o banco configurado for o de produção.
+  const {url} = getSupabaseEnv();
+
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
   if (!serviceRoleKey) {
@@ -20,8 +24,6 @@ export function createAdminClient() {
         : 'SUPABASE_SERVICE_ROLE_KEY não configurada. Necessária para provisionar administradores — configure-a em .env.local.',
     );
   }
-
-  const {url} = getSupabaseEnv();
 
   return createClient<Database>(url, serviceRoleKey, {
     auth: {
