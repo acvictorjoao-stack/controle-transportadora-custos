@@ -61,7 +61,8 @@ function SidebarItem({item, pathname, hash = '', depth = 0}: SidebarItemProps) {
   const className = cn(
     'relative flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors duration-200',
     isActive
-      ? 'bg-sidebar-primary font-medium text-sidebar-accent-foreground shadow-sm'
+      ? // Barra fina à esquerda, fora da pílula: reforça o módulo selecionado sem pesar.
+        'bg-sidebar-primary font-medium text-sidebar-accent-foreground shadow-sm before:absolute before:inset-y-1.5 before:-left-1 before:w-0.5 before:rounded-full before:bg-sidebar-primary'
       : 'font-medium text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground',
     collapsed && 'justify-center px-2',
     depth > 0 && 'py-1.5 text-[13px]',
