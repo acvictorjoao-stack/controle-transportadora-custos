@@ -1,16 +1,8 @@
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import {formatCurrencyBr} from '@/features/financial/utils/financial-format';
 import {buildCrossNavHref} from '@/features/analytics-nav/utils/shared-filters';
 import type {SharedAnalyticsFilters} from '@/features/analytics-nav/types';
-import Link from 'next/link';
 
 import type {TopCustomerRankingItem} from '../utils/rankings';
+import {ExecutiveRankingCard} from './executive-ranking-list';
 
 export interface TopCustomersCardProps {
   customers: TopCustomerRankingItem[];
@@ -19,61 +11,21 @@ export interface TopCustomersCardProps {
 
 function TopCustomersCard({customers, filters = {}}: TopCustomersCardProps) {
   return (
-    <Card className="h-full shadow-card">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base">Top 5 Clientes</CardTitle>
-        <CardDescription>Maiores lucros no período</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {customers.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Nenhum cliente com resultado no período.
-          </p>
-        ) : (
-          <ul className="space-y-3">
-            {customers.map((customer, index) => (
-              <li
-                key={customer.id}
-                className="flex items-start justify-between gap-3 border-b border-border/60 pb-3 last:border-0 last:pb-0"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">
-                    <span className="mr-2 inline-flex size-5 items-center justify-center rounded-md bg-muted text-xs font-semibold tabular-nums text-muted-foreground">
-                      {index + 1}
-                    </span>
-                    <Link
-                      href={buildCrossNavHref(
-                        'rentabilidade-clientes',
-                        filters,
-                        {customerId: customer.id},
-                      )}
-                      className="hover:underline"
-                    >
-                      {customer.name}
-                    </Link>
-                  </p>
-                </div>
-                <div className="shrink-0 text-right text-sm">
-                  <p className="font-financial font-medium">{formatCurrencyBr(customer.revenue)}</p>
-                  <p
-                    className={`font-financial text-xs ${
-                      customer.profit != null && customer.profit < 0
-                        ? 'text-destructive'
-                        : 'text-muted-foreground'
-                    }`}
-                  >
-                    Lucro{' '}
-                    {customer.profit == null
-                      ? '—'
-                      : formatCurrencyBr(customer.profit)}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </CardContent>
-    </Card>
+    <ExecutiveRankingCard
+      title="Top 5 Clientes"
+      description="Maiores lucros no período"
+      emptyMessage="Nenhum cliente com resultado no período."
+      rows={customers.map((customer) => ({
+        id: customer.id,
+        name: customer.name,
+        href: buildCrossNavHref('rentabilidade-clientes', filters, {
+          customerId: customer.id,
+        }),
+        revenue: customer.revenue,
+        profit: customer.profit,
+        marginPercent: customer.marginPercent,
+      }))}
+    />
   );
 }
 

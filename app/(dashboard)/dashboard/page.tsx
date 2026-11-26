@@ -82,7 +82,7 @@ async function ExecutiveSecondaryPanels({
         routes={secondary.routesWithoutLeadTime}
         compact
       />
-      <OperationalAlertsCard alerts={secondary.alerts} />
+      <OperationalAlertsCard alerts={secondary.alerts} filters={core.period} />
     </>
   );
 }
@@ -165,6 +165,7 @@ export default async function DashboardPage({searchParams}: DashboardPageProps) 
             revenue={core.kpis.totalRevenue}
             costs={core.kpis.totalCosts}
             profit={core.kpis.operatingProfit}
+            marginPercent={core.kpis.operatingMarginPercent}
             costsOnlyMode={core.kpis.costsOnlyMode}
             hasOperationalData={hasOperationalData}
           />
@@ -178,7 +179,7 @@ export default async function DashboardPage({searchParams}: DashboardPageProps) 
             title="Top Rankings"
             description="Melhores resultados do período."
           >
-            <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
               <TopRoutesCard routes={core.topRoutes} filters={core.period} />
               <TopCustomersCard
                 customers={core.topCustomers}

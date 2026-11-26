@@ -80,19 +80,28 @@ function SidebarNav() {
           Navegação principal
         </p>
       )}
-      {visibleGroups.map((group) => {
+      {visibleGroups.map((group, index) => {
         const active = activeGroupIds.includes(group.id);
         return (
-          <SidebarGroup
+          <div
             key={group.id}
-            group={group}
-            items={group.items}
-            open={isOpen(group.id)}
-            active={active}
-            onToggle={() => toggle(group.id)}
-            pathname={pathname}
-            hash={hash}
-          />
+            className={cn(
+              index > 0 &&
+                (collapsed
+                  ? 'border-t border-sidebar-border/70 pt-1'
+                  : 'border-t border-sidebar-border/70 pt-3'),
+            )}
+          >
+            <SidebarGroup
+              group={group}
+              items={group.items}
+              open={isOpen(group.id)}
+              active={active}
+              onToggle={() => toggle(group.id)}
+              pathname={pathname}
+              hash={hash}
+            />
+          </div>
         );
       })}
     </nav>
