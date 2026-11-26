@@ -1,17 +1,9 @@
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import {formatCurrencyBr, formatPercent} from '@/features/financial/utils/financial-format';
 import {buildCrossNavHref} from '@/features/analytics-nav/utils/shared-filters';
 import type {SharedAnalyticsFilters} from '@/features/analytics-nav/types';
-import Link from 'next/link';
 
 import {formatMarginStatus} from '../utils/margin-status';
 import type {TopRouteRankingItem} from '../utils/rankings';
+import {ExecutiveRankingCard} from './executive-ranking-list';
 
 export interface TopRoutesCardProps {
   routes: TopRouteRankingItem[];
@@ -20,63 +12,20 @@ export interface TopRoutesCardProps {
 
 function TopRoutesCard({routes, filters = {}}: TopRoutesCardProps) {
   return (
-    <Card className="h-full">
-      <CardHeader>
-        <CardTitle>Top 5 Rotas</CardTitle>
-        <CardDescription>Maiores lucros no período</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {routes.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Nenhuma rota com resultado no período.
-          </p>
-        ) : (
-          <ul className="space-y-3">
-            {routes.map((route, index) => (
-              <li
-                key={route.id}
-                className="flex items-start justify-between gap-3 border-b border-border/60 pb-3 last:border-0 last:pb-0"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">
-                    <span className="mr-2 inline-flex size-5 items-center justify-center rounded-md bg-muted text-xs font-semibold tabular-nums text-muted-foreground">
-                      {index + 1}
-                    </span>
-                    <Link
-                      href={buildCrossNavHref('rentabilidade-rotas', filters, {
-                        routeId: route.id,
-                      })}
-                      className="hover:underline"
-                    >
-                      {route.name}
-                    </Link>
-                  </p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {formatMarginStatus(route.status)}
-                    {route.marginPercent == null
-                      ? ''
-                      : ` · ${formatPercent(route.marginPercent)}`}
-                  </p>
-                </div>
-                <div className="shrink-0 text-right text-sm">
-                  <p className="font-financial font-medium">{formatCurrencyBr(route.revenue)}</p>
-                  <p
-                    className={`font-financial text-xs ${
-                      route.profit != null && route.profit < 0
-                        ? 'text-destructive'
-                        : 'text-muted-foreground'
-                    }`}
-                  >
-                    Lucro{' '}
-                    {route.profit == null ? '—' : formatCurrencyBr(route.profit)}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </CardContent>
-    </Card>
+    <ExecutiveRankingCard
+      title="Top 5 Rotas"
+      description="Maiores lucros no período"
+      emptyMessage="Nenhuma rota com resultado no período."
+      rows={routes.map((route) => ({
+        id: route.id,
+        name: route.name,
+        href: buildCrossNavHref('rentabilidade-rotas', filters, {routeId: route.id}),
+        revenue: route.revenue,
+        profit: route.profit,
+        marginPercent: route.marginPercent,
+        meta: formatMarginStatus(route.status),
+      }))}
+    />
   );
 }
 

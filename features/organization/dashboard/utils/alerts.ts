@@ -2,17 +2,36 @@ import type {OperationalDreRouteGroup} from '@/features/dre/types';
 import type {FinancialDashboardData} from '@/features/financial-dashboard/types';
 import type {MaintenanceStats} from '@/features/maintenance/types';
 
+import {ROUTES} from '@/constants/routes/paths';
+
 import {classifyMarginStatus} from './margin-status';
 import type {TopCustomerRankingItem} from './rankings';
 import {todayCivilDate} from '@/lib/formatting/date';
 
 export type OperationalAlertVariant = 'warning' | 'destructive' | 'info';
 
+/** Comparação com o período anterior; só existe quando há base comparável. */
+export interface OperationalAlertComparison {
+  metric: string;
+  previous: number;
+  current: number;
+  /** Variação percentual sobre o período anterior (negativa = queda). */
+  changePercent: number;
+}
+
+/** Para onde o atalho "Ver análise" leva. */
+export type OperationalAlertTarget =
+  | {kind: 'path'; href: string}
+  | {kind: 'route'; routeId: string}
+  | {kind: 'customer'; customerId: string};
+
 export interface OperationalAlertItem {
   id: string;
   title: string;
   description: string;
   variant: OperationalAlertVariant;
+  comparison?: OperationalAlertComparison;
+  target?: OperationalAlertTarget;
 }
 
 function countDueToday(
@@ -50,6 +69,7 @@ export function buildOperationalAlerts(input: {
       description:
         'Regularize o cadastro para alimentar SLA, atrasos e Inteligência Operacional.',
       variant: 'warning',
+      target: {kind: 'path', href: ROUTES.rotas},
     });
   }
 
@@ -59,6 +79,7 @@ export function buildOperationalAlerts(input: {
       title: `${dueToday} conta${dueToday === 1 ? '' : 's'} vence${dueToday === 1 ? '' : 'm'} hoje`,
       description: 'Revise contas a pagar e a receber com vencimento no dia.',
       variant: 'warning',
+      target: {kind: 'path', href: ROUTES.financeiro},
     });
   }
 
@@ -69,6 +90,7 @@ export function buildOperationalAlerts(input: {
       title: `${count} veículo${count === 1 ? '' : 's'} com manutenção atrasada`,
       description: 'Há agendamentos de manutenção vencidos na frota.',
       variant: 'destructive',
+      target: {kind: 'path', href: ROUTES.manutencoes},
     });
   }
 
@@ -88,6 +110,7 @@ export function buildOperationalAlerts(input: {
             })}%`
       }.`,
       variant: 'destructive',
+      target: {kind: 'route', routeId: route.route.id},
     });
 
     if (alerts.length >= 6) break;
@@ -112,6 +135,13 @@ export function buildOperationalAlerts(input: {
       title: `Cliente ${customer.name} apresentou queda de rentabilidade`,
       description: `Lucro ${Math.round(drop * 100)}% abaixo do período anterior.`,
       variant: 'warning',
+      comparison: {
+        metric: 'Lucro',
+        previous: previous.profit,
+        current: customer.profit,
+        changePercent: -drop * 100,
+      },
+      target: {kind: 'customer', customerId: customer.id},
     });
   }
 
